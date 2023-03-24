@@ -26,6 +26,7 @@ python3 -m venv ./venv
 source venv/bin/activate
 pip install pywikibot
 echo "usernames['wikipedia']['fi'] = 'ZacheBot'" > user-config.py
+echo "put_throttle = 5" >> user-config.py
 ```
 
 ## Examples
