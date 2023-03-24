@@ -5,6 +5,7 @@
 # Execute
 # - python add-perustiedot-wikidatassa-template.py
 
+import time
 import re
 import pywikibot
 import json
@@ -13,21 +14,47 @@ from urllib.request import urlopen
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
-requireconfirmation = 1
 url = "https://petscan.wmflabs.org/?psid=24568722"
 url += "&format=json"
-url += "&output_limit=10000"
+url += "&output_limit=15000"
 
 response = urlopen(url)
 data_json = json.loads(response.read())
 
+
+
+def test_navbox_template(templatename):
+    template=pywikibot.Page(site, "template:" + templatename)
+
+    pattern = r'{{([Aa]vattavaLoppu|[Tt]yhjä malline|[Cc]oor|[Nn]avigaatio|[Nn]avbox)'
+    matches = re.findall(pattern, template.text, re.MULTILINE)
+    if matches:
+        return True
+
+    if "#OHJAUS" in oldtext:
+        return False
+
+
+    print(template.text)
+    time.sleep(10)
+    return False
+
+
 for row in data_json['*'][0]['a']['*']:
+    requireconfirmation = 1
+
+#    if not "Kajaanin_liikuntapuisto" == row['title']:
+#        continue
+
     page=pywikibot.Page(site, row['title'])
     oldtext=page.text
 
+
+
+
     # Handle only cases where tynkä-template is directly after Viitteet template
-    if not "iitteet}}\n\n{{Tynkä" in oldtext:
-        continue
+#    if not "iitteet}}\n{{Tynkä" in oldtext:
+#        continue
 
     replacementtext="\n{{Perustiedot Wikidatassa}}\n{{Tynkä"
 
@@ -40,8 +67,28 @@ for row in data_json['*'][0]['a']['*']:
     elif '{{tynkä' in oldtext:
         newtext=oldtext.replace("\n{{tynkä", replacementtext)
     else:
-        print("Skipping " + row['title'] + " - Auktoriteettitunnisteet template not found.")
+        print("Skipping " + row['title'] + " - Tynkä template not found.")
         continue
+
+    if not "\n{{Perusti" in newtext:
+        continue
+
+    if not "}}\n{{Perusti" in newtext:
+        continue
+
+    pattern = r'^(}}|{{[Vv]iitteet|{{[Cc]ommons|\*).*\n{{Perus'
+    matches = re.findall(pattern, newtext, re.MULTILINE)
+    if matches:
+        continue
+
+
+    pattern = r'^{{(.*)}}\n{{Perus'
+    matches = re.findall(pattern, newtext, re.MULTILINE)
+    if matches:
+        if not test_navbox_template(matches[0]):
+            continue
+        requireconfirmation = 0
+
 
     if oldtext == newtext:
         print("Exiting. " + row['title'] + " - adding perustiedot Wikidatassa template failed.")
@@ -51,6 +98,7 @@ for row in data_json['*'][0]['a']['*']:
     pywikibot.showDiff(oldtext, newtext,4)
     summary='Lisätään [[template:perustiedot Wikidatassa|perustiedot Wikidatassa]] -malline ([[wikipedia:pywikibot|Pywikibot]])'
     pywikibot.info('Edit summary: {}'.format(summary))
+
 
     choice='y'
     if requireconfirmation:
@@ -63,6 +111,11 @@ for row in data_json['*'][0]['a']['*']:
             )
             
     pywikibot.info(choice)
+
     if choice == 'y':
+        if site.userinfo['messages']:
+            print("Warning: Talk page messages. Exiting.")
+            exit()
+
         page.text=newtext
         page.save(summary)
