@@ -23,13 +23,19 @@ def insertaboveclass(oldtext):
         return oldtext[:indexluokka] + "{{Auktoriteettitunnisteet}}\n" + oldtext[indexluokka:]
     return oldtext
 
+def insertabovetemplate(oldtext,templatename):
+    indexluokka = oldtext.find(templatename)
+    if (indexluokka > 0):
+        return oldtext[:indexluokka] + "{{Auktoriteettitunnisteet}}\n" + oldtext[indexluokka:]
+    return oldtext
+
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
 # haku auktoriteettitunnisteiden luettelossa olevilla
-url = "https://petscan.wmflabs.org/?psid=24582298"
+url = "https://petscan.wmflabs.org/?psid=24591041"
 url += "&format=json"
-url += "&output_limit=5"
+url += "&output_limit=10"
 response = urlopen(url)
 data_json = json.loads(response.read())
 
@@ -37,7 +43,7 @@ for row in data_json['*'][0]['a']['*']:
     page=pywikibot.Page(site, row['title'])
     oldtext=page.text
     
-    if 'uktoriteettitunnisteet' in oldtext:
+    if (oldtext.find("{{Auktoriteettitunnisteet") > 0 or oldtext.find("{{auktoriteettitunnisteet") > 0):
         print("Skipping " + row['title'] + " - auktoriteetit already added.")
         continue
 
@@ -46,20 +52,20 @@ for row in data_json['*'][0]['a']['*']:
     
 # onko käännösmallinetta tai tynkämallinetta? jos ei kumpaakaan, onko aakkostusmallinetta?
 # jos ei ole sitäkään etsi luokka ja lisää sen ylle
-    if 'Käännös' in oldtext:
-        temptext = oldtext.replace("\n{{Käännös", "\n{{Auktoriteettitunnisteet}}\n{{Käännös")
-    elif 'käännös' in oldtext:
-        temptext = oldtext.replace("\n{{käännös", "\n{{Auktoriteettitunnisteet}}\n{{käännös")
-    elif 'Tynkä' in oldtext:
-        temptext = oldtext.replace("\n{{Tynkä", "\n{{Auktoriteettitunnisteet}}\n{{Tynkä")
-    elif 'tynkä' in oldtext:
-        temptext = oldtext.replace("\n{{tynkä", "\n{{Auktoriteettitunnisteet}}\n{{tynkä")
-    if '{{OLETUSAAKKOSTUS' in oldtext:
-        temptext = oldtext.replace("\n{{OLETUSAAKKOSTUS", "\n{{Auktoriteettitunnisteet}}\n{{OLETUSAAKKOSTUS")
-    elif '{{AAKKOSTUS' in oldtext:
-        temptext = oldtext.replace("\n{{AAKKOSTUS", "\n{{Auktoriteettitunnisteet}}\n{{AAKKOSTUS")
-    elif '{{DEFAULTSORT' in oldtext:
-        temptext = oldtext.replace("\n{{DEFAULTSORT", "\n{{Auktoriteettitunnisteet}}\n{{DEFAULTSORT")
+    if (oldtext.find("{{Käännös") > 0):
+        temptext = insertabovetemplate(oldtext,"{{Käännös")
+    elif (oldtext.find("{{käännös") > 0):
+        temptext = insertabovetemplate(oldtext,"{{käännös")
+    elif (oldtext.find("{{Tynkä") > 0):
+        temptext = insertabovetemplate(oldtext,"{{Tynkä")
+    elif (oldtext.find("{{tynkä") > 0):
+        temptext = insertabovetemplate(oldtext,"{{tynkä")
+    elif (oldtext.find("{{OLETUSAAKKOSTUS") > 0):
+        temptext = insertabovetemplate(oldtext,"{{OLETUSAAKKOSTUS")
+    elif (oldtext.find("{{AAKKOSTUS") > 0):
+        temptext = insertabovetemplate(oldtext,"{{AAKKOSTUS")
+    elif (oldtext.find("{{DEFAULTSORT") > 0):
+        temptext = insertabovetemplate(oldtext,"{{DEFAULTSORT")
     else:
         temptext = insertaboveclass(oldtext)
 

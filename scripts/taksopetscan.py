@@ -58,21 +58,27 @@ def insertnostub(oldtext):
             return oldtext[:indexluokka] + "{{Taksopalkki}}\n" + oldtext[indexluokka:]
     return oldtext
 
+def insertabovetemplate(oldtext,templatename):
+    indexluokka = oldtext.find(templatename)
+    if (indexluokka > 0):
+        return oldtext[:indexluokka] + "{{Taksopalkki}}\n" + oldtext[indexluokka:]
+    return oldtext
+
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
 # property: takso, artikkelissa taksonomiamalline, ei käännösmallinetta
 url = "https://petscan.wmflabs.org/?psid=24572724"
 url += "&format=json"
-url += "&output_limit=5"
+url += "&output_limit=10"
 response = urlopen(url)
 data_json = json.loads(response.read())
 
 for row in data_json['*'][0]['a']['*']:
     page=pywikibot.Page(site, row['title'])
     oldtext=page.text
-    
-    if 'aksopalkki' in oldtext:
+
+    if (oldtext.find("{{Taksopalkki") > 0 or oldtext.find("{{taksopalkki") > 0):
         print("Skipping " + row['title'] + " - taksopalkki already added.")
         continue
 
@@ -85,11 +91,11 @@ for row in data_json['*'][0]['a']['*']:
     pywikibot.showDiff(oldtext, temptext,2)
     temptext = nonewlineT(temptext)
     pywikibot.showDiff(oldtext, temptext,2)
-        
-    if 'Tynkä' in oldtext:
-        temptext = temptext.replace("\n{{Tynkä", "\n{{Taksopalkki}}\n{{Tynkä")
-    elif 'tynkä' in oldtext:
-        temptext = temptext.replace("\n{{tynkä", "\n{{Taksopalkki}}\n{{tynkä")
+
+    if (temptext.find("{{Tynkä") > 0):
+        temptext = insertabovetemplate(temptext,"{{Tynkä")
+    elif (temptext.find("{{tynkä") > 0):
+        temptext = insertabovetemplate(temptext,"{{tynkä")
     else:
         temptext = insertnostub(temptext)
 
