@@ -68,7 +68,7 @@ site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
 # property: takso, artikkelissa taksonomiamalline, ei käännösmallinetta
-url = "https://petscan.wmflabs.org/?psid=24572724"
+url = "https://petscan.wmflabs.org/?psid=24595988"
 url += "&format=json"
 url += "&output_limit=10"
 response = urlopen(url)
@@ -92,7 +92,11 @@ for row in data_json['*'][0]['a']['*']:
     temptext = nonewlineT(temptext)
     pywikibot.showDiff(oldtext, temptext,2)
 
-    if (temptext.find("{{Tynkä") > 0):
+    if (oldtext.find("{{Käännös") > 0):
+        temptext = insertabovetemplate(temptext,"{{Käännös")
+    elif (oldtext.find("{{käännös") > 0):
+        temptext = insertabovetemplate(temptext,"{{käännös")
+    elif (temptext.find("{{Tynkä") > 0):
         temptext = insertabovetemplate(temptext,"{{Tynkä")
     elif (temptext.find("{{tynkä") > 0):
         temptext = insertabovetemplate(temptext,"{{tynkä")
