@@ -74,19 +74,21 @@ def insertabovetemplate(oldtext,templatename):
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
-# property: takso, artikkelissa taksonomiamalline, ei käännösmallinetta
+# property: takso, artikkelissa taksonomiamalline (/kasvit, /eläimet)
 url = "https://petscan.wmflabs.org/?psid=24596149"
 url += "&format=json"
-url += "&output_limit=10"
+url += "&output_limit=100"
 response = urlopen(url)
 data_json = json.loads(response.read())
+
+rivinro = 1
 
 for row in data_json['*'][0]['a']['*']:
     page=pywikibot.Page(site, row['title'])
     oldtext=page.text
 
-    print(" ======== ")
-    print("Editing [ " + row['title'] + " ]")
+    print(" ////////", rivinro, ": [ " + row['title'] + " ] ////////")
+    rivinro += 1
     if (oldtext.find("{{Taksopalkki") > 0 or oldtext.find("{{taksopalkki") > 0):
         print("Skipping " + row['title'] + " - taksopalkki already added.")
         continue
@@ -110,6 +112,7 @@ for row in data_json['*'][0]['a']['*']:
         temptext = fixlinespacebeforetemplate(temptext,"{{tynkä")
         temptext = insertabovetemplate(temptext,"{{tynkä")
     else:
+        temptext = fixlinespacebeforetemplate(temptext,"[[Luokka:")
         temptext = insertnostub(temptext)
 
     if oldtext == temptext:

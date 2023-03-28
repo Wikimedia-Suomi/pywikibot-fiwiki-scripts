@@ -14,6 +14,10 @@ def reftoviitteet(oldtext):
         return oldtext.replace("<references/>", "{{Viitteet}}")
     if '<references />' in oldtext:
         return oldtext.replace("<references />", "{{Viitteet}}")
+    if '{{Reflist}}' in oldtext:
+        return oldtext.replace("{{Reflist}}", "{{Viitteet}}")
+    if '{{reflist}}' in oldtext:
+        return oldtext.replace("{{reflist}}", "{{Viitteet}}")
     return oldtext
 
 # ei rivinvaihtoa viitemallineen perässä? -> lisätään puuttuva
@@ -103,7 +107,7 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24604372"
+url = "https://petscan.wmflabs.org/?psid=24604698"
 url += "&format=json"
 url += "&output_limit=50"
 response = urlopen(url)
