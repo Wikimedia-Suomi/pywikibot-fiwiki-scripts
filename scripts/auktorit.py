@@ -29,7 +29,7 @@ def addnewline(oldtext):
         return oldtext.replace("iitteet}}", "iitteet}}\n")
 
 # ei tyhjää riviä viitemallineen ja tynkämallineen välissä? -> lisätään
-def nonewlinetemplate(oldtext,template):
+def fixlinespacebeforetemplate(oldtext,template):
     # find template..
     indextemp = oldtext.find(template)
     if (indextemp < 0):
@@ -76,9 +76,9 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24602545"
+url = "https://petscan.wmflabs.org/?psid=24602445"
 url += "&format=json"
-url += "&output_limit=5"
+url += "&output_limit=50"
 response = urlopen(url)
 data_json = json.loads(response.read())
 
@@ -103,25 +103,25 @@ for row in data_json['*'][0]['a']['*']:
 # onko käännösmallinetta tai tynkämallinetta? jos ei kumpaakaan, onko aakkostusmallinetta?
 # jos ei ole sitäkään etsi luokka ja lisää sen ylle
     if (temptext.find("{{Käännös") > 0):
-        temptext = nonewlinetemplate(temptext,"{{Käännös")
+        temptext = fixlinespacebeforetemplate(temptext,"{{Käännös")
         temptext = insertabovetemplate(temptext,"{{Käännös")
     elif (temptext.find("{{käännös") > 0):
-        temptext = nonewlinetemplate(temptext,"{{käännös")
+        temptext = fixlinespacebeforetemplate(temptext,"{{käännös")
         temptext = insertabovetemplate(temptext,"{{käännös")
     elif (temptext.find("{{Tynkä") > 0):
-        temptext = nonewlinetemplate(temptext,"{{Tynkä")
+        temptext = fixlinespacebeforetemplate(temptext,"{{Tynkä")
         temptext = insertabovetemplate(temptext,"{{Tynkä")
     elif (temptext.find("{{tynkä") > 0):
-        temptext = nonewlinetemplate(temptext,"{{tynkä")
+        temptext = fixlinespacebeforetemplate(temptext,"{{tynkä")
         temptext = insertabovetemplate(temptext,"{{tynkä")
     elif (temptext.find("{{OLETUSAAKKOSTUS") > 0):
-        temptext = nonewlinetemplate(temptext,"{{OLETUSAAKKOSTUS")
+        temptext = fixlinespacebeforetemplate(temptext,"{{OLETUSAAKKOSTUS")
         temptext = insertabovetemplate(temptext,"{{OLETUSAAKKOSTUS")
     elif (temptext.find("{{AAKKOSTUS") > 0):
-        temptext = nonewlinetemplate(temptext,"{{AAKKOSTUS")
+        temptext = fixlinespacebeforetemplate(temptext,"{{AAKKOSTUS")
         temptext = insertabovetemplate(temptext,"{{AAKKOSTUS")
     elif (temptext.find("{{DEFAULTSORT") > 0):
-        temptext = nonewlinetemplate(temptext,"{{DEFAULTSORT")
+        temptext = fixlinespacebeforetemplate(temptext,"{{DEFAULTSORT")
         temptext = insertabovetemplate(temptext,"{{DEFAULTSORT")
     else:
         temptext = insertaboveclass(temptext)
