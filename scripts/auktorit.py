@@ -70,27 +70,67 @@ def insertabovetemplate(oldtext,templatename):
         return oldtext[:indexluokka] + "{{Auktoriteettitunnisteet}}\n" + oldtext[indexluokka:]
     return oldtext
 
+def checkorder(text,before,after):
+    index1 = text.find(before)
+    if (index1 < 0):
+        # try lowercase
+        index1 = text.find(before.lower())
+        if (index1 < 0):
+            # not there: can't compare
+            return -1;
+        
+    index2 = text.find(after)
+    if (index2 < 0):
+        # try lowercase
+        index2 = text.find(after.lower())
+        if (index2 < 0):
+            # not there: can't compare
+            return -1
+
+    if (index1 < 0 or index2 < 0):
+        # either one isn't there
+        return -1
+    if (index1 < index2):
+        # normal: earlier is where expected
+        return 0
+
+    # abnormal: the one supposed to be earlier is later..
+    return 1
+
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24602445"
+url = "https://petscan.wmflabs.org/?psid=24604372"
 url += "&format=json"
 url += "&output_limit=50"
 response = urlopen(url)
 data_json = json.loads(response.read())
 
+rivinro = 1
+
 for row in data_json['*'][0]['a']['*']:
     page=pywikibot.Page(site, row['title'])
     oldtext=page.text
     
-    print(" ======== ")
-    print("Editing [ " + row['title'] + " ]")
+    print(" ////////", rivinro, ": [ " + row['title'] + " ] ////////")
+    rivinro += 1
     if (oldtext.find("{{Auktoriteettitunnisteet") > 0 or oldtext.find("{{auktoriteettitunnisteet") > 0):
         print("Skipping " + row['title'] + " - auktoriteetit already added.")
         continue
+
+    if (checkorder(oldtext, "{{Viitteet", "{{Käännös") == 1):
+        print("Skipping " + row['title'] + " - Käännös and Viitteet in wrong order.")
+        continue
+    if (checkorder(oldtext, "{{Wikiaineisto", "{{Tynkä") == 1):
+        print("Skipping " + row['title'] + " - Wikiaineisto and Tynkä in wrong order.")
+        continue
+    if (checkorder(oldtext, "{{Commonscat", "{{Käännös") == 1):
+        print("Skipping " + row['title'] + " - Commonscat and Käännös in wrong order.")
+        continue
+        
 
     #temptext = reftoviitteet(oldtext)
     #pywikibot.showDiff(oldtext, temptext,2)
