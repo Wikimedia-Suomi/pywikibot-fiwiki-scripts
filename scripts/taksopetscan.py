@@ -29,25 +29,32 @@ def addnewline(oldtext):
         return oldtext.replace("iitteet}}", "iitteet}}\n")
 
 # ei tyhjää riviä viitemallineen ja tynkämallineen välissä? -> lisätään
-def nonewline(oldtext):
-    index = oldtext.find("{{tynkä")
-    if (index < 0):
+def fixlinespacebeforetemplate(oldtext,template):
+    # find template..
+    indextemp = oldtext.find(template)
+    if (indextemp < 0):
         return oldtext
-    strlen = len("iitteet}}\n")
-    sub = oldtext[index:-strlen]
-    if (sub == "iitteet}}\n"):
-        return oldtext.replace("iitteet}}\n{{tynkä", "iitteet}}\n\n{{tynkä")
-    return oldtext
 
-# sama kuin yllä paitsi iso T..
-def nonewlineT(oldtext):
-    index = oldtext.find("{{Tynkä")
-    if (index < 0):
-        return oldtext
-    strlen = len("iitteet}}\n")
-    sub = oldtext[index:-strlen]
-    if (sub == "iitteet}}\n"):
-        return oldtext.replace("iitteet}}\n{{Tynkä", "iitteet}}\n\n{{Tynkä")
+    # find where reference-template is and which type it is
+    reftext = "iitteet}}"
+    indexref = oldtext.find(reftext)
+    if (indexref < 0):
+        reftext = "iitteet|sarakkeet}}"
+        indexref = oldtext.find(reftext)
+        if (indexref < 0):
+            #print("did not find referencetemplate")
+            return oldtext
+
+    # check if there is only one linechange separating
+    singleline = reftext + "\n" + template;
+    strlen = len(singleline)
+    sub = oldtext[indexref:indexref+strlen]
+    if (sub == singleline):
+        # output start + newline + rest (can't modify otherwise)
+        #print("adding linechange")
+        return oldtext[:indextemp] + "\n" + oldtext[indextemp:]
+        
+    #print("no changes, oldtext")
     return oldtext
 
 # ei tynkämallinetta? -> etsitään luokka ja lisätään sitä ennen
@@ -68,7 +75,7 @@ site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
 # property: takso, artikkelissa taksonomiamalline, ei käännösmallinetta
-url = "https://petscan.wmflabs.org/?psid=24595988"
+url = "https://petscan.wmflabs.org/?psid=24596149"
 url += "&format=json"
 url += "&output_limit=10"
 response = urlopen(url)
@@ -78,6 +85,8 @@ for row in data_json['*'][0]['a']['*']:
     page=pywikibot.Page(site, row['title'])
     oldtext=page.text
 
+    print(" ======== ")
+    print("Editing [ " + row['title'] + " ]")
     if (oldtext.find("{{Taksopalkki") > 0 or oldtext.find("{{taksopalkki") > 0):
         print("Skipping " + row['title'] + " - taksopalkki already added.")
         continue
@@ -87,18 +96,18 @@ for row in data_json['*'][0]['a']['*']:
     
     temptext = addnewline(oldtext)
     pywikibot.showDiff(oldtext, temptext,2)
-    temptext = nonewline(temptext)
-    pywikibot.showDiff(oldtext, temptext,2)
-    temptext = nonewlineT(temptext)
-    pywikibot.showDiff(oldtext, temptext,2)
 
-    if (oldtext.find("{{Käännös") > 0):
+    if (temptext.find("{{Käännös") > 0):
+        temptext = fixlinespacebeforetemplate(temptext,"{{Käännös")
         temptext = insertabovetemplate(temptext,"{{Käännös")
-    elif (oldtext.find("{{käännös") > 0):
+    elif (temptext.find("{{käännös") > 0):
+        temptext = fixlinespacebeforetemplate(temptext,"{{käännös")
         temptext = insertabovetemplate(temptext,"{{käännös")
     elif (temptext.find("{{Tynkä") > 0):
+        temptext = fixlinespacebeforetemplate(temptext,"{{Tynkä")
         temptext = insertabovetemplate(temptext,"{{Tynkä")
     elif (temptext.find("{{tynkä") > 0):
+        temptext = fixlinespacebeforetemplate(temptext,"{{tynkä")
         temptext = insertabovetemplate(temptext,"{{tynkä")
     else:
         temptext = insertnostub(temptext)
@@ -111,6 +120,10 @@ for row in data_json['*'][0]['a']['*']:
     pywikibot.showDiff(oldtext, temptext,2)
     summary='Lisätään taksopalkki -malline'
     pywikibot.info('Edit summary: {}'.format(summary))
+
+    if site.userinfo['messages']:
+        print("Warning: Talk page messages. Exiting.")
+        exit()
 
     question='Do you want to accept these changes?'
     choice = pywikibot.input_choice(
