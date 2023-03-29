@@ -131,12 +131,16 @@ for row in data_json['*'][0]['a']['*']:
     question='Do you want to accept these changes?'
     choice = pywikibot.input_choice(
                 question,
-                [('Yes', 'y'),('No', 'N')],
+                [('Yes', 'y'),('No', 'N'),('Quit', 'q')],
                 default='N',
                 automatic_quit=False
             )
 
     pywikibot.info(choice)
+    if choice == 'q':
+        print("Asked to exit. Exiting.")
+        exit()
+
     if choice == 'y':
         page.text=temptext
         page.save(summary)
