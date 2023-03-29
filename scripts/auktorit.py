@@ -8,8 +8,46 @@ import pywikibot
 import json
 from urllib.request import urlopen
 
+def findrefblock(oldtext,refstring):
+    index = oldtext.find(refstring)
+    if (index > 0):
+        strlen = len(refstring)
+        tmpstr = oldtext[index:index+strlen]
+        return tuple((index, tmpstr))
+    return tuple((-1, ""))
+
+def findrefs(oldtext):
+    ref = findrefblock(oldtext,"{{Viitteet}}")
+    if (ref[0] > 0):
+        return ref
+    ref = findrefblock(oldtext,"{{viitteet}}")
+    if (ref[0] > 0):
+        return ref
+    ref = findrefblock(oldtext,"{{Viitteet|Sarakkeet}}")
+    if (ref[0] > 0):
+        return ref
+    ref = findrefblock(oldtext,"{{Viitteet|sarakkeet}}")
+    if (ref[0] > 0):
+        return ref
+    ref = findrefblock(oldtext,"{{viitteet|sarakkeet}}")
+    if (ref[0] > 0):
+        return ref
+    ref = findrefblock(oldtext,"<references/>")
+    if (ref[0] > 0):
+        return ref
+    ref = findrefblock(oldtext,"<references />")
+    if (ref[0] > 0):
+        return ref
+    ref = findrefblock(oldtext,"{{Reflist}}")
+    if (ref[0] > 0):
+        return ref
+    ref = findrefblock(oldtext,"{{reflist}}")
+    if (ref[0] > 0):
+        return ref
+    return tuple((-1, ""))
+
 # vanhantyylinen viitelohko
-def reftoviitteet(oldtext):
+def convertreftoviitteet(oldtext):
     if '<references/>' in oldtext:
         return oldtext.replace("<references/>", "{{Viitteet}}")
     if '<references />' in oldtext:
@@ -22,32 +60,38 @@ def reftoviitteet(oldtext):
 
 # ei rivinvaihtoa viitemallineen perässä? -> lisätään puuttuva
 def addnewline(oldtext):
-    index = oldtext.find("iitteet}}")
-    if (index < 0):
+    reftup = findrefs(oldtext)
+    if (reftup[0] < 0):
+        # not found or some other form of making the refs list..
         return oldtext
-    strlen = len("iitteet}}\n")
-    tmpstr = oldtext[index:index+strlen]
+
+    index = reftup[0]
+    strlen = len(reftup[1])
+    
+    # verify we can find string with newline at end
+    tmpstr = oldtext[index:index+strlen+1]
     if tmpstr.endswith("\n"):
+        # at least one newline there, ok
         return oldtext
     else:
-        return oldtext.replace("iitteet}}", "iitteet}}\n")
+        # add one linefeed (beginning .. newline .. rest)
+        return oldtext[:index+strlen] + "\n" + oldtext[index+strlen:]
 
 # ei tyhjää riviä viitemallineen ja tynkämallineen välissä? -> lisätään
 def fixlinespacebeforetemplate(oldtext,template):
-    # find template..
+    # find stub-template or other given template..
     indextemp = oldtext.find(template)
     if (indextemp < 0):
         return oldtext
 
     # find where reference-template is and which type it is
-    reftext = "iitteet}}"
-    indexref = oldtext.find(reftext)
-    if (indexref < 0):
-        reftext = "iitteet|sarakkeet}}"
-        indexref = oldtext.find(reftext)
-        if (indexref < 0):
-            #print("did not find referencetemplate")
-            return oldtext
+    reftup = findrefs(oldtext)
+    if (reftup[0] < 0):
+        # not found or some other form of making the refs list..
+        return oldtext
+
+    reftext = reftup[1]
+    indexref = reftup[0]
 
     # check if there is only one linechange separating
     singleline = reftext + "\n" + template;
@@ -55,7 +99,6 @@ def fixlinespacebeforetemplate(oldtext,template):
     sub = oldtext[indexref:indexref+strlen]
     if (sub == singleline):
         # output start + newline + rest (can't modify otherwise)
-        #print("adding linechange")
         return oldtext[:indextemp] + "\n" + oldtext[indextemp:]
         
     #print("no changes, oldtext")
@@ -107,7 +150,7 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24605234"
+url = "https://petscan.wmflabs.org/?psid=24612588"
 url += "&format=json"
 url += "&output_limit=100"
 response = urlopen(url)
@@ -139,7 +182,7 @@ for row in data_json['*'][0]['a']['*']:
         continue
         
 
-    #temptext = reftoviitteet(oldtext)
+    #temptext = convertreftoviitteet(oldtext)
     #pywikibot.showDiff(oldtext, temptext,2)
 
     temptext = addnewline(oldtext)
