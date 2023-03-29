@@ -117,6 +117,7 @@ def insertabovetemplate(oldtext,templatename):
         return oldtext[:indexluokka] + "{{Auktoriteettitunnisteet}}\n" + oldtext[indexluokka:]
     return oldtext
 
+# check ordering of given templates: check both in upper (expected) and lower cases
 def checkorder(text,before,after):
     index1 = text.find(before)
     if (index1 < 0):
@@ -179,6 +180,9 @@ for row in data_json['*'][0]['a']['*']:
         continue
     if (checkorder(oldtext, "{{Commonscat", "{{Käännös") == 1):
         print("Skipping " + row['title'] + " - Commonscat and Käännös in wrong order.")
+        continue
+    if (checkorder(oldtext, "{{Commons", "{{Tynkä") == 1):
+        print("Skipping " + row['title'] + " - Commons and Tynkä in wrong order.")
         continue
         
 
