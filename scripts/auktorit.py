@@ -58,6 +58,14 @@ def convertreftoviitteet(oldtext):
         return oldtext.replace("{{reflist}}", "{{Viitteet}}")
     return oldtext
 
+# vanhantyylinen aakkostus
+def convertoldsort(oldtext):
+    if '{{DEFAULTSORT:' in oldtext:
+        return oldtext.replace("{{DEFAULTSORT:", "{{AAKKOSTUS:")
+    if '{{OLETUSAAKKOSTUS:' in oldtext:
+        return oldtext.replace("{{OLETUSAAKKOSTUS:", "{{AAKKOSTUS:")
+    return oldtext
+
 # ei rivinvaihtoa viitemallineen perässä? -> lisätään puuttuva
 def addnewline(oldtext):
     reftup = findrefs(oldtext)
@@ -104,16 +112,31 @@ def fixlinespacebeforetemplate(oldtext,template):
     #print("no changes, oldtext")
     return oldtext
 
+# check before adding template: is there something else in same line?
+# if so, we should add newline
+def needsprecedingnewline(oldtext,index):
+    tmp = oldtext[index-1:index]
+    if (tmp.endswith("\n")):
+        # ok, nothing else there
+        return false
+    return true
+
 # ei tynkämallinetta tai muuta? -> etsitään luokka ja lisätään sitä ennen
 def insertaboveclass(oldtext):
     indexluokka = oldtext.find("[[Luokka:")
     if (indexluokka > 0):
-        return oldtext[:indexluokka] + "{{Auktoriteettitunnisteet}}\n" + oldtext[indexluokka:]
+        templatestring = "{{Auktoriteettitunnisteet}}\n"
+        if (needsprecedingnewline(oldtext,indexluokka) == true):
+            templatestring = "\n{{Auktoriteettitunnisteet}}\n"
+        return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
     return oldtext
 
 def insertabovetemplate(oldtext,templatename):
     indexluokka = oldtext.find(templatename)
     if (indexluokka > 0):
+        templatestring = "{{Auktoriteettitunnisteet}}\n"
+        if (needsprecedingnewline(oldtext,indexluokka) == true):
+            templatestring = "\n{{Auktoriteettitunnisteet}}\n"
         return oldtext[:indexluokka] + "{{Auktoriteettitunnisteet}}\n" + oldtext[indexluokka:]
     return oldtext
 
@@ -151,7 +174,7 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24612588"
+url = "https://petscan.wmflabs.org/?psid=24615106"
 url += "&format=json"
 url += "&output_limit=100"
 response = urlopen(url)

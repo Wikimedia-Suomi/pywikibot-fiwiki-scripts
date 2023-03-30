@@ -58,6 +58,14 @@ def convertreftoviitteet(oldtext):
         return oldtext.replace("{{reflist}}", "{{Viitteet}}")
     return oldtext
 
+# vanhantyylinen aakkostus
+def convertoldsort(oldtext):
+    if '{{DEFAULTSORT:' in oldtext:
+        return oldtext.replace("{{DEFAULTSORT:", "{{AAKKOSTUS:")
+    if '{{OLETUSAAKKOSTUS:' in oldtext:
+        return oldtext.replace("{{OLETUSAAKKOSTUS:", "{{AAKKOSTUS:")
+    return oldtext
+
 # ei rivinvaihtoa viitemallineen perässä? -> lisätään puuttuva
 def addnewline(oldtext):
     reftup = findrefs(oldtext)
@@ -104,18 +112,34 @@ def fixlinespacebeforetemplate(oldtext,template):
     #print("no changes, oldtext")
     return oldtext
 
+# check before adding template: is there something else in same line?
+# if so, we should add newline
+def needsprecedingnewline(oldtext,index):
+    tmp = oldtext[index-1:index]
+    if (tmp.endswith("\n")):
+        # ok, nothing else there
+        return false
+    return true
+
 # ei tynkämallinetta? -> etsitään luokka ja lisätään sitä ennen
 def insertnostub(oldtext):
     if (oldtext.find('{{tynkä') == -1 and oldtext.find('{{Tynkä') == -1):
         indexluokka = oldtext.find("[[Luokka:")
         if (indexluokka > 0):
-            return oldtext[:indexluokka] + "{{Taksopalkki}}\n" + oldtext[indexluokka:]
+            templatestring = "{{Taksopalkki}}\n"
+            if (needsprecedingnewline(oldtext,indexluokka) == true):
+                templatestring = "\n{{Taksopalkki}}\n"
+        
+            return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
     return oldtext
 
 def insertabovetemplate(oldtext,templatename):
     indexluokka = oldtext.find(templatename)
     if (indexluokka > 0):
-        return oldtext[:indexluokka] + "{{Taksopalkki}}\n" + oldtext[indexluokka:]
+        templatestring = "{{Taksopalkki}}\n"
+        if (needsprecedingnewline(oldtext,indexluokka) == true):
+            templatestring = "\n{{Taksopalkki}}\n"
+        return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
     return oldtext
 
 site = pywikibot.Site("fi", "wikipedia")
