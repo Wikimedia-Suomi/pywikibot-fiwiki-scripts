@@ -118,15 +118,15 @@ def needsprecedingnewline(oldtext,index):
     tmp = oldtext[index-1:index]
     if (tmp.endswith("\n")):
         # ok, nothing else there
-        return false
-    return true
+        return False
+    return True
 
 # ei tynkämallinetta tai muuta? -> etsitään luokka ja lisätään sitä ennen
 def insertaboveclass(oldtext):
     indexluokka = oldtext.find("[[Luokka:")
     if (indexluokka > 0):
         templatestring = "{{Auktoriteettitunnisteet}}\n"
-        if (needsprecedingnewline(oldtext,indexluokka) == true):
+        if (needsprecedingnewline(oldtext,indexluokka) == True):
             templatestring = "\n{{Auktoriteettitunnisteet}}\n"
         return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
     return oldtext
@@ -135,7 +135,7 @@ def insertabovetemplate(oldtext,templatename):
     indexluokka = oldtext.find(templatename)
     if (indexluokka > 0):
         templatestring = "{{Auktoriteettitunnisteet}}\n"
-        if (needsprecedingnewline(oldtext,indexluokka) == true):
+        if (needsprecedingnewline(oldtext,indexluokka) == True):
             templatestring = "\n{{Auktoriteettitunnisteet}}\n"
         return oldtext[:indexluokka] + "{{Auktoriteettitunnisteet}}\n" + oldtext[indexluokka:]
     return oldtext
