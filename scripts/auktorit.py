@@ -101,13 +101,33 @@ def needsprecedingnewline(oldtext,index):
         return False
     return True
 
+# check preceding line: should we have extra line between it and addition?
+def needsdoublenewline(oldtext,index):
+    indexlast = oldtext.rfind("\n", 0, index)
+    if (indexlast == -1):
+        # no linechanges found?
+        return False
+    if (indexlast == index-1):
+        # two linechanges in sequence? -> no need for another
+        return False
+    tmp = oldtext[indexlast:index]
+    if (tmp.startswith("*", 1, 2) == True):
+        # line is a part of list? -> should leave space
+        return True
+    # alternative: if (tmp.index("*") == 1):
+        
+    # maybe navigation or something else -> don't add another linechange
+    return False
+
 # ei tynkämallinetta tai muuta? -> etsitään luokka ja lisätään sitä ennen
 def insertaboveclass(oldtext):
     indexluokka = oldtext.find("[[Luokka:")
     if (indexluokka > 0):
         templatestring = "{{Auktoriteettitunnisteet}}\n"
         if (needsprecedingnewline(oldtext,indexluokka) == True):
-            templatestring = "\n{{Auktoriteettitunnisteet}}\n"
+            templatestring = "\n" + templatestring
+        if (needsdoublenewline(oldtext,indexluokka-1) == True):
+            templatestring = "\n" + templatestring
         return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
     return oldtext
 
@@ -116,8 +136,10 @@ def insertabovetemplate(oldtext,templatename):
     if (indexluokka > 0):
         templatestring = "{{Auktoriteettitunnisteet}}\n"
         if (needsprecedingnewline(oldtext,indexluokka) == True):
-            templatestring = "\n{{Auktoriteettitunnisteet}}\n"
-        return oldtext[:indexluokka] + "{{Auktoriteettitunnisteet}}\n" + oldtext[indexluokka:]
+            templatestring = "\n" + templatestring
+        if (needsdoublenewline(oldtext,indexluokka-1) == True):
+            templatestring = "\n" + templatestring
+        return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
     return oldtext
 
 # check ordering of given templates: check both in upper (expected) and lower cases
@@ -154,7 +176,7 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24619228"
+url = "https://petscan.wmflabs.org/?psid=24619620"
 url += "&format=json"
 url += "&output_limit=100"
 response = urlopen(url)
