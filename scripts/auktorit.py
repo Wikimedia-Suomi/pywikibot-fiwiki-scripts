@@ -46,26 +46,6 @@ def findrefs(oldtext):
         return ref
     return tuple((-1, ""))
 
-# vanhantyylinen viitelohko
-def convertreftoviitteet(oldtext):
-    if '<references/>' in oldtext:
-        return oldtext.replace("<references/>", "{{Viitteet}}")
-    if '<references />' in oldtext:
-        return oldtext.replace("<references />", "{{Viitteet}}")
-    if '{{Reflist}}' in oldtext:
-        return oldtext.replace("{{Reflist}}", "{{Viitteet}}")
-    if '{{reflist}}' in oldtext:
-        return oldtext.replace("{{reflist}}", "{{Viitteet}}")
-    return oldtext
-
-# vanhantyylinen aakkostus
-def convertoldsort(oldtext):
-    if '{{DEFAULTSORT:' in oldtext:
-        return oldtext.replace("{{DEFAULTSORT:", "{{AAKKOSTUS:")
-    if '{{OLETUSAAKKOSTUS:' in oldtext:
-        return oldtext.replace("{{OLETUSAAKKOSTUS:", "{{AAKKOSTUS:")
-    return oldtext
-
 # ei rivinvaihtoa viitemallineen perässä? -> lisätään puuttuva
 def addnewline(oldtext):
     reftup = findrefs(oldtext)
@@ -208,10 +188,6 @@ for row in data_json['*'][0]['a']['*']:
         print("Skipping " + row['title'] + " - Commons and Tynkä in wrong order.")
         continue
         
-
-    #temptext = convertreftoviitteet(oldtext)
-    #pywikibot.showDiff(oldtext, temptext,2)
-
     temptext = addnewline(oldtext)
     
     #if oldtext != temptext:
