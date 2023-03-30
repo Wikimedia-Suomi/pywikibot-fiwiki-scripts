@@ -154,7 +154,7 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24615106"
+url = "https://petscan.wmflabs.org/?psid=24619228"
 url += "&format=json"
 url += "&output_limit=100"
 response = urlopen(url)
@@ -177,6 +177,9 @@ for row in data_json['*'][0]['a']['*']:
         continue
     if (checkorder(oldtext, "{{Viitteet", "{{Tynkä") == 1):
         print("Skipping " + row['title'] + " - Tynkä and Viitteet in wrong order.")
+        continue
+    if (checkorder(oldtext, "{{Viitteet", "{{AAKKOSTUS") == 1):
+        print("Skipping " + row['title'] + " - Tynkä and AAKKOSTUS in wrong order.")
         continue
     if (checkorder(oldtext, "{{Wikiaineisto", "{{Tynkä") == 1):
         print("Skipping " + row['title'] + " - Wikiaineisto and Tynkä in wrong order.")
