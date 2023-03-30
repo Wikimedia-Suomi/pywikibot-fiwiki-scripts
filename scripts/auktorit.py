@@ -89,7 +89,7 @@ def fixlinespacebeforetemplate(oldtext,template):
         # output start + newline + rest (can't modify otherwise)
         return oldtext[:indextemp] + "\n" + oldtext[indextemp:]
         
-    #print("no changes, oldtext")
+    #print("no changes, oldtext: " + sub)
     return oldtext
 
 # check before adding template: is there something else in same line?
@@ -242,6 +242,7 @@ for row in data_json['*'][0]['a']['*']:
         temptext = fixlinespacebeforetemplate(temptext,"{{DEFAULTSORT")
         temptext = insertabovetemplate(temptext,"{{DEFAULTSORT")
     else:
+        temptext = fixlinespacebeforetemplate(temptext,"[[Luokka:")
         temptext = insertaboveclass(temptext)
 
     if oldtext == temptext:
