@@ -162,6 +162,10 @@ for row in data_json['*'][0]['a']['*']:
 
     print(" ////////", rivinro, ": [ " + row['title'] + " ] ////////")
     rivinro += 1
+    if (oldtext.find("{{bots") > 0 or oldtext.find("{{nobots") > 0):
+        print("Skipping " + row['title'] + " - bot-restricted.")
+        continue
+    
     if (oldtext.find("{{Taksopalkki") > 0 or oldtext.find("{{taksopalkki") > 0):
         print("Skipping " + row['title'] + " - taksopalkki already added.")
         continue

@@ -122,14 +122,18 @@ def needsdoublenewline(oldtext,index):
 # ei tynkämallinetta tai muuta? -> etsitään luokka ja lisätään sitä ennen
 def insertaboveclass(oldtext):
     indexluokka = oldtext.find("[[Luokka:")
-    if (indexluokka > 0):
-        templatestring = "{{Auktoriteettitunnisteet}}\n"
-        if (needsprecedingnewline(oldtext,indexluokka) == True):
-            templatestring = "\n" + templatestring
-        if (needsdoublenewline(oldtext,indexluokka-1) == True):
-            templatestring = "\n" + templatestring
-        return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
-    return oldtext
+    if (indexluokka < 0):
+        indexluokka = oldtext.find("[[luokka:")
+        if (indexluokka < 0):
+            # upper or lowercase spelling does not match -> can't continue
+            return oldtext
+    
+    templatestring = "{{Auktoriteettitunnisteet}}\n"
+    if (needsprecedingnewline(oldtext,indexluokka) == True):
+        templatestring = "\n" + templatestring
+    if (needsdoublenewline(oldtext,indexluokka-1) == True):
+        templatestring = "\n" + templatestring
+    return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
 
 def insertabovetemplate(oldtext,templatename):
     indexluokka = oldtext.find(templatename)
@@ -190,6 +194,10 @@ for row in data_json['*'][0]['a']['*']:
     
     print(" ////////", rivinro, ": [ " + row['title'] + " ] ////////")
     rivinro += 1
+    if (oldtext.find("{{bots") > 0 or oldtext.find("{{nobots") > 0):
+        print("Skipping " + row['title'] + " - bot-restricted.")
+        continue
+    
     if (oldtext.find("{{Auktoriteettitunnisteet") > 0 or oldtext.find("{{auktoriteettitunnisteet") > 0):
         print("Skipping " + row['title'] + " - auktoriteetit already added.")
         continue
