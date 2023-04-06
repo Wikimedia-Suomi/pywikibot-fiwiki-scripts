@@ -1,3 +1,5 @@
+#/usr/bin/python3
+
 # Script connects to WMF Wikimedia database replicas from local computer via ssh port forward.
 
 # Prerequisites
@@ -14,7 +16,11 @@
 # Run application
 # python mydatabase_local.py
 
-#/usr/bin/python3
+# Mediawiki database layout
+# - https://www.mediawiki.org/wiki/Manual:Database_layout
+
+# Wikidata database schema
+# - https://www.mediawiki.org/wiki/Wikibase/Schema
 
 import os
 import configparser
