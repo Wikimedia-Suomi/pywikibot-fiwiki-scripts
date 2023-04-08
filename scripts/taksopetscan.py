@@ -144,13 +144,41 @@ def insertabovetemplate(oldtext,templatename):
         return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
     return oldtext
 
+# check ordering of given templates: check both in upper (expected) and lower cases
+def checkorder(text,before,after):
+    index1 = text.find(before)
+    if (index1 < 0):
+        # try lowercase
+        index1 = text.find(before.lower())
+        if (index1 < 0):
+            # not there: can't compare
+            return -1;
+        
+    index2 = text.find(after)
+    if (index2 < 0):
+        # try lowercase
+        index2 = text.find(after.lower())
+        if (index2 < 0):
+            # not there: can't compare
+            return -1
+
+    if (index1 < 0 or index2 < 0):
+        # either one isn't there
+        return -1
+    if (index1 < index2):
+        # normal: earlier is where expected
+        return 0
+
+    # abnormal: the one supposed to be earlier is later..
+    return 1
+
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
 # property: takso, artikkelissa taksonomiamalline (/kasvit, /eläimet)
 url = "https://petscan.wmflabs.org/?psid=24596149"
 url += "&format=json"
-url += "&output_limit=100"
+url += "&output_limit=1000"
 response = urlopen(url)
 data_json = json.loads(response.read())
 
@@ -168,6 +196,10 @@ for row in data_json['*'][0]['a']['*']:
     
     if (oldtext.find("{{Taksopalkki") > 0 or oldtext.find("{{taksopalkki") > 0):
         print("Skipping " + row['title'] + " - taksopalkki already added.")
+        continue
+
+    if (checkorder(oldtext, "{{Käännös", "{{Tynkä") == 1):
+        print("Skipping " + row['title'] + " - Tynkä and Käännös in wrong order.")
         continue
 
     temptext = addnewline(oldtext)
