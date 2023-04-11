@@ -201,6 +201,9 @@ for row in data_json['*'][0]['a']['*']:
     if (checkorder(oldtext, "{{Käännös", "{{Tynkä") == 1):
         print("Skipping " + row['title'] + " - Tynkä and Käännös in wrong order.")
         continue
+    if (checkorder(oldtext, "{{Viitteet", "{{Käännös") == 1):
+        print("Skipping " + row['title'] + " - Käännös and Viitteet in wrong order.")
+        continue
 
     temptext = addnewline(oldtext)
     pywikibot.showDiff(oldtext, temptext,2)
