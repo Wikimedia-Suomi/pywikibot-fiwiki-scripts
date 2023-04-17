@@ -66,9 +66,12 @@ def addnewline(oldtext):
         return oldtext[:index+strlen] + "\n" + oldtext[index+strlen:]
 
 # ei tyhjää riviä viitemallineen ja tynkämallineen välissä? -> lisätään
-def fixlinespacebeforetemplate(oldtext,indextemp,template):
+def fixlinespacebeforetemplate(oldtext,template):
     # find stub-template or other given template..
-
+    indextemp = oldtext.find(template)
+    if (indextemp < 0):
+        return oldtext
+        
     # find where reference-template is and which type it is
     reftup = findrefs(oldtext)
     if (reftup[0] < 0):
@@ -116,13 +119,17 @@ def needsdoublenewline(oldtext,index):
     # maybe navigation or something else -> don't add another linechange
     return False
 
-def insertabovetemplate(oldtext,indextemplate,templatetext):
-    templatestring = "{{Auktoriteettitunnisteet}}\n"
-    if (needsprecedingnewline(oldtext,indextemplate) == True):
-        templatestring = "\n" + templatestring
-    if (needsdoublenewline(oldtext,indextemplate-1) == True):
-        templatestring = "\n" + templatestring
-    return oldtext[:indextemplate] + templatestring + oldtext[indextemplate:]
+def insertabovetemplate(oldtext,templatename):
+    indexluokka = oldtext.find(templatename)
+    if (indexluokka > 0):
+        templatestring = "{{Auktoriteettitunnisteet}}\n"
+        if (needsprecedingnewline(oldtext,indexluokka) == True):
+            templatestring = "\n" + templatestring
+        if (needsdoublenewline(oldtext,indexluokka-1) == True):
+            templatestring = "\n" + templatestring
+        return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
+    return oldtext
+
 
 # check ordering of given templates: check both in upper (expected) and lower cases
 def checkorder(text,before,after):
@@ -200,9 +207,9 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24730843"
+url = "https://petscan.wmflabs.org/?psid=24751771"
 url += "&format=json"
-url += "&output_limit=100"
+url += "&output_limit=1000"
 response = urlopen(url)
 data_json = json.loads(response.read())
 
@@ -259,8 +266,8 @@ for row in data_json['*'][0]['a']['*']:
         topmostindex = next(iter(entries))
         if (topmostindex > 0):
             topmostval = entries[topmostindex]
-            temptext = fixlinespacebeforetemplate(temptext,topmostindex,topmostval)
-            temptext = insertabovetemplate(temptext,topmostindex,topmostval)
+            temptext = fixlinespacebeforetemplate(temptext,topmostval)
+            temptext = insertabovetemplate(temptext,topmostval)
 
     if oldtext == temptext:
         print("Exiting. " + row['title'] + " - old and new are equal.")
