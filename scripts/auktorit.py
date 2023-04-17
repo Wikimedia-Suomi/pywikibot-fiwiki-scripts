@@ -66,11 +66,8 @@ def addnewline(oldtext):
         return oldtext[:index+strlen] + "\n" + oldtext[index+strlen:]
 
 # ei tyhjää riviä viitemallineen ja tynkämallineen välissä? -> lisätään
-def fixlinespacebeforetemplate(oldtext,template):
+def fixlinespacebeforetemplate(oldtext,indextemp,template):
     # find stub-template or other given template..
-    indextemp = oldtext.find(template)
-    if (indextemp < 0):
-        return oldtext
 
     # find where reference-template is and which type it is
     reftup = findrefs(oldtext)
@@ -119,32 +116,13 @@ def needsdoublenewline(oldtext,index):
     # maybe navigation or something else -> don't add another linechange
     return False
 
-# ei tynkämallinetta tai muuta? -> etsitään luokka ja lisätään sitä ennen
-def insertaboveclass(oldtext):
-    indexluokka = oldtext.find("[[Luokka:")
-    if (indexluokka < 0):
-        indexluokka = oldtext.find("[[luokka:")
-        if (indexluokka < 0):
-            # upper or lowercase spelling does not match -> can't continue
-            return oldtext
-    
+def insertabovetemplate(oldtext,indextemplate,templatetext):
     templatestring = "{{Auktoriteettitunnisteet}}\n"
-    if (needsprecedingnewline(oldtext,indexluokka) == True):
+    if (needsprecedingnewline(oldtext,indextemplate) == True):
         templatestring = "\n" + templatestring
-    if (needsdoublenewline(oldtext,indexluokka-1) == True):
+    if (needsdoublenewline(oldtext,indextemplate-1) == True):
         templatestring = "\n" + templatestring
-    return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
-
-def insertabovetemplate(oldtext,templatename):
-    indexluokka = oldtext.find(templatename)
-    if (indexluokka > 0):
-        templatestring = "{{Auktoriteettitunnisteet}}\n"
-        if (needsprecedingnewline(oldtext,indexluokka) == True):
-            templatestring = "\n" + templatestring
-        if (needsdoublenewline(oldtext,indexluokka-1) == True):
-            templatestring = "\n" + templatestring
-        return oldtext[:indexluokka] + templatestring + oldtext[indexluokka:]
-    return oldtext
+    return oldtext[:indextemplate] + templatestring + oldtext[indextemplate:]
 
 # check ordering of given templates: check both in upper (expected) and lower cases
 def checkorder(text,before,after):
@@ -174,13 +152,55 @@ def checkorder(text,before,after):
     # abnormal: the one supposed to be earlier is later..
     return 1
 
+# locate order of specified entries
+def locateentries(text):
+    items = dict()
+    
+    index = text.find("{{Käännös")
+    if (index > 0):
+        items[index] = "{{Käännös"
+    index = text.find("{{käännös")
+    if (index > 0):
+        items[index] = "{{käännös"
+
+    index = text.find("{{Tynkä")
+    if (index > 0):
+        items[index] = "{{Tynkä"
+    index = text.find("{{tynkä")
+    if (index > 0):
+        items[index] = "{{tynkä"
+
+    index = text.find("[[Luokka")
+    if (index > 0):
+        items[index] = "[[Luokka"
+    index = text.find("[[luokka")
+    if (index > 0):
+        items[index] = "[[luokka"
+
+    index = text.find("{{AAKKOSTUS")
+    if (index > 0):
+        items[index] = "{{AAKKOSTUS"
+    index = text.find("{{OLETUSAAKKOSTUS")
+    if (index > 0):
+        items[index] = "{{OLETUSAAKKOSTUS"
+    index = text.find("{{DEFAULTSORT")
+    if (index > 0):
+        items[index] = "{{DEFAULTSORT"
+
+    # sort it
+    keys = list(items.keys())
+    keys.sort()
+    itemsout = {i: items[i] for i in keys}        
+    #return sorted(items.items())
+    return itemsout
+
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24627574"
+url = "https://petscan.wmflabs.org/?psid=24730843"
 url += "&format=json"
 url += "&output_limit=100"
 response = urlopen(url)
@@ -229,32 +249,18 @@ for row in data_json['*'][0]['a']['*']:
     #if oldtext != temptext:
     #    pywikibot.showDiff(oldtext, temptext,2)
     
-# onko käännösmallinetta tai tynkämallinetta? jos ei kumpaakaan, onko aakkostusmallinetta?
-# jos ei ole sitäkään etsi luokka ja lisää sen ylle
-    if (temptext.find("{{Käännös") > 0):
-        temptext = fixlinespacebeforetemplate(temptext,"{{Käännös")
-        temptext = insertabovetemplate(temptext,"{{Käännös")
-    elif (temptext.find("{{käännös") > 0):
-        temptext = fixlinespacebeforetemplate(temptext,"{{käännös")
-        temptext = insertabovetemplate(temptext,"{{käännös")
-    elif (temptext.find("{{Tynkä") > 0):
-        temptext = fixlinespacebeforetemplate(temptext,"{{Tynkä")
-        temptext = insertabovetemplate(temptext,"{{Tynkä")
-    elif (temptext.find("{{tynkä") > 0):
-        temptext = fixlinespacebeforetemplate(temptext,"{{tynkä")
-        temptext = insertabovetemplate(temptext,"{{tynkä")
-    elif (temptext.find("{{OLETUSAAKKOSTUS") > 0):
-        temptext = fixlinespacebeforetemplate(temptext,"{{OLETUSAAKKOSTUS")
-        temptext = insertabovetemplate(temptext,"{{OLETUSAAKKOSTUS")
-    elif (temptext.find("{{AAKKOSTUS") > 0):
-        temptext = fixlinespacebeforetemplate(temptext,"{{AAKKOSTUS")
-        temptext = insertabovetemplate(temptext,"{{AAKKOSTUS")
-    elif (temptext.find("{{DEFAULTSORT") > 0):
-        temptext = fixlinespacebeforetemplate(temptext,"{{DEFAULTSORT")
-        temptext = insertabovetemplate(temptext,"{{DEFAULTSORT")
-    else:
-        temptext = fixlinespacebeforetemplate(temptext,"[[Luokka:")
-        temptext = insertaboveclass(temptext)
+    # check what is the topmost
+    # onko käännösmallinetta tai tynkämallinetta? jos ei kumpaakaan, onko aakkostusmallinetta?
+    # jos ei ole sitäkään etsi luokka ja lisää sen ylle
+    entries = locateentries(oldtext)
+    if (len(entries) > 0):
+        print("top entries: ", entries.values())
+        
+        topmostindex = next(iter(entries))
+        if (topmostindex > 0):
+            topmostval = entries[topmostindex]
+            temptext = fixlinespacebeforetemplate(temptext,topmostindex,topmostval)
+            temptext = insertabovetemplate(temptext,topmostindex,topmostval)
 
     if oldtext == temptext:
         print("Exiting. " + row['title'] + " - old and new are equal.")
