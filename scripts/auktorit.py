@@ -219,7 +219,7 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24752593"
+url = "https://petscan.wmflabs.org/?psid=24760739"
 url += "&format=json"
 url += "&output_limit=1000"
 response = urlopen(url)
@@ -247,9 +247,6 @@ for row in data_json['*'][0]['a']['*']:
     if (checkorder(oldtext, "{{Viitteet", "{{Tynkä") == 1):
         print("Skipping " + row['title'] + " - Tynkä and Viitteet in wrong order.")
         continue
-    if (checkorder(oldtext, "{{Viitteet", "{{AAKKOSTUS") == 1):
-        print("Skipping " + row['title'] + " - Viitteet and AAKKOSTUS in wrong order.")
-        continue
     if (checkorder(oldtext, "{{Wikiaineisto", "{{Tynkä") == 1):
         print("Skipping " + row['title'] + " - Wikiaineisto and Tynkä in wrong order.")
         continue
@@ -262,6 +259,13 @@ for row in data_json['*'][0]['a']['*']:
     if (checkorder(oldtext, "{{Edeltäjä-seuraaja", "[[Luokka") == 1):
         print("Skipping " + row['title'] + " - Edeltäjä-seuraaja and Luokka in wrong order.")
         continue
+
+    reftup = findrefs(oldtext)
+    sorttup = findsorts(oldtext)
+    if (reftup[0] > 0 and sorttup[0] > 0 and sorttup[0] < reftup[0]):
+        print("Skipping " + row['title'] + " - " + reftup[1] + " and " + sorttup[1] + " in wrong order.")
+        continue
+
         
     temptext = addnewline(oldtext)
     
