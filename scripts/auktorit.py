@@ -8,7 +8,7 @@ import pywikibot
 import json
 from urllib.request import urlopen
 
-def findrefblock(oldtext,refstring):
+def findtemplateblock(oldtext,refstring):
     index = oldtext.find(refstring)
     if (index > 0):
         strlen = len(refstring)
@@ -17,31 +17,43 @@ def findrefblock(oldtext,refstring):
     return tuple((-1, ""))
 
 def findrefs(oldtext):
-    ref = findrefblock(oldtext,"{{Viitteet}}")
+    ref = findtemplateblock(oldtext,"{{Viitteet}}")
     if (ref[0] > 0):
         return ref
-    ref = findrefblock(oldtext,"{{viitteet}}")
+    ref = findtemplateblock(oldtext,"{{viitteet}}")
     if (ref[0] > 0):
         return ref
-    ref = findrefblock(oldtext,"{{Viitteet|Sarakkeet}}")
+    ref = findtemplateblock(oldtext,"{{Viitteet|Sarakkeet}}")
     if (ref[0] > 0):
         return ref
-    ref = findrefblock(oldtext,"{{Viitteet|sarakkeet}}")
+    ref = findtemplateblock(oldtext,"{{Viitteet|sarakkeet}}")
     if (ref[0] > 0):
         return ref
-    ref = findrefblock(oldtext,"{{viitteet|sarakkeet}}")
+    ref = findtemplateblock(oldtext,"{{viitteet|sarakkeet}}")
     if (ref[0] > 0):
         return ref
-    ref = findrefblock(oldtext,"<references/>")
+    ref = findtemplateblock(oldtext,"<references/>")
     if (ref[0] > 0):
         return ref
-    ref = findrefblock(oldtext,"<references />")
+    ref = findtemplateblock(oldtext,"<references />")
     if (ref[0] > 0):
         return ref
-    ref = findrefblock(oldtext,"{{Reflist}}")
+    ref = findtemplateblock(oldtext,"{{Reflist}}")
     if (ref[0] > 0):
         return ref
-    ref = findrefblock(oldtext,"{{reflist}}")
+    ref = findtemplateblock(oldtext,"{{reflist}}")
+    if (ref[0] > 0):
+        return ref
+    return tuple((-1, ""))
+
+def findsorts(oldtext):
+    ref = findtemplateblock(oldtext,"{{AAKKOSTUS}}")
+    if (ref[0] > 0):
+        return ref
+    ref = findtemplateblock(oldtext,"{{OLETUSAAKKOSTUS}}")
+    if (ref[0] > 0):
+        return ref
+    ref = findtemplateblock(oldtext,"{{DEFAULTSORT}}")
     if (ref[0] > 0):
         return ref
     return tuple((-1, ""))
@@ -207,7 +219,7 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24751771"
+url = "https://petscan.wmflabs.org/?psid=24752593"
 url += "&format=json"
 url += "&output_limit=1000"
 response = urlopen(url)
