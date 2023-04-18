@@ -12,6 +12,10 @@ def convertreftoviitteet(oldtext):
         return oldtext.replace("<references/>", "{{Viitteet}}")
     if '<references />' in oldtext:
         return oldtext.replace("<references />", "{{Viitteet}}")
+    return oldtext
+
+# ohjaus eng-kielisestä fi-wikin käyttämään
+def convertreflisttoviitteet(oldtext):
     if '{{Reflist}}' in oldtext:
         return oldtext.replace("{{Reflist}}", "{{Viitteet}}")
     if '{{reflist}}' in oldtext:
@@ -45,14 +49,14 @@ for row in data_json['*'][0]['a']['*']:
     print(" ////////", rivinro, ": [ " + row['title'] + " ] ////////")
     rivinro += 1
 
-    temptext = convertreftoviitteet(oldtext)
-    pywikibot.showDiff(oldtext, temptext,2)
-    temptext = convertoldsort(oldtext)
-    pywikibot.showDiff(oldtext, temptext,2)
+    temptext = oldtext
+    temptext = convertreftoviitteet(temptext)
+    temptext = convertreflisttoviitteet(temptext)
+    temptext = convertoldsort(temptext)
     
     if oldtext == temptext:
-        print("Exiting. " + row['title'] + " - old and new are equal.")
-        exit
+        print("Skipping. " + row['title'] + " - old and new are equal.")
+        continue
 
     pywikibot.info('----')
     pywikibot.showDiff(oldtext, temptext,2)

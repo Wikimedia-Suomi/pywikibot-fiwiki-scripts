@@ -282,8 +282,8 @@ for row in data_json['*'][0]['a']['*']:
             temptext = insertabovetemplate(temptext,topmostval)
 
     if oldtext == temptext:
-        print("Exiting. " + row['title'] + " - old and new are equal.")
-        exit
+        print("Skipping. " + row['title'] + " - old and new are equal.")
+        continue
 
     pywikibot.info('----')
     pywikibot.showDiff(oldtext, temptext,2)
