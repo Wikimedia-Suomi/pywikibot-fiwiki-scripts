@@ -47,13 +47,13 @@ def findrefs(oldtext):
     return tuple((-1, ""))
 
 def findsorts(oldtext):
-    ref = findtemplateblock(oldtext,"{{AAKKOSTUS}}")
+    ref = findtemplateblock(oldtext,"{{AAKKOSTUS:")
     if (ref[0] > 0):
         return ref
-    ref = findtemplateblock(oldtext,"{{OLETUSAAKKOSTUS}}")
+    ref = findtemplateblock(oldtext,"{{OLETUSAAKKOSTUS:")
     if (ref[0] > 0):
         return ref
-    ref = findtemplateblock(oldtext,"{{DEFAULTSORT}}")
+    ref = findtemplateblock(oldtext,"{{DEFAULTSORT:")
     if (ref[0] > 0):
         return ref
     return tuple((-1, ""))
@@ -196,15 +196,15 @@ def locateentries(text):
     if (index > 0):
         items[index] = "[[luokka:"
 
-    index = text.find("{{AAKKOSTUS")
+    index = text.find("{{AAKKOSTUS:")
     if (index > 0):
-        items[index] = "{{AAKKOSTUS"
-    index = text.find("{{OLETUSAAKKOSTUS")
+        items[index] = "{{AAKKOSTUS:"
+    index = text.find("{{OLETUSAAKKOSTUS:")
     if (index > 0):
-        items[index] = "{{OLETUSAAKKOSTUS"
-    index = text.find("{{DEFAULTSORT")
+        items[index] = "{{OLETUSAAKKOSTUS:"
+    index = text.find("{{DEFAULTSORT:")
     if (index > 0):
-        items[index] = "{{DEFAULTSORT"
+        items[index] = "{{DEFAULTSORT:"
 
     # sort it
     keys = list(items.keys())
