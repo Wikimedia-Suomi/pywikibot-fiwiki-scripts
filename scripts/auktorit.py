@@ -189,12 +189,12 @@ def locateentries(text):
     if (index > 0):
         items[index] = "{{tynkä"
 
-    index = text.find("[[Luokka")
+    index = text.find("[[Luokka:")
     if (index > 0):
-        items[index] = "[[Luokka"
-    index = text.find("[[luokka")
+        items[index] = "[[Luokka:"
+    index = text.find("[[luokka:")
     if (index > 0):
-        items[index] = "[[luokka"
+        items[index] = "[[luokka:"
 
     index = text.find("{{AAKKOSTUS")
     if (index > 0):
@@ -256,7 +256,7 @@ for row in data_json['*'][0]['a']['*']:
     if (checkorder(oldtext, "{{Commons", "{{Tynkä") == 1):
         print("Skipping " + row['title'] + " - Commons and Tynkä in wrong order.")
         continue
-    if (checkorder(oldtext, "{{Edeltäjä-seuraaja", "[[Luokka") == 1):
+    if (checkorder(oldtext, "{{Edeltäjä-seuraaja", "[[Luokka:") == 1):
         print("Skipping " + row['title'] + " - Edeltäjä-seuraaja and Luokka in wrong order.")
         continue
 
