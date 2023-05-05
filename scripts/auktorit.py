@@ -219,7 +219,7 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24863519"
+url = "https://petscan.wmflabs.org/?psid=24863868"
 url += "&format=json"
 url += "&output_limit=1000"
 response = urlopen(url)
@@ -290,6 +290,11 @@ for row in data_json['*'][0]['a']['*']:
 
     if oldtext == temptext:
         print("Skipping. " + row['title'] + " - old and new are equal.")
+        continue
+
+    # something is missing in the page so we don't detect this earlier -> check it now
+    if (checkorder(temptext, "{{Commons", "{{Auktoriteettitunnisteet") == 1):
+        print("Skipping " + row['title'] + " - Commons in wrong order.")
         continue
 
     pywikibot.info('----')
