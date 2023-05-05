@@ -219,7 +219,7 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24760739"
+url = "https://petscan.wmflabs.org/?psid=24863519"
 url += "&format=json"
 url += "&output_limit=1000"
 response = urlopen(url)
@@ -233,6 +233,9 @@ for row in data_json['*'][0]['a']['*']:
     
     print(" ////////", rivinro, ": [ " + row['title'] + " ] ////////")
     rivinro += 1
+    if (oldtext.find("#OHJAUS") >= 0 or oldtext.find("#REDIRECT") >= 0):
+        print("Skipping " + row['title'] + " - redirect-page.")
+        continue
     if (oldtext.find("{{bots") > 0 or oldtext.find("{{nobots") > 0):
         print("Skipping " + row['title'] + " - bot-restricted.")
         continue
