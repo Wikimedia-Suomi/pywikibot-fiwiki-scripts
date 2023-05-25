@@ -214,7 +214,7 @@ for page in pages:
                             exit(1)
         
                         finna_record_url="https://finna.fi/Record/" + finna_id
-                        comment="Updating better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
+                        comment="Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
                         print(comment)
 
                         # Ignore warnigs = True because we update files
