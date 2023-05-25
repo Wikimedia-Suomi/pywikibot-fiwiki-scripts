@@ -18,6 +18,9 @@ import re
 import urllib
 import requests
 import imagehash
+import io
+import os
+import tempfile
 from PIL import Image
 
 # Find (old) finna id's from file page urls
@@ -135,6 +138,14 @@ def is_same_image(url1, url2):
     else:
         return False
 
+def download_and_convert_tiff_to_jpg(url):
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+                            
+    tiff_image = Image.open(io.BytesIO(response.content))
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as fp:
+        tiff_image.convert('RGB').save(fp, "JPEG", quality=95)
+    return fp.name    
 
 site = pywikibot.Site("commons", "commons")
 site.login()
@@ -183,12 +194,15 @@ for page in pages:
 
                     # Test if image is same using similarity hashing
                     if is_same_image(finna_thumbnail_url, commons_thumbnail_url):
-                        
-                        # Select which file to upload.
-                        # FIXME: It should be always original or converted from original
                         hires=imagesExtended['highResolution']['original'][0]
+                              
+                        # Select which file to upload.
+                        local_file=False
                         if hires["format"] == "tif" and file_info.mime == 'image/tiff':
                             download_url=hires['url']
+                        elif hires["format"] == "tif" and file_info.mime == 'image/jpeg':
+                            image_file=download_and_convert_tiff_to_jpg(hires['url'])
+                            local_file=True    
                         elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
                             download_url=hires['url']
                         elif file_info.mime == 'image/jpeg':
@@ -204,6 +218,8 @@ for page in pages:
                         print(comment)
 
                         # Ignore warnigs = True because we update files
-                        file_page.upload(download_url, comment=comment,ignore_warnings=True)   
+                        file_page.upload(download_url, comment=comment,ignore_warnings=True)
+                        if local_file:
+                            os.unlink(image_file)
                         exit(1)
                         break
