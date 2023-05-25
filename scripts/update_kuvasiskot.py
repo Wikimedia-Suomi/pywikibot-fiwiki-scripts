@@ -199,14 +199,14 @@ for page in pages:
                         # Select which file to upload.
                         local_file=False
                         if hires["format"] == "tif" and file_info.mime == 'image/tiff':
-                            download_url=hires['url']
+                            image_file=hires['url']
                         elif hires["format"] == "tif" and file_info.mime == 'image/jpeg':
                             image_file=download_and_convert_tiff_to_jpg(hires['url'])
                             local_file=True    
                         elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
-                            download_url=hires['url']
+                            image_file=hires['url']
                         elif file_info.mime == 'image/jpeg':
-                            download_url="https://finna.fi" +  imagesExtended['urls']['large']
+                            image_file="https://finna.fi" +  imagesExtended['urls']['large']
                         else:
                             print("Exit: Unhandled mime-type")
                             print(f"File format Commons (MIME type): {file_info.mime}")
@@ -218,7 +218,7 @@ for page in pages:
                         print(comment)
 
                         # Ignore warnigs = True because we update files
-                        file_page.upload(download_url, comment=comment,ignore_warnings=True)
+                        file_page.upload(image_file, comment=comment,ignore_warnings=True)
                         if local_file:
                             os.unlink(image_file)
                         exit(1)
