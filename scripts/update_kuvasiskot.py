@@ -181,7 +181,11 @@ for page in pages:
                     finna_thumbnail_url="https://finna.fi" + imagesExtended['urls']['small']
                     commons_thumbnail_url=file_page.get_file_url(url_width=500)
 
+                    # Test if image is same using similarity hashing
                     if is_same_image(finna_thumbnail_url, commons_thumbnail_url):
+                        
+                        # Select which file to upload.
+                        # FIXME: It should be always original or converted from original
                         hires=imagesExtended['highResolution']['original'][0]
                         if hires["format"] == "tif" and file_info.mime == 'image/tiff':
                             download_url=hires['url']
@@ -190,10 +194,11 @@ for page in pages:
                         elif file_info.mime == 'image/jpeg':
                             download_url="https://finna.fi" +  imagesExtended['urls']['large']
                         else:
+                            print("Exit: Unhandled mime-type")
                             print(f"File format Commons (MIME type): {file_info.mime}")
                             print(f"File format Finna (MIME type): {hires['format']}")
+                            exit(1)
         
-
                         finna_record_url="https://finna.fi/Record/" + finna_id
                         comment="Updating better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
                         print(comment)
