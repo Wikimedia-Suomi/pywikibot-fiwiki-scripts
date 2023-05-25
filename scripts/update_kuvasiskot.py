@@ -7,6 +7,9 @@
 # source venv/bin/activate
 # pip install pywikibot imagehash urllib
 
+## Create user-config.py if it is needed
+# echo "usernames['commons']['commons'] = 'ZacheBot'" > user-config.py
+
 ## Running
 # python update_kuvasiskot.py
 
