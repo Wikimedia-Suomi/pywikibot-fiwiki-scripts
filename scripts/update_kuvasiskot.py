@@ -147,10 +147,15 @@ def download_and_convert_tiff_to_jpg(url):
         tiff_image.convert('RGB').save(fp, "JPEG", quality=95)
     return fp.name    
 
+# ------- main()
+
 site = pywikibot.Site("commons", "commons")
 site.login()
 cat = pywikibot.Category(site, "Category:Kuvasiskot")
 pages = site.categorymembers(cat)
+
+rowcount = 1
+rowlimit = 10
 
 for page in pages:
     if page.namespace() != 6:  # 6 is the namespace ID for files
@@ -174,7 +179,7 @@ for page in pages:
     
     # Skip if there is no known ids
     if not finna_ids:
-        print("Skipping (no known finna ID)")
+        print("Skipping " + page.title() + " (no known finna ID)")
         continue
 
     for finna_id in finna_ids:
@@ -188,12 +193,15 @@ for page in pages:
             print("Skipping (result not 1): " + finna_id)
             continue
 
+        # just for debug
+        #print("Page " + page.title() + " has finna ID: " + finna_id)
+
         imagesExtended=finna_record['records'][0]['imagesExtended'][0]
 
         # Test copyright
         if imagesExtended['rights']['copyright'] != "CC BY 4.0":
             print("Incorrect copyright: " + imagesExtended['rights']['copyright'])
-            exit(1)
+            continue
 
         # Confirm that images are same using imagehash
 
@@ -222,7 +230,7 @@ for page in pages:
             print("Exit: Unhandled mime-type")
             print(f"File format Commons (MIME type): {file_info.mime}")
             print(f"File format Finna (MIME type): {hires['format']}")
-            exit(1)
+            continue
 
         finna_record_url="https://finna.fi/Record/" + finna_id
         comment="Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
@@ -232,6 +240,11 @@ for page in pages:
         file_page.upload(image_file, comment=comment,ignore_warnings=True)
         if local_file:
             os.unlink(image_file)
-        exit(1)
-        break
+
+        # don't try too many at once
+        if (rowcount >= rowlimit):
+            print("Limit reached")
+            exit(1)
+            break
+        rowcount += 1
 
