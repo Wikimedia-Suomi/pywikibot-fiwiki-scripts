@@ -168,16 +168,18 @@ for page in pages:
                 
                 # Skip if there is no known ids
                 if not finna_ids:
+                    print("Skipping (no known finna ID)")
                     continue
 
                 for finna_id in finna_ids:
                     finna_record = get_finna_record(finna_id)
 
                     if finna_record['status']!='OK':
+                        print("Skipping (status not OK): " + finna_id)
                         continue
 
                     if finna_record['resultCount']!=1:
-                        print("Skipping: " + finna_id)
+                        print("Skipping (result not 1): " + finna_id)
                         continue
 
                     imagesExtended=finna_record['records'][0]['imagesExtended'][0]
@@ -223,3 +225,4 @@ for page in pages:
                             os.unlink(image_file)
                         exit(1)
                         break
+
