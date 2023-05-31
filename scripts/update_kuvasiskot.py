@@ -153,76 +153,85 @@ cat = pywikibot.Category(site, "Category:Kuvasiskot")
 pages = site.categorymembers(cat)
 
 for page in pages:
-    if page.namespace() == 6:  # 6 is the namespace ID for files
+    if page.namespace() != 6:  # 6 is the namespace ID for files
+        continue
 
-        file_page = pywikibot.FilePage(page)
-        if not file_page.isRedirectPage():
-            file_info = file_page.latest_file_info
-
-            # Check only low resolution images
-            if file_info.width < 1000 and file_info.height < 1000:
-                print(page.title())
-
-                # Find ids used in Finna
-                finna_ids=get_finna_ids(page)
-                
-                # Skip if there is no known ids
-                if not finna_ids:
-                    print("Skipping (no known finna ID)")
-                    continue
-
-                for finna_id in finna_ids:
-                    finna_record = get_finna_record(finna_id)
-
-                    if finna_record['status']!='OK':
-                        print("Skipping (status not OK): " + finna_id)
-                        continue
-
-                    if finna_record['resultCount']!=1:
-                        print("Skipping (result not 1): " + finna_id)
-                        continue
-
-                    imagesExtended=finna_record['records'][0]['imagesExtended'][0]
-
-                    # Test copyright
-                    if imagesExtended['rights']['copyright'] != "CC BY 4.0":
-                        print("Incorrect copyright: " + imagesExtended['rights']['copyright'])
-                        exit(1)
-
-                    # Confirm that images are same using imagehash
-
-                    finna_thumbnail_url="https://finna.fi" + imagesExtended['urls']['small']
-                    commons_thumbnail_url=file_page.get_file_url(url_width=500)
-
-                    # Test if image is same using similarity hashing
-                    if is_same_image(finna_thumbnail_url, commons_thumbnail_url):
-                        hires=imagesExtended['highResolution']['original'][0]
-                              
-                        # Select which file to upload.
-                        local_file=False
-                        if hires["format"] == "tif" and file_info.mime == 'image/tiff':
-                            image_file=hires['url']
-                        elif hires["format"] == "tif" and file_info.mime == 'image/jpeg':
-                            image_file=download_and_convert_tiff_to_jpg(hires['url'])
-                            local_file=True    
-                        elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
-                            image_file=hires['url']
-                        elif file_info.mime == 'image/jpeg':
-                            image_file="https://finna.fi" +  imagesExtended['urls']['large']
-                        else:
-                            print("Exit: Unhandled mime-type")
-                            print(f"File format Commons (MIME type): {file_info.mime}")
-                            print(f"File format Finna (MIME type): {hires['format']}")
-                            exit(1)
+    file_page = pywikibot.FilePage(page)
+    if file_page.isRedirectPage():
+        continue
         
-                        finna_record_url="https://finna.fi/Record/" + finna_id
-                        comment="Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
-                        print(comment)
+    file_info = file_page.latest_file_info
 
-                        # Ignore warnigs = True because we update files
-                        file_page.upload(image_file, comment=comment,ignore_warnings=True)
-                        if local_file:
-                            os.unlink(image_file)
-                        exit(1)
-                        break
+    # Check only low resolution images
+    if file_info.width > 2000 or file_info.height > 2000:
+        print("Skipping " + page.title() + ", width or height over 2000")
+        continue
+        
+    print(page.title())
+
+    # Find ids used in Finna
+    finna_ids=get_finna_ids(page)
+    
+    # Skip if there is no known ids
+    if not finna_ids:
+        print("Skipping (no known finna ID)")
+        continue
+
+    for finna_id in finna_ids:
+        finna_record = get_finna_record(finna_id)
+
+        if finna_record['status']!='OK':
+            print("Skipping (status not OK): " + finna_id)
+            continue
+
+        if finna_record['resultCount']!=1:
+            print("Skipping (result not 1): " + finna_id)
+            continue
+
+        imagesExtended=finna_record['records'][0]['imagesExtended'][0]
+
+        # Test copyright
+        if imagesExtended['rights']['copyright'] != "CC BY 4.0":
+            print("Incorrect copyright: " + imagesExtended['rights']['copyright'])
+            exit(1)
+
+        # Confirm that images are same using imagehash
+
+        finna_thumbnail_url="https://finna.fi" + imagesExtended['urls']['small']
+        commons_thumbnail_url=file_page.get_file_url(url_width=500)
+
+        # Test if image is same using similarity hashing
+        if not is_same_image(finna_thumbnail_url, commons_thumbnail_url):
+            print("Not same image, skipping: " + finna_id)
+            continue
+            
+        hires=imagesExtended['highResolution']['original'][0]
+              
+        # Select which file to upload.
+        local_file=False
+        if hires["format"] == "tif" and file_info.mime == 'image/tiff':
+            image_file=hires['url']
+        elif hires["format"] == "tif" and file_info.mime == 'image/jpeg':
+            image_file=download_and_convert_tiff_to_jpg(hires['url'])
+            local_file=True    
+        elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
+            image_file=hires['url']
+        elif file_info.mime == 'image/jpeg':
+            image_file="https://finna.fi" +  imagesExtended['urls']['large']
+        else:
+            print("Exit: Unhandled mime-type")
+            print(f"File format Commons (MIME type): {file_info.mime}")
+            print(f"File format Finna (MIME type): {hires['format']}")
+            exit(1)
+
+        finna_record_url="https://finna.fi/Record/" + finna_id
+        comment="Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
+        print(comment)
+
+        # Ignore warnigs = True because we update files
+        file_page.upload(image_file, comment=comment,ignore_warnings=True)
+        if local_file:
+            os.unlink(image_file)
+        exit(1)
+        break
 
