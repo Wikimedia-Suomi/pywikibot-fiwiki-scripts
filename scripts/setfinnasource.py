@@ -53,6 +53,9 @@ for page in pages:
             if template.has("Source"):
                 par = template.get("Source")
                 srcvalue = str(par.value)
+                if (srcvalue.find("finna.fi") < 0):
+                    print("source isn't finna")
+                    break
                 if (srcvalue.find("/Record/") > 0):
                     # already has metapage
                     print("already has metapage link, skipping")
@@ -69,6 +72,9 @@ for page in pages:
             if template.has("source"):
                 par = template.get("source")
                 srcvalue = str(par.value)
+                if (srcvalue.find("finna.fi") < 0):
+                    print("source isn't finna")
+                    break
                 if (srcvalue.find("/Record/") > 0):
                     # already has metapage
                     print("already has metapage link, skipping")
