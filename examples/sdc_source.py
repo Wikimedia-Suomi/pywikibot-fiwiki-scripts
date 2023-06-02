@@ -1,5 +1,5 @@
 # Script adds source information to SDC
-# Example exit
+# Example edit
 # - https://commons.wikimedia.org/w/index.php?title=File%3AAkateemisen_Karjala-Seuran_15-vuotisjuhlat_Vanhalla_ylioppilastalolla_21.2.1937.jpg&diff=769748618&oldid=769747981
 
 import pywikibot
