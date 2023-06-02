@@ -1,4 +1,4 @@
-# Purpose: add missing category to pictures in Commons
+# Purpose: add metapage to source on pictures from finna
 #
 # Running script: python <scriptname>
 
