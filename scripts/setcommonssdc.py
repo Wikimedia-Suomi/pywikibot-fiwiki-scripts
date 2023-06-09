@@ -100,6 +100,8 @@ for page in pages:
         
     if (len(finnaid) >= 50):
         print("WARN: finna id in " + page.title() + " is unusually long? ")
+    if (len(finnaid) <= 5):
+        print("WARN: finna id in " + page.title() + " is unusually short? ")
 
     if (finnaid.find("?") > 0 or finnaid.find("&") > 0):
         print("WARN: finna id in " + page.title() + " has unexpected characters ")
