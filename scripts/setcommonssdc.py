@@ -72,9 +72,6 @@ for page in pages:
                 if (srcvalue.find("finna.fi") < 0):
                     print("source isn't finna")
                     break
-                #if (srcvalue.find("/Record/") < 0):
-                #    print("source isn't finna")
-                #    break
                 finnaid = getlinkourceid(srcvalue)
                 if (finnaid == ""):
                     print("no id found: " + finnaid)
@@ -89,9 +86,6 @@ for page in pages:
                 if (srcvalue.find("finna.fi") < 0):
                     print("source isn't finna")
                     break
-                #if (srcvalue.find("/Record/") < 0):
-                #    print("source isn't finna")
-                #    break
                 finnaid = getlinkourceid(srcvalue)
                 if (finnaid == ""):
                     print("no id found: " + finnaid)
@@ -99,8 +93,6 @@ for page in pages:
                     if (finnaid == ""):
                         print("no record found: " + finnaid)
                     break
- 
-    # TODO: if srcvalue has something else than just a plain url?
  
     # kuvasiskot has "musketti" as part of identier
     if (finnaid.find("musketti") < 0):
@@ -148,34 +140,24 @@ for page in pages:
 
     claim_collp = 'P195'  # property ID for "collection"
     if claim_collp not in claims:
+        # P195 "collection"
         coll_claim = pywikibot.Claim(wikidata_site, claim_collp)
     
-        # P195 "collection"
         # Q118976025 "Studio Kuvasiskojen kokoelma"
-        #qualifier_collection = pywikibot.Claim(wikidata_site, 'P195')  # property ID for "publisher"
         qualifier_targetcoll = pywikibot.ItemPage(wikidata_site, 'Q118976025')  # Studio Kuvasiskojen kokoelma
         coll_claim.setTarget(qualifier_targetcoll)
-        #coll_claim.addQualifier(qualifier_targetcoll, summary='Adding collection qualifier')
 
         flag_add_collection = True
 
     claim_finnaidp = 'P9478'  # property ID for "finna ID"
     if claim_finnaidp not in claims:
-        finna_claim = pywikibot.Claim(wikidata_site, claim_finnaidp)
-        
-        finnaunquoted = urllib.parse.unquote(finnaid)
-        
         # P9478 "Finna ID"
-        #qualifier_finna = pywikibot.Claim(wikidata_site, 'P9478')  # property ID for "publisher"
+        finna_claim = pywikibot.Claim(wikidata_site, claim_finnaidp)
+        finnaunquoted = urllib.parse.unquote(finnaid)
         finna_claim.setTarget(finnaunquoted)
-        #finna_claim.addQualifier(qualifier_finna, summary='Adding Finna ID qualifier')
 
         flag_add_finna = True
 
-
-    #if oldtext == newtext:
-    #    print("Skipping. " + page.title() + " - old and new are equal.")
-    #    continue
 
     #pywikibot.info('----')
     #pywikibot.showDiff(oldtext, newtext,2)
@@ -196,8 +178,6 @@ for page in pages:
         exit()
 
     if choice == 'y':
-        #page.text=newtext
-        #page.save(summary)
         if (flag_add_source == True):
             commonssite.addClaim(wditem, source_claim)
         if (flag_add_collection == True):
