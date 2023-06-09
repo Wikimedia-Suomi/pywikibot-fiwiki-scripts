@@ -94,8 +94,8 @@ for page in pages:
                         print("no record found: " + finnaid)
                     break
  
-    # kuvasiskot has "musketti" as part of identier
-    if (finnaid.find("musketti") < 0):
+    # kuvasiskot has "musketti" as part of identier, alternatively "museovirasto" may be used in some cases
+    if (finnaid.find("musketti") < 0 and finnaid.find("museovirasto") < 0):
         print("Skipping. " + page.title() + " - not appropriate id: " + finnaid)
         continue
         
