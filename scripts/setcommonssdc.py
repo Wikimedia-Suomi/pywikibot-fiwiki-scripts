@@ -75,10 +75,9 @@ for page in pages:
                     break
                 finnaid = getlinkourceid(srcvalue)
                 if (finnaid == ""):
-                    print("no id found: " + finnaid)
                     finnaid = getrecordid(srcvalue)
                     if (finnaid == ""):
-                        print("no record found: " + finnaid)
+                        print("no id and no record found")
                     break
 
             if template.has("source"):
@@ -89,10 +88,9 @@ for page in pages:
                     break
                 finnaid = getlinkourceid(srcvalue)
                 if (finnaid == ""):
-                    print("no id found: " + finnaid)
                     finnaid = getrecordid(srcvalue)
                     if (finnaid == ""):
-                        print("no record found: " + finnaid)
+                        print("no id and no record found")
                     break
  
     # kuvasiskot has "musketti" as part of identier, alternatively "museovirasto" may be used in some cases
