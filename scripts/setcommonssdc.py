@@ -7,6 +7,8 @@ import mwparserfromhell
 import json
 from urllib.request import urlopen
 
+import urllib.parse
+
 def getlinkourceid(oldsource):
     strlen = len("id=")
     indexid = oldsource.find("id=")
@@ -150,10 +152,10 @@ for page in pages:
     
         # P195 "collection"
         # Q118976025 "Studio Kuvasiskojen kokoelma"
-        qualifier_collection = pywikibot.Claim(wikidata_site, 'P195')  # property ID for "publisher"
+        #qualifier_collection = pywikibot.Claim(wikidata_site, 'P195')  # property ID for "publisher"
         qualifier_targetcoll = pywikibot.ItemPage(wikidata_site, 'Q118976025')  # Studio Kuvasiskojen kokoelma
-        qualifier_collection.setTarget(qualifier_targetcoll)
-        coll_claim.addQualifier(qualifier_collection, summary='Adding collection qualifier')
+        coll_claim.setTarget(qualifier_targetcoll)
+        #coll_claim.addQualifier(qualifier_targetcoll, summary='Adding collection qualifier')
 
         flag_add_collection = True
 
@@ -161,10 +163,12 @@ for page in pages:
     if claim_finnaidp not in claims:
         finna_claim = pywikibot.Claim(wikidata_site, claim_finnaidp)
         
+        finnaunquoted = urllib.parse.unquote(finnaid)
+        
         # P9478 "Finna ID"
-        qualifier_finna = pywikibot.Claim(wikidata_site, 'P9478')  # property ID for "publisher"
-        qualifier_finna.setTarget(finnaid)
-        finna_claim.addQualifier(qualifier_finna, summary='Adding Finna ID qualifier')
+        #qualifier_finna = pywikibot.Claim(wikidata_site, 'P9478')  # property ID for "publisher"
+        finna_claim.setTarget(finnaunquoted)
+        #finna_claim.addQualifier(qualifier_finna, summary='Adding Finna ID qualifier')
 
         flag_add_finna = True
 
