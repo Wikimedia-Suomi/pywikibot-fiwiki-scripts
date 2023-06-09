@@ -98,6 +98,16 @@ for page in pages:
         print("Skipping. " + page.title() + " - not appropriate id: " + finnaid)
         continue
         
+    if (len(finnaid) >= 50):
+        print("WARN: finna id in " + page.title() + " is unusually long? ")
+
+    if (finnaid.find("?") > 0 or finnaid.find("&") > 0):
+        print("WARN: finna id in " + page.title() + " has unexpected characters ")
+        
+    if (finnaid.endswith("\n")):
+        print("WARN: finna id in " + page.title() + " ends with newline ")
+        finnaid = finnaid[:len(finnaid)-1]
+
     print("finna ID found: " + finnaid)
 
     sourceurl = "https://www.finna.fi/Record/" + finnaid
