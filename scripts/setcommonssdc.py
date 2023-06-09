@@ -159,6 +159,10 @@ for page in pages:
         flag_add_finna = True
 
 
+    if (flag_add_source == False and flag_add_collection == False and flag_add_finna == False):
+        print("Nothing to add, skipping.")
+        continue
+
     #pywikibot.info('----')
     #pywikibot.showDiff(oldtext, newtext,2)
     summary='Adding structured data to file'
