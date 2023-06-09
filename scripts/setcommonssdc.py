@@ -65,7 +65,8 @@ for page in pages:
 
     finnaid = ""
     for template in wikicode.filter_templates():
-        if template.name.matches("Information") or template.name.matches("Photograph"):
+        # at least three different templates have been used..
+        if template.name.matches("Information") or template.name.matches("Photograph") or template.name.matches("Artwork"):
             if template.has("Source"):
                 par = template.get("Source")
                 srcvalue = str(par.value)
