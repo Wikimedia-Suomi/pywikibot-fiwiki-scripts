@@ -99,12 +99,11 @@ for page in pages:
         continue
         
     if (len(finnaid) >= 50):
-        print("WARN: finna id in " + page.title() + " is unusually long? ")
+        print("WARN: finna id in " + page.title() + " is unusually long? bug or garbage in url? ")
     if (len(finnaid) <= 5):
-        print("WARN: finna id in " + page.title() + " is unusually short? ")
-
+        print("WARN: finna id in " + page.title() + " is unusually short? bug or garbage in url? ")
     if (finnaid.find("?") > 0 or finnaid.find("&") > 0):
-        print("WARN: finna id in " + page.title() + " has unexpected characters ")
+        print("WARN: finna id in " + page.title() + " has unexpected characters, bug or garbage in url? ")
         
     if (finnaid.endswith("\n")):
         print("WARN: finna id in " + page.title() + " ends with newline ")
