@@ -176,7 +176,7 @@ site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
 # property: takso, artikkelissa taksonomiamalline (/kasvit, /eläimet)
-url = "https://petscan.wmflabs.org/?psid=24596149"
+url = "https://petscan.wmflabs.org/?psid=25123221"
 url += "&format=json"
 url += "&output_limit=1000"
 response = urlopen(url)
