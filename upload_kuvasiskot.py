@@ -116,12 +116,14 @@ def create_categories(r):
     # Create the categories
     categories = set()
 
+    # Add creator category
     if r['creator_template'] == '{{Creator:Kuvasiskot}}':
         categories.add('Kuvasiskot')
     else:
         print('Unknown creator template')
         exit(1)   
-
+        
+    # translate subject keywords to commons categories
     subject_categories = {
         'muotokuvat':'Portrait photographs',
         'henkilökuvat':'Portrait photographs',
@@ -133,13 +135,14 @@ def create_categories(r):
         if subject_category in str(r['subjects']):
             categories.add(subject_categories[subject_category])
     
-
+    # add year category
     if 'year' in r:
         if 'Category:Portrait photographs' in categories:
             categories.add('People of Finland in ' + r['year'])
         else:
             categories.add(r['year'] + ' in Finland')
 
+    # add FinnaUploadBot tracking category
     categories.add('Files uploaded by FinnaUploadBot')
 
     for category in categories:
@@ -383,15 +386,19 @@ for page in range(1,101):
 #        print(json.dumps(r, indent=3))
 #        print(record)
 
+        # Create wikitext 
         wikitext_parts=[]
         wikitext_parts.append("== {{int:filedesc}} ==")
         wikitext_parts.append(create_photographer_template(r) + '\n')
         wikitext_parts.append("== {{int:license-header}} ==")
         wikitext_parts.append(r['copyright_template']) 
         wikitext_parts.append(create_categories(r))
-
         wikitext = "\n".join(wikitext_parts)
+
+        # Create edit comment
         comment=get_comment_text(r)
+
+        # Ask confirmation
         pywikibot.info('')
         pywikibot.info(wikitext)
         pywikibot.info('')
