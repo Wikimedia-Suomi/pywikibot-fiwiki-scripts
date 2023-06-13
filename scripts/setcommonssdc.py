@@ -252,17 +252,24 @@ for page in pages:
     sourceurl = "https://www.finna.fi/Record/" + finnaid
 
     finna_record = get_finna_record(finnaid)
-    if finna_record['status']!='OK':
+    if (finna_record['status'] != 'OK'):
         print("Skipping (status not OK): " + finnaid)
         continue
 
-    if finna_record['resultCount']!=1:
+    if (finna_record['resultCount'] != 1):
         print("Skipping (result not 1): " + finnaid)
         continue
 
+    # collections are found in: records [buildings [value..]]
+    # these can have both "Museovirasto" and "Historian kuvakokoelma" -> additional logic needed
+    finna_collections = []
+    buildings = finna_record['records'][0]['buildings']
+    for value in buildings:
+        finna_collections.append(value['translated'])
+        
     # Test copyright
-    imagesExtended=finna_record['records'][0]['imagesExtended'][0]
-    if imagesExtended['rights']['copyright'] != "CC BY 4.0":
+    imagesExtended = finna_record['records'][0]['imagesExtended'][0]
+    if (imagesExtended['rights']['copyright'] != "CC BY 4.0"):
         print("Incorrect copyright: " + imagesExtended['rights']['copyright'])
         continue
 
