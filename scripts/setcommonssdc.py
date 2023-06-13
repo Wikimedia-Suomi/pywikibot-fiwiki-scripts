@@ -67,6 +67,7 @@ def get_finna_record(id):
     url+= finna_api_parameter('field[]', 'subTitle')
     url+= finna_api_parameter('field[]', 'summary')
     url+= finna_api_parameter('field[]', 'buildings')
+    url+= finna_api_parameter('field[]', 'collections')
     url+= finna_api_parameter('field[]', 'formats')
     url+= finna_api_parameter('field[]', 'imageRights')
     url+= finna_api_parameter('field[]', 'images')
@@ -260,12 +261,8 @@ for page in pages:
         print("Skipping (result not 1): " + finnaid)
         continue
 
-    # collections are found in: records [buildings [value..]]
-    # these can have both "Museovirasto" and "Historian kuvakokoelma" -> additional logic needed
-    finna_collections = []
-    buildings = finna_record['records'][0]['buildings']
-    for value in buildings:
-        finna_collections.append(value['translated'])
+    # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
+    finna_collections = finna_record['records'][0]['collections']
         
     # Test copyright
     imagesExtended = finna_record['records'][0]['imagesExtended'][0]
