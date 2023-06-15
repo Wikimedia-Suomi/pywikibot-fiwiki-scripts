@@ -61,14 +61,11 @@ def finna_api_parameter(name, value):
 def get_finna_record(id):
 
     url="https://api.finna.fi/v1/record?id=" +  urllib.parse.quote_plus(id)
-    url+= finna_api_parameter('field[]', 'geoLocations')
     url+= finna_api_parameter('field[]', 'id')
     url+= finna_api_parameter('field[]', 'title')
     url+= finna_api_parameter('field[]', 'subTitle')
+    url+= finna_api_parameter('field[]', 'shortTitle')
     url+= finna_api_parameter('field[]', 'summary')
-    url+= finna_api_parameter('field[]', 'buildings')
-    url+= finna_api_parameter('field[]', 'collections')
-    url+= finna_api_parameter('field[]', 'formats')
     url+= finna_api_parameter('field[]', 'imageRights')
     url+= finna_api_parameter('field[]', 'images')
     url+= finna_api_parameter('field[]', 'imagesExtended')
@@ -77,9 +74,24 @@ def get_finna_record(id):
     url+= finna_api_parameter('field[]', 'nonPresenterAuthors')
     url+= finna_api_parameter('field[]', 'onlineUrls')
     url+= finna_api_parameter('field[]', 'subjects')
+    url+= finna_api_parameter('field[]', 'subjectsExtendet')
+    url+= finna_api_parameter('field[]', 'subjectPlaces')
+    url+= finna_api_parameter('field[]', 'subjectActors')
+    url+= finna_api_parameter('field[]', 'subjectDetails')
+    # url+= finna_api_parameter('field[]', 'geoLocations')
+    url+= finna_api_parameter('field[]', 'buildings')
+    url+= finna_api_parameter('field[]', 'identifierString')
+    url+= finna_api_parameter('field[]', 'collections')
+    url+= finna_api_parameter('field[]', 'institutions')
     url+= finna_api_parameter('field[]', 'classifications')
     url+= finna_api_parameter('field[]', 'events')
-    url+= finna_api_parameter('field[]', 'identifierString')
+    url+= finna_api_parameter('field[]', 'languages')
+    url+= finna_api_parameter('field[]', 'originalLanguages')
+    url+= finna_api_parameter('field[]', 'year')
+    url+= finna_api_parameter('field[]', 'hierarchicalPlaceNames')
+    url+= finna_api_parameter('field[]', 'formats')
+    url+= finna_api_parameter('field[]', 'physicalDescriptions')
+    url+= finna_api_parameter('field[]', 'measurements')
 
     try:
         response = requests.get(url)
@@ -182,6 +194,8 @@ commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 cat = pywikibot.Category(commonssite, "Category:Kuvasiskot")
 pages = commonssite.categorymembers(cat)
+
+#repository = site.data_repository()
 
 rowcount = 1
 rowlimit = 10
@@ -319,7 +333,7 @@ for page in pages:
     if claim_collp not in claims:
         # P195 "collection"
         coll_claim = pywikibot.Claim(wikidata_site, claim_collp)
-    
+
         # Q118976025 "Studio Kuvasiskojen kokoelma"
         qualifier_targetcoll = pywikibot.ItemPage(wikidata_site, 'Q118976025')  # Studio Kuvasiskojen kokoelma
         coll_claim.setTarget(qualifier_targetcoll)
