@@ -184,6 +184,23 @@ def getrecordid(oldsource):
         
     return oldsource[indexid+strlen:indexend]
 
+# parse claims or statements from commons SDC
+def getcollectiontargetqcode(wikidata_site, statements):
+    if "P195" not in statements:
+        return ""
+    claimlist = statements["P195"]    
+    for claim in claimlist:
+        # target is expected to be like: [[wikidata:Q118976025]]
+        target = claim.getTarget()
+
+        # TODO: finish comparison to wikidata:
+        # -might belong to multiple collections -> multiple entries
+        # -might have something that isn't in finna list
+        # -might be missing something that is in finna list -> should add to commons SDC
+
+        #dataitem = pywikibot.ItemPage(wikidata_site, "Q118976025")
+        # check item, might belong to multiple collections -> compare to list from finna
+
 # ------ main()
 
 # Accessing wikidata properties and items
@@ -214,6 +231,10 @@ for page in pages:
     print(" ////////", rowcount, ": [ " + page.title() + " ] ////////")
     rowcount += 1
 
+    #site = pywikibot.Site("wikidata", "wikidata")
+    #repo = site.data_repository()
+    #item = pywikibot.ItemPage(repo, "Q2225")    
+    
     wikicode = mwparserfromhell.parse(page.text)
     templatelist = wikicode.filter_templates()
 
@@ -293,10 +314,15 @@ for page in pages:
         print("Not same image, skipping: " + finnaid)
         continue
 
-
+    #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
+    # note: this causes exception if page isn't made yet, see alternative
     wditem = page.data_item()  # Get the data item associated with the page
-    data = wditem.get()
-    claims = data['statements']  # Get the item's current claims
+    data = wditem.get() # all the properties in json-format
+    
+    if "statements" not in data:
+        print("No statements found for claims: " + finnaid)
+        continue
+    claims = data['statements']  # claims are just one step from dataproperties down
 
     flag_add_source = False
     flag_add_collection = False
