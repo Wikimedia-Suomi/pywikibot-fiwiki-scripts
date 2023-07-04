@@ -309,12 +309,12 @@ for page in pages:
     # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
     finna_collections = finna_record['records'][0]['collections']
     
-    collectionqcodes = dict()
+    collectionqcodes = list()
     # lookup qcode by label TODO: fetch from wikidata 
     for coll in finna_collections:
         if coll in d_labeltoqcode:
-            collectionqcodes = d_labeltoqcode[coll]
-    
+            collectionqcodes.append(d_labeltoqcode[coll])
+
     # Test copyright
     imagesExtended = finna_record['records'][0]['imagesExtended'][0]
     if (imagesExtended['rights']['copyright'] != "CC BY 4.0"):
