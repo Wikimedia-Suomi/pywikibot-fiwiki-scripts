@@ -185,7 +185,7 @@ def getrecordid(oldsource):
     return oldsource[indexid+strlen:indexend]
 
 # parse claims or statements from commons SDC
-def getcollectiontargetqcode(wikidata_site, statements):
+def getcollectiontargetqcode(statements):
     if "P195" not in statements:
         return ""
     claimlist = statements["P195"]    
@@ -339,6 +339,9 @@ for page in pages:
         print("No statements found for claims: " + finnaid)
         continue
     claims = data['statements']  # claims are just one step from dataproperties down
+
+    # check SDC and try match with finna list collectionqcodes
+    #getcollectiontargetqcode(claims)
 
     flag_add_source = False
     flag_add_collection = False
