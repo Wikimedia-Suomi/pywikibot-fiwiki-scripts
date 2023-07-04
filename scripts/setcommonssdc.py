@@ -299,11 +299,11 @@ for page in pages:
 
     finna_record = get_finna_record(finnaid)
     if (finna_record['status'] != 'OK'):
-        print("Skipping (status not OK): " + finnaid)
+        print("Skipping (status not OK): " + finnaid + " status: " + finna_record['status'])
         continue
 
     if (finna_record['resultCount'] != 1):
-        print("Skipping (result not 1): " + finnaid)
+        print("Skipping (result not 1): " + finnaid + " count: " + str(finna_record['resultCount']))
         continue
         
     # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
