@@ -203,6 +203,16 @@ def getcollectiontargetqcode(wikidata_site, statements):
 
 # ------ main()
 
+# TODO: check wikidata for correct qcodes
+# 
+# qcode of collections -> label
+d_qcodetolabel = dict()
+d_qcodetolabel["Q118976025"] = "Studio Kuvasiskojen kokoelma"
+d_qcodetolabel["Q107388072"] = "Historian kuvakokoelma" # /Museovirasto/Historian kuvakokoelma/
+d_labeltoqcode = dict()
+d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
+d_labeltoqcode["Historian kuvakokoelma"] = "Q107388072" # /Museovirasto/Historian kuvakokoelma/
+
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
 
@@ -295,10 +305,16 @@ for page in pages:
     if (finna_record['resultCount'] != 1):
         print("Skipping (result not 1): " + finnaid)
         continue
-
+        
     # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
     finna_collections = finna_record['records'][0]['collections']
-        
+    
+    collectionqcodes = dict()
+    # lookup qcode by label TODO: fetch from wikidata 
+    for coll in finna_collections:
+        if coll in d_labeltoqcode:
+            collectionqcodes = d_labeltoqcode[coll]
+    
     # Test copyright
     imagesExtended = finna_record['records'][0]['imagesExtended'][0]
     if (imagesExtended['rights']['copyright'] != "CC BY 4.0"):
