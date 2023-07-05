@@ -242,12 +242,20 @@ def parsemetaidfromfinnapage(finnaurl):
         if (response.readable() == False):
             print("response not readable")
 
-        print("decoding ")
+        #print("decoding ")
+        #response.encoding = "utf-8-sig"
+        
+        # no decode_content()
         #finnapage = response.decode_content()
  
         htmlbytes = response.read()
-        print("html read, decoding ")
+        #if ((htmlbytes[0] == 0xFE or htmlbytes[0] == 0xFF) and 
+        #(htmlbytes[1] == 0xFE or htmlbytes[1] == 0xFF)):
+        #print("html read, decoding ")
         finnapage = htmlbytes.decode("utf8")
+
+        # no text member
+        #finnapage = response.text        
         
         print("page: " + finnapage)
         
@@ -257,9 +265,9 @@ def parsemetaidfromfinnapage(finnaurl):
     except urllib.error.URLError as e:
         print(e.__dict__)
         return ""
-    except:
-        print("failed to retrieve finna page")
-        return ""
+    #except:
+        #print("failed to retrieve finna page")
+        #return ""
         
     attrlen = len('data-record-id="')
     indexid = finnapage.find('data-record-id="')
@@ -370,6 +378,9 @@ for page in pages:
         print("WARN: finna id in " + page.title() + " ends with newline ")
         finnaid = finnaid[:len(finnaid)-1]
 
+    print("finna ID found: " + finnaid)
+    sourceurl = "https://www.finna.fi/Record/" + finnaid
+
     if (finnaid.find("musketti") >= 0):
         # check if the source has something other than url in it as well..
         # if it has some human-readable things try to parse real url
@@ -379,13 +390,13 @@ for page in pages:
             break
     
         # obsolete id -> try to fetch page and locate current ID
-        finnaid = parsemetaidfromfinnapage(finnasource)
+        finnaid = parsemetaidfromfinnapage(sourceurl)
         if (finnaid == ""):
-            print("WARN: could not parse current finna id in " + page.title() + " , skipping, url: " + finnaurl)
+            print("WARN: could not parse current finna id in " + page.title() + " , skipping, url: " + sourceurl)
             break
-
-    print("finna ID found: " + finnaid)
-    sourceurl = "https://www.finna.fi/Record/" + finnaid
+            
+        print("new finna ID found: " + finnaid)
+        sourceurl = "https://www.finna.fi/Record/" + finnaid
 
     finna_record = get_finna_record(finnaid)
     if (finna_record['status'] != 'OK'):
@@ -397,8 +408,6 @@ for page in pages:
         continue
 
     print("finna record ok: " + finnaid)
-    #continue
-
         
     # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
     finna_collections = finna_record['records'][0]['collections']
