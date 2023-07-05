@@ -18,6 +18,8 @@ import os
 import tempfile
 from PIL import Image
 
+import urllib3
+
 
 # ----- FinnaData
 
@@ -69,12 +71,12 @@ def get_finna_record(id):
     url+= finna_api_parameter('field[]', 'imageRights')
     url+= finna_api_parameter('field[]', 'images')
     url+= finna_api_parameter('field[]', 'imagesExtended')
-    url+= finna_api_parameter('field[]', 'onlineUrls')
+    #url+= finna_api_parameter('field[]', 'onlineUrls')
     url+= finna_api_parameter('field[]', 'openUrl')
     url+= finna_api_parameter('field[]', 'nonPresenterAuthors')
     url+= finna_api_parameter('field[]', 'onlineUrls')
     url+= finna_api_parameter('field[]', 'subjects')
-    url+= finna_api_parameter('field[]', 'subjectsExtendet')
+    #url+= finna_api_parameter('field[]', 'subjectsExtendet')
     url+= finna_api_parameter('field[]', 'subjectPlaces')
     url+= finna_api_parameter('field[]', 'subjectActors')
     url+= finna_api_parameter('field[]', 'subjectDetails')
@@ -88,9 +90,9 @@ def get_finna_record(id):
     url+= finna_api_parameter('field[]', 'languages')
     url+= finna_api_parameter('field[]', 'originalLanguages')
     url+= finna_api_parameter('field[]', 'year')
-    url+= finna_api_parameter('field[]', 'hierarchicalPlaceNames')
+    #url+= finna_api_parameter('field[]', 'hierarchicalPlaceNames')
     url+= finna_api_parameter('field[]', 'formats')
-    url+= finna_api_parameter('field[]', 'physicalDescriptions')
+    #url+= finna_api_parameter('field[]', 'physicalDescriptions')
     url+= finna_api_parameter('field[]', 'measurements')
 
     try:
@@ -183,6 +185,26 @@ def getrecordid(oldsource):
         indexend = len(oldsource)-1
         
     return oldsource[indexid+strlen:indexend]
+    
+# commons source may have human readable stuff in it
+# parse to plain url
+def geturlfromsource(source):
+    protolen = len("http://")
+    index = source.find("http://")
+    if (index < 0):
+        protolen = len("https://")
+        index = source.find("https://")
+        if (index < 0):
+            # no url in string
+            return ""
+
+    # try to find space or something            
+    indexend = source.find(" ", index+protolen)
+    if (indexend < 0):
+        # no space or other clear separator -> just use string length
+        indexend = len(source)-1
+        
+    return source[index:indexend]
 
 # parse claims or statements from commons SDC
 def getcollectiontargetqcode(statements):
@@ -200,6 +222,57 @@ def getcollectiontargetqcode(statements):
 
         #dataitem = pywikibot.ItemPage(wikidata_site, "Q118976025")
         # check item, might belong to multiple collections -> compare to list from finna
+
+# fetch metapage from finna and try to parse current ID from the page
+# since we might have obsolete ID.
+# new ID is needed API query.
+def parsemetaidfromfinnapage(finnaurl):
+
+    finnapage = ""
+
+    try:
+        #finnapage = urllib2.urlopen(finnaurl)
+        #finnapage = urllib3.request("GET", finnaurl)
+        #finnapage = urllib.request.urlopen(finnaurl).read()
+        
+        request = urllib.request.Request(finnaurl)
+        print("request done: " + finnaurl)
+
+        response = urllib.request.urlopen(request)
+        if (response.readable() == False):
+            print("response not readable")
+
+        print("decoding ")
+        #finnapage = response.decode_content()
+ 
+        htmlbytes = response.read()
+        print("html read, decoding ")
+        finnapage = htmlbytes.decode("utf8")
+        
+        print("page: " + finnapage)
+        
+    except urllib.error.HTTPError as e:
+        print(e.__dict__)
+        return ""
+    except urllib.error.URLError as e:
+        print(e.__dict__)
+        return ""
+    except:
+        print("failed to retrieve finna page")
+        return ""
+        
+    attrlen = len('data-record-id="')
+    indexid = finnapage.find('data-record-id="')
+    if (indexid < 0):
+        return ""
+        
+    indexid = indexid+attrlen
+    indexend = finnapage.find('"', indexid)
+    if (indexend < 0):
+        return ""
+
+    return finnapage[indexid:indexend]
+    
 
 # ------ main()
 
@@ -249,6 +322,7 @@ for page in pages:
     templatelist = wikicode.filter_templates()
 
     finnaid = ""
+    finnasource = ""
     for template in wikicode.filter_templates():
         # at least three different templates have been used..
         if template.name.matches("Information") or template.name.matches("Photograph") or template.name.matches("Artwork"):
@@ -258,6 +332,7 @@ for page in pages:
                 if (srcvalue.find("finna.fi") < 0):
                     print("source isn't finna")
                     break
+                finnasource = srcvalue
                 finnaid = getlinkourceid(srcvalue)
                 if (finnaid == ""):
                     finnaid = getrecordid(srcvalue)
@@ -271,6 +346,7 @@ for page in pages:
                 if (srcvalue.find("finna.fi") < 0):
                     print("source isn't finna")
                     break
+                finnasource = srcvalue
                 finnaid = getlinkourceid(srcvalue)
                 if (finnaid == ""):
                     finnaid = getrecordid(srcvalue)
@@ -294,6 +370,20 @@ for page in pages:
         print("WARN: finna id in " + page.title() + " ends with newline ")
         finnaid = finnaid[:len(finnaid)-1]
 
+    if (finnaid.find("musketti") >= 0):
+        # check if the source has something other than url in it as well..
+        # if it has some human-readable things try to parse real url
+        finnaurl = geturlfromsource(finnasource)
+        if (finnaurl == ""):
+            print("WARN: could not parse finna url from source in " + page.title() + " , skipping, source: " + finnasource)
+            break
+    
+        # obsolete id -> try to fetch page and locate current ID
+        finnaid = parsemetaidfromfinnapage(finnasource)
+        if (finnaid == ""):
+            print("WARN: could not parse current finna id in " + page.title() + " , skipping, url: " + finnaurl)
+            break
+
     print("finna ID found: " + finnaid)
     sourceurl = "https://www.finna.fi/Record/" + finnaid
 
@@ -305,6 +395,10 @@ for page in pages:
     if (finna_record['resultCount'] != 1):
         print("Skipping (result not 1): " + finnaid + " count: " + str(finna_record['resultCount']))
         continue
+
+    print("finna record ok: " + finnaid)
+    #continue
+
         
     # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
     finna_collections = finna_record['records'][0]['collections']
