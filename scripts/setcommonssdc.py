@@ -223,6 +223,21 @@ def getcollectiontargetqcode(statements):
         #dataitem = pywikibot.ItemPage(wikidata_site, "Q118976025")
         # check item, might belong to multiple collections -> compare to list from finna
 
+def isidinstatements(statements, newid):
+    if "P9478" not in statements:
+        return False
+    claimlist = statements["P9478"]    
+    for claim in claimlist:
+        # target is expected to be like: "musketti." or "museovirasto."
+        target = claim.getTarget()
+        if (target == newid):
+            # match found: no need to add same ID again
+            return True
+
+    # ID not found -> should be added
+    return False
+
+
 # fetch metapage from finna and try to parse current ID from the page
 # since we might have obsolete ID.
 # new ID is needed API query.
@@ -231,10 +246,6 @@ def parsemetaidfromfinnapage(finnaurl):
     finnapage = ""
 
     try:
-        #finnapage = urllib2.urlopen(finnaurl)
-        #finnapage = urllib3.request("GET", finnaurl)
-        #finnapage = urllib.request.urlopen(finnaurl).read()
-        
         request = urllib.request.Request(finnaurl)
         print("request done: " + finnaurl)
 
@@ -242,22 +253,10 @@ def parsemetaidfromfinnapage(finnaurl):
         if (response.readable() == False):
             print("response not readable")
 
-        #print("decoding ")
-        #response.encoding = "utf-8-sig"
-        
-        # no decode_content()
-        #finnapage = response.decode_content()
- 
         htmlbytes = response.read()
-        #if ((htmlbytes[0] == 0xFE or htmlbytes[0] == 0xFF) and 
-        #(htmlbytes[1] == 0xFE or htmlbytes[1] == 0xFF)):
-        #print("html read, decoding ")
         finnapage = htmlbytes.decode("utf8")
 
-        # no text member
-        #finnapage = response.text        
-        
-        print("page: " + finnapage)
+        #print("page: " + finnapage)
         
     except urllib.error.HTTPError as e:
         print(e.__dict__)
@@ -387,16 +386,19 @@ for page in pages:
         finnaurl = geturlfromsource(finnasource)
         if (finnaurl == ""):
             print("WARN: could not parse finna url from source in " + page.title() + " , skipping, source: " + finnasource)
-            break
+            continue
     
         # obsolete id -> try to fetch page and locate current ID
         finnaid = parsemetaidfromfinnapage(sourceurl)
         if (finnaid == ""):
             print("WARN: could not parse current finna id in " + page.title() + " , skipping, url: " + sourceurl)
-            break
-            
-        print("new finna ID found: " + finnaid)
-        sourceurl = "https://www.finna.fi/Record/" + finnaid
+            continue
+        if (finnaid.find("museovirasto.") == 0):
+            print("new finna ID found: " + finnaid)
+            sourceurl = "https://www.finna.fi/Record/" + finnaid
+        else:
+            print("WARN: unexpected finna id in " + page.title() + " , skipping, id from finna: " + finnaid)
+            continue
 
     finna_record = get_finna_record(finnaid)
     if (finna_record['status'] != 'OK'):
@@ -488,15 +490,19 @@ for page in pages:
 
         flag_add_collection = True
 
-    claim_finnaidp = 'P9478'  # property ID for "finna ID"
-    if claim_finnaidp not in claims:
-        # P9478 "Finna ID"
+    # if the stored ID is not same (new ID) -> add new
+    if (isidinstatements(claims, finnaid) == False):
+        print("adding finna id to statements: " + finnaid)
+        # 
+        claim_finnaidp = 'P9478'  # property ID for "finna ID"
         finna_claim = pywikibot.Claim(wikidata_site, claim_finnaidp)
-        finnaunquoted = urllib.parse.unquote(finnaid)
-        finna_claim.setTarget(finnaunquoted)
+        # url might have old style id as quoted -> no need with new id
+        #finnaunquoted = urllib.parse.unquote(finnaid)
+        finna_claim.setTarget(finnaid)
 
         flag_add_finna = True
-
+    else:
+        print("id found, not adding again")
 
     if (flag_add_source == False and flag_add_collection == False and flag_add_finna == False):
         print("Nothing to add, skipping.")
