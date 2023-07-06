@@ -206,6 +206,14 @@ def geturlfromsource(source):
         
     return source[index:indexend]
 
+# if there's garbage in id, strip to where it ends
+def leftfrom(string, char):
+    index = string.find(char)
+    if (index > 0):
+        return string[:index]
+
+    return string
+    
 # parse claims or statements from commons SDC
 def getcollectiontargetqcode(statements):
     if "P195" not in statements:
@@ -305,7 +313,7 @@ pages = commonssite.categorymembers(cat)
 #repository = site.data_repository()
 
 rowcount = 1
-rowlimit = 10
+rowlimit = 500
 
 for page in pages:
     if page.namespace() != 6:  # 6 is the namespace ID for files
@@ -370,8 +378,14 @@ for page in pages:
         print("WARN: finna id in " + page.title() + " is unusually long? bug or garbage in url? ")
     if (len(finnaid) <= 5):
         print("WARN: finna id in " + page.title() + " is unusually short? bug or garbage in url? ")
-    if (finnaid.find("?") > 0 or finnaid.find("&") > 0):
+    if (finnaid.find("?") > 0 or finnaid.find("&") > 0 or finnaid.find("<") > 0):
         print("WARN: finna id in " + page.title() + " has unexpected characters, bug or garbage in url? ")
+        
+        # strip pointless parts if any
+        finnaid = leftfrom(finnaid, "<")
+        finnaid = leftfrom(finnaid, "?")
+        finnaid = leftfrom(finnaid, "&")
+        print("note: finna id in " + page.title() + " is " + finnaid)
         
     if (finnaid.endswith("\n")):
         print("WARN: finna id in " + page.title() + " ends with newline ")
