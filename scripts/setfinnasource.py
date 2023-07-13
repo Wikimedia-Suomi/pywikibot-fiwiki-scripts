@@ -15,11 +15,33 @@ def getidfromoldsource(oldsource):
     indexid = oldsource.find("id=")
     if (indexid < 0):
         return oldsource
+
+    oldsource = oldsource[indexid+3:]
+
+    # space after url?
+    indexend = oldsource.find(" ", indexid)
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # html tag after url?
+    indexend = oldsource.find("<", indexid)
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # some parameters in url?
     indexend = oldsource.find("&", indexid)
-    if (indexend < 0):
-        return oldsource
-        
-    return oldsource[indexid+3:indexend]
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # some parameters in url?
+    indexend = oldsource.find("?", indexid)
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    if (oldsource.endswith("\n")):
+        oldsource = oldsource[:len(oldsource)-1]
+
+    return oldsource
 
 # commons source may have human readable stuff in it
 # parse to plain url
@@ -93,12 +115,13 @@ def getnewsourcefromoldsource(srcvalue):
         newfinnaid = urllib.parse.quote(newfinnaid) # quote for url
         #newsourceurl = "https://www.finna.fi/Record/" + newfinnaid
         return getnewsourceforfinna(newfinnaid)
-    elif (srcvalue.find("finna.fi") > 0):
+        
+    if (srcvalue.find("finna.fi") > 0):
         # finna.fi url
         finnarecord = getidfromoldsource(srcvalue)
         return getnewsourceforfinna(finnarecord)
-    else:
-        return ""
+
+    return ""
 
 # ------ main()
 
@@ -143,9 +166,9 @@ for page in pages:
                     break
                 newsource = getnewsourcefromoldsource(srcvalue)
                 if (newsource != srcvalue and len(newsource) > 0):
+                    # remove newline from existing before appending
                     if (srcvalue.endswith("\n")):
                         srcvalue = srcvalue[:len(srcvalue)-1]
-
                     par.value = srcvalue + newsource
                     changed = True
 
@@ -161,9 +184,9 @@ for page in pages:
                     break
                 newsource = getnewsourcefromoldsource(srcvalue)
                 if (newsource != srcvalue and len(newsource) > 0):
+                    # remove newline from existing before appending
                     if (srcvalue.endswith("\n")):
                         srcvalue = srcvalue[:len(srcvalue)-1]
-
                     par.value = srcvalue + newsource
                     changed = True
  
