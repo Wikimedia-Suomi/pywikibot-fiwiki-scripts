@@ -206,6 +206,48 @@ def geturlfromsource(source):
         
     return source[index:indexend]
 
+# input: kuvakokoelmat.fi url
+# output: old format id
+def getkuvakokoelmatidfromurl(source):
+    indexlast = source.rfind("/", 0, len(source)-1)
+    if (indexlast < 0):
+        # no separator found?
+        print("invalid url: " + source)
+        return ""
+    kkid = source[indexlast+1:]
+    if (kkid.endswith("\n")):
+        kkid = kkid[:len(kkid)-1]
+
+    indexlast = kkid.rfind(".", 0, len(source)-1)
+    if (indexlast > 0):
+        # .jpg or something at end? remove id
+        kkid = kkid[:indexlast]
+    return kkid
+
+# input: old format "HK"-id, e.g. HK7155:219-65-1
+# output: newer "musketti"-id, e.g. musketti.M012%3AHK7155:219-65-1
+def convertkuvakokoelmatid(kkid):
+    if (len(kkid) == 0):
+        print("empty kuvakokoelmat id ")
+        return ""
+
+    # verify
+    if (kkid.startswith("HK") == False):
+        print("does not start appropriately: " + kkid)
+        return ""
+
+    index = kkid.find("_")
+    if (index < 0):
+        print("no underscores: " + kkid)
+        return ""
+    # one underscore to colon
+    # underscores to dash
+    # add prefix
+    kkid = kkid[:index] + ":" + kkid[index+1:]
+    kkid = kkid.replace("_", "-")
+    musketti = "musketti.M012:" + kkid
+    return musketti
+
 # if there's garbage in id, strip to where it ends
 def leftfrom(string, char):
     index = string.find(char)
@@ -287,7 +329,9 @@ def parsemetaidfromfinnapage(finnaurl):
         return ""
 
     return finnapage[indexid:indexend]
-    
+
+def getnewsourceforfinna(finnarecord):
+    return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
 
 # ------ main()
 
@@ -308,14 +352,19 @@ wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
 commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 cat = pywikibot.Category(commonssite, "Category:Kuvasiskot")
+
 pages = commonssite.categorymembers(cat)
 
+#subcat = cat.subcategories()
+#members = cat.members()
 #repository = site.data_repository()
 
 rowcount = 1
 rowlimit = 500
 
 for page in pages:
+    # 14 is category -> recurse into subcategories
+    #
     if page.namespace() != 6:  # 6 is the namespace ID for files
         continue
 
@@ -336,6 +385,10 @@ for page in pages:
     wikicode = mwparserfromhell.parse(page.text)
     templatelist = wikicode.filter_templates()
 
+    # should store new format id to picture source
+    addFinnaIdForKuvakokoelmatSource = False
+
+    kkid = ""
     finnaid = ""
     finnasource = ""
     for template in wikicode.filter_templates():
@@ -344,30 +397,37 @@ for page in pages:
             if template.has("Source"):
                 par = template.get("Source")
                 srcvalue = str(par.value)
-                if (srcvalue.find("finna.fi") < 0):
-                    print("source isn't finna")
-                    break
-                finnasource = srcvalue
-                finnaid = getlinkourceid(srcvalue)
-                if (finnaid == ""):
-                    finnaid = getrecordid(srcvalue)
+                if (srcvalue.find("kuvakokoelmat.fi") > 0):
+                    kkid = getkuvakokoelmatidfromurl(srcvalue)
+                if (srcvalue.find("finna.fi") > 0):
+                    finnasource = srcvalue
+                    finnaid = getlinkourceid(srcvalue)
                     if (finnaid == ""):
-                        print("no id and no record found")
-                    break
+                        finnaid = getrecordid(srcvalue)
+                        if (finnaid == ""):
+                            print("no id and no record found")
+                        break
 
             if template.has("source"):
                 par = template.get("source")
                 srcvalue = str(par.value)
-                if (srcvalue.find("finna.fi") < 0):
-                    print("source isn't finna")
-                    break
-                finnasource = srcvalue
-                finnaid = getlinkourceid(srcvalue)
-                if (finnaid == ""):
-                    finnaid = getrecordid(srcvalue)
+                if (srcvalue.find("kuvakokoelmat.fi") > 0):
+                    kkid = getkuvakokoelmatidfromurl(srcvalue)
+                if (srcvalue.find("finna.fi") > 0):
+                    finnasource = srcvalue
+                    finnaid = getlinkourceid(srcvalue)
                     if (finnaid == ""):
-                        print("no id and no record found")
-                    break
+                        finnaid = getrecordid(srcvalue)
+                        if (finnaid == ""):
+                            print("no id and no record found")
+                        break
+
+    if (len(finnaid) == 0 and len(kkid) > 0):
+        finnaid = convertkuvakokoelmatid(kkid)
+        finnaid = urllib.parse.quote(finnaid) # quote for url
+        print("Converted old id in: " + page.title() + " from: " + kkid + " to: " + finnaid)
+        # TODO: update source information to include new id
+        addFinnaIdForKuvakokoelmatSource = True
  
     # kuvasiskot has "musketti" as part of identier, alternatively "museovirasto" may be used in some cases
     if (finnaid.find("musketti") < 0 and finnaid.find("museovirasto") < 0):
@@ -397,10 +457,11 @@ for page in pages:
     if (finnaid.find("musketti") >= 0):
         # check if the source has something other than url in it as well..
         # if it has some human-readable things try to parse real url
-        finnaurl = geturlfromsource(finnasource)
-        if (finnaurl == ""):
-            print("WARN: could not parse finna url from source in " + page.title() + " , skipping, source: " + finnasource)
-            continue
+        if (len(finnasource) > 0):
+            finnaurl = geturlfromsource(finnasource)
+            if (finnaurl == ""):
+                print("WARN: could not parse finna url from source in " + page.title() + " , skipping, source: " + finnasource)
+                continue
     
         # obsolete id -> try to fetch page and locate current ID
         finnaid = parsemetaidfromfinnapage(sourceurl)
@@ -541,6 +602,10 @@ for page in pages:
         exit()
 
     if choice == 'y':
+        #if (addFinnaIdForKuvakokoelmatSource == True):
+            #page.text=newtext
+            #page.save(summary)
+            
         if (flag_add_source == True):
             commonssite.addClaim(wditem, source_claim)
         if (flag_add_collection == True):

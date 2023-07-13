@@ -5,9 +5,13 @@
 import pywikibot
 import mwparserfromhell
 import json
+import urllib
 from urllib.request import urlopen
 
-def getnewsource(oldsource):
+def getnewsourceforfinna(finnarecord):
+    return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
+
+def getidfromoldsource(oldsource):
     indexid = oldsource.find("id=")
     if (indexid < 0):
         return oldsource
@@ -15,9 +19,86 @@ def getnewsource(oldsource):
     if (indexend < 0):
         return oldsource
         
-    finnarecord = oldsource[indexid+3:indexend]
-    return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
+    return oldsource[indexid+3:indexend]
 
+# commons source may have human readable stuff in it
+# parse to plain url
+def geturlfromsource(source):
+    protolen = len("http://")
+    index = source.find("http://")
+    if (index < 0):
+        protolen = len("https://")
+        index = source.find("https://")
+        if (index < 0):
+            # no url in string
+            return ""
+
+    # try to find space or something            
+    indexend = source.find(" ", index+protolen)
+    if (indexend < 0):
+        # no space or other clear separator -> just use string length
+        indexend = len(source)-1
+        
+    return source[index:indexend]
+
+# input: kuvakokoelmat.fi url
+# output: old format id
+def getkuvakokoelmatidfromurl(source):
+    # if there is human readable stuff in source -> strip to just url
+    source = geturlfromsource(source)
+    
+    indexlast = source.rfind("/", 0, len(source)-1)
+    if (indexlast < 0):
+        # no separator found?
+        print("invalid url: " + source)
+        return ""
+    kkid = source[indexlast+1:]
+    if (kkid.endswith("\n")):
+        kkid = kkid[:len(kkid)-1]
+
+    # .jpg or something at end? remove from id
+    indexlast = kkid.rfind(".", 0, len(source)-1)
+    if (indexlast > 0):
+        kkid = kkid[:indexlast]
+    return kkid
+
+# input: old format "HK"-id, e.g. HK7155:219-65-1
+# output: newer "musketti"-id, e.g. musketti.M012%3AHK7155:219-65-1
+def convertkuvakokoelmatid(kkid):
+    if (len(kkid) == 0):
+        print("empty kuvakokoelmat id ")
+        return ""
+
+    # verify
+    if (kkid.startswith("HK") == False):
+        print("does not start appropriately: " + kkid)
+        return ""
+
+    index = kkid.find("_")
+    if (index < 0):
+        print("no underscores: " + kkid)
+        return ""
+    # one underscore to colon
+    # underscores to dash
+    # add prefix
+    kkid = kkid[:index] + ":" + kkid[index+1:]
+    kkid = kkid.replace("_", "-")
+    musketti = "musketti.M012:" + kkid
+    return musketti
+
+def getnewsourcefromoldsource(srcvalue):
+    if (srcvalue.find("kuvakokoelmat.fi") > 0):
+        kkid = getkuvakokoelmatidfromurl(srcvalue)
+        newfinnaid = convertkuvakokoelmatid(kkid)
+        newfinnaid = urllib.parse.quote(newfinnaid) # quote for url
+        #newsourceurl = "https://www.finna.fi/Record/" + newfinnaid
+        return getnewsourceforfinna(newfinnaid)
+    elif (srcvalue.find("finna.fi") > 0):
+        # finna.fi url
+        finnarecord = getidfromoldsource(srcvalue)
+        return getnewsourceforfinna(finnarecord)
+    else:
+        return ""
 
 # ------ main()
 
@@ -53,39 +134,37 @@ for page in pages:
             if template.has("Source"):
                 par = template.get("Source")
                 srcvalue = str(par.value)
-                if (srcvalue.find("finna.fi") < 0):
-                    print("source isn't finna")
+                if (srcvalue.find("finna.fi") < 0 and srcvalue.find("kuvakokoelmat.fi") < 0):
+                    print("unknown source, skipping")
                     break
-                if (srcvalue.find("/Record/") > 0):
+                if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
                     # already has metapage
                     print("already has metapage link, skipping")
                     break
-                newsource = getnewsource(srcvalue)
-                if (newsource != srcvalue):
+                newsource = getnewsourcefromoldsource(srcvalue)
+                if (newsource != srcvalue and len(newsource) > 0):
                     if (srcvalue.endswith("\n")):
-                        finalsource = srcvalue[:len(srcvalue)-1] + newsource
-                        par.value = finalsource
-                    else:
-                        par.value = srcvalue + newsource
+                        srcvalue = srcvalue[:len(srcvalue)-1]
+
+                    par.value = srcvalue + newsource
                     changed = True
 
             if template.has("source"):
                 par = template.get("source")
                 srcvalue = str(par.value)
-                if (srcvalue.find("finna.fi") < 0):
-                    print("source isn't finna")
+                if (srcvalue.find("finna.fi") < 0 and srcvalue.find("kuvakokoelmat.fi") < 0):
+                    print("unknown source, skipping")
                     break
-                if (srcvalue.find("/Record/") > 0):
+                if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
                     # already has metapage
                     print("already has metapage link, skipping")
                     break
-                newsource = getnewsource(srcvalue)
-                if (newsource != srcvalue):
+                newsource = getnewsourcefromoldsource(srcvalue)
+                if (newsource != srcvalue and len(newsource) > 0):
                     if (srcvalue.endswith("\n")):
-                        finalsource = srcvalue[:len(srcvalue)-1] + newsource
-                        par.value = finalsource
-                    else:
-                        par.value = srcvalue + newsource
+                        srcvalue = srcvalue[:len(srcvalue)-1]
+
+                    par.value = srcvalue + newsource
                     changed = True
  
     if (changed == False):
