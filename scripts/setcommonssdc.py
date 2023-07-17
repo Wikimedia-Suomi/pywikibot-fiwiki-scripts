@@ -329,6 +329,20 @@ def isidinstatements(statements, newid):
     # ID not found -> should be added
     return False
 
+def addfinnaidtostatements(pywikibot, wikidata_site, finnaid):
+    claim_finnaidp = 'P9478'  # property ID for "finna ID"
+    finna_claim = pywikibot.Claim(wikidata_site, claim_finnaidp)
+    # url might have old style id as quoted -> no need with new id
+    finnaunquoted = urllib.parse.unquote(finnaid)
+    finna_claim.setTarget(finnaunquoted)
+    return finna_claim
+
+def addcollectiontostatements(pywikibot, wikidata_site, collection):
+    claim_collp = 'P195'  # property ID for "collection"
+    coll_claim = pywikibot.Claim(wikidata_site, claim_collp)
+    qualifier_targetcoll = pywikibot.ItemPage(wikidata_site, collection)
+    coll_claim.setTarget(qualifier_targetcoll)
+    return coll_claim
 
 # fetch metapage from finna and try to parse current ID from the page
 # since we might have obsolete ID.
@@ -605,21 +619,22 @@ for page in pages:
         qualifier_publisher.setTarget(qualifier_targetpub)
         source_claim.addQualifier(qualifier_publisher, summary='Adding publisher qualifier')
 
+        commonssite.addClaim(wditem, source_claim)
         flag_add_source = True
 
     # check SDC and try match with finna list collectionqcodes
     collectionstoadd = getcollectiontargetqcode(claims, collectionqcodes)
     if (len(collectionstoadd) > 0):
         print("adding statements for collections: " + str(collectionstoadd))
-        claim_collp = 'P195'  # property ID for "collection"
 
         # Q118976025 "Studio Kuvasiskojen kokoelma"
         for collection in collectionstoadd:
-            # P195 "collection"
-            coll_claim = pywikibot.Claim(wikidata_site, claim_collp)
-            qualifier_targetcoll = pywikibot.ItemPage(wikidata_site, collection)
-            coll_claim.setTarget(qualifier_targetcoll)
+            coll_claim = addcollectiontostatements(pywikibot, wikidata_site, collection)
 
+            # batching does not work correctly with pywikibot:
+            # need to commit each one
+            commonssite.addClaim(wditem, coll_claim)
+            
         flag_add_collection = True
     else:
         print("no need to add collections")
@@ -627,13 +642,9 @@ for page in pages:
     # if the stored ID is not same (new ID) -> add new
     if (isidinstatements(claims, finnaid) == False):
         print("adding finna id to statements: " + finnaid)
-        # 
-        claim_finnaidp = 'P9478'  # property ID for "finna ID"
-        finna_claim = pywikibot.Claim(wikidata_site, claim_finnaidp)
-        # url might have old style id as quoted -> no need with new id
-        finnaunquoted = urllib.parse.unquote(finnaid)
-        finna_claim.setTarget(finnaunquoted)
-
+        
+        finna_claim = addfinnaidtostatements(pywikibot, wikidata_site, finnaid)
+        commonssite.addClaim(wditem, finna_claim)
         flag_add_finna = True
     else:
         print("id found, not adding again")
@@ -665,13 +676,14 @@ for page in pages:
         #if (addFinnaIdForKuvakokoelmatSource == True):
             #page.text=newtext
             #page.save(summary)
-            
-        if (flag_add_source == True):
-            commonssite.addClaim(wditem, source_claim)
-        if (flag_add_collection == True):
-            commonssite.addClaim(wditem, coll_claim)
-        if (flag_add_finna == True):
-            commonssite.addClaim(wditem, finna_claim)
+        
+        # batching does not work correctly with pywikibot
+        #if (flag_add_source == True):
+            #commonssite.addClaim(wditem, source_claim)
+        #if (flag_add_collection == True):
+            #commonssite.addClaim(wditem, coll_claim)
+        #if (flag_add_finna == True):
+            #commonssite.addClaim(wditem, finna_claim)
 
     # don't try too many at once
     if (rowcount >= rowlimit):
