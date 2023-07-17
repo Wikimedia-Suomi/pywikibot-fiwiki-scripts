@@ -610,16 +610,19 @@ for page in pages:
     # check SDC and try match with finna list collectionqcodes
     collectionstoadd = getcollectiontargetqcode(claims, collectionqcodes)
     if (len(collectionstoadd) > 0):
+        print("adding statements for collections: " + str(collectionstoadd))
         claim_collp = 'P195'  # property ID for "collection"
-        # P195 "collection"
-        coll_claim = pywikibot.Claim(wikidata_site, claim_collp)
 
         # Q118976025 "Studio Kuvasiskojen kokoelma"
         for collection in collectionstoadd:
+            # P195 "collection"
+            coll_claim = pywikibot.Claim(wikidata_site, claim_collp)
             qualifier_targetcoll = pywikibot.ItemPage(wikidata_site, collection)
             coll_claim.setTarget(qualifier_targetcoll)
 
         flag_add_collection = True
+    else:
+        print("no need to add collections")
 
     # if the stored ID is not same (new ID) -> add new
     if (isidinstatements(claims, finnaid) == False):
