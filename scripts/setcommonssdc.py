@@ -282,15 +282,22 @@ def leftfrom(string, char):
 def getcollectiontargetqcode(statements, collections):
     if "P195" not in statements:
         return collections
-    claimlist = statements["P195"]    
+    
+    claimlist = statements["P195"]
     for claim in claimlist:
         # target is expected to be like: [[wikidata:Q118976025]]
         target = claim.getTarget()
 
+        targetqcode = str(target)        
+        index = targetqcode.find(":")
+        if (index > 0):
+            indexend = targetqcode.find("]", index)
+            targetqcode = targetqcode[index+1:indexend]
+
         # no need to add if SDC-data already has a target
         # -> remove from collections to add
-        if (target in collections):
-            collections.remove(target)
+        if (targetqcode in collections):
+            collections.remove(targetqcode)
 
         # TODO: finish comparison to wikidata:
         # -might belong to multiple collections -> multiple entries
@@ -301,6 +308,9 @@ def getcollectiontargetqcode(statements, collections):
 
         #dataitem = pywikibot.ItemPage(wikidata_site, "Q118976025")
         # check item, might belong to multiple collections -> compare to list from finna
+
+    # debug
+    #print("final collections are: " + str(collections))
 
     # return list of those to be added
     return collections
@@ -430,7 +440,8 @@ for page in pages:
     templatelist = wikicode.filter_templates()
 
     # should store new format id to picture source
-    addFinnaIdForKuvakokoelmatSource = False
+    # -> use setfinnasource.py for these for now
+    #addFinnaIdForKuvakokoelmatSource = False
 
     kkid = ""
     finnaid = ""
@@ -471,7 +482,8 @@ for page in pages:
         finnaid = urllib.parse.quote(finnaid) # quote for url
         print("Converted old id in: " + page.title() + " from: " + kkid + " to: " + finnaid)
         # TODO: update source information to include new id
-        addFinnaIdForKuvakokoelmatSource = True
+        # -> use setfinnasource.py for now
+        #addFinnaIdForKuvakokoelmatSource = True
  
     # kuvasiskot has "musketti" as part of identier, alternatively "museovirasto" may be used in some cases
     if (finnaid.find("musketti") < 0 and finnaid.find("museovirasto") < 0):
