@@ -671,7 +671,7 @@ for page in pages:
         print("Asked to exit. Exiting.")
         exit()
 
-    if choice == 'y':
+    #if choice == 'y':
         # script setfinnasource is used for this
         #if (addFinnaIdForKuvakokoelmatSource == True):
             #page.text=newtext
