@@ -279,21 +279,31 @@ def leftfrom(string, char):
     return string
     
 # parse claims or statements from commons SDC
-def getcollectiontargetqcode(statements):
+def getcollectiontargetqcode(statements, collections):
     if "P195" not in statements:
-        return ""
+        return collections
     claimlist = statements["P195"]    
     for claim in claimlist:
         # target is expected to be like: [[wikidata:Q118976025]]
         target = claim.getTarget()
 
+        # no need to add if SDC-data already has a target
+        # -> remove from collections to add
+        if (target in collections):
+            collections.remove(target)
+
         # TODO: finish comparison to wikidata:
         # -might belong to multiple collections -> multiple entries
         # -might have something that isn't in finna list
         # -might be missing something that is in finna list -> should add to commons SDC
+        #if (target not in collections):
+        # claim.removetarget..
 
         #dataitem = pywikibot.ItemPage(wikidata_site, "Q118976025")
         # check item, might belong to multiple collections -> compare to list from finna
+
+    # return list of those to be added
+    return collections
 
 def isidinstatements(statements, newid):
     if "P9478" not in statements:
@@ -554,9 +564,6 @@ for page in pages:
         continue
     claims = data['statements']  # claims are just one step from dataproperties down
 
-    # check SDC and try match with finna list collectionqcodes
-    #getcollectiontargetqcode(claims)
-
     flag_add_source = False
     flag_add_collection = False
     flag_add_finna = False
@@ -588,14 +595,17 @@ for page in pages:
 
         flag_add_source = True
 
-    claim_collp = 'P195'  # property ID for "collection"
-    if claim_collp not in claims:
+    # check SDC and try match with finna list collectionqcodes
+    collectionstoadd = getcollectiontargetqcode(claims, collectionqcodes)
+    if (len(collectionstoadd) > 0):
+        claim_collp = 'P195'  # property ID for "collection"
         # P195 "collection"
         coll_claim = pywikibot.Claim(wikidata_site, claim_collp)
 
         # Q118976025 "Studio Kuvasiskojen kokoelma"
-        qualifier_targetcoll = pywikibot.ItemPage(wikidata_site, 'Q118976025')  # Studio Kuvasiskojen kokoelma
-        coll_claim.setTarget(qualifier_targetcoll)
+        for collection in collectionstoadd:
+            qualifier_targetcoll = pywikibot.ItemPage(wikidata_site, collection)
+            coll_claim.setTarget(qualifier_targetcoll)
 
         flag_add_collection = True
 
@@ -606,8 +616,8 @@ for page in pages:
         claim_finnaidp = 'P9478'  # property ID for "finna ID"
         finna_claim = pywikibot.Claim(wikidata_site, claim_finnaidp)
         # url might have old style id as quoted -> no need with new id
-        #finnaunquoted = urllib.parse.unquote(finnaid)
-        finna_claim.setTarget(finnaid)
+        finnaunquoted = urllib.parse.unquote(finnaid)
+        finna_claim.setTarget(finnaunquoted)
 
         flag_add_finna = True
     else:
@@ -636,6 +646,7 @@ for page in pages:
         exit()
 
     if choice == 'y':
+        # script setfinnasource is used for this
         #if (addFinnaIdForKuvakokoelmatSource == True):
             #page.text=newtext
             #page.save(summary)
