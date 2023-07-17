@@ -621,6 +621,8 @@ for page in pages:
 
         commonssite.addClaim(wditem, source_claim)
         flag_add_source = True
+    else:
+        print("no need to add source")
 
     # check SDC and try match with finna list collectionqcodes
     collectionstoadd = getcollectiontargetqcode(claims, collectionqcodes)
