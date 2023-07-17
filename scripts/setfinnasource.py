@@ -11,30 +11,26 @@ from urllib.request import urlopen
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
 
-def getidfromoldsource(oldsource):
-    indexid = oldsource.find("id=")
-    if (indexid < 0):
-        return oldsource
-
-    oldsource = oldsource[indexid+3:]
-
+# strip id from other things that may be after it:
+# there might be part of url or some html in same field..
+def stripid(oldsource):
     # space after url?
-    indexend = oldsource.find(" ", indexid)
+    indexend = oldsource.find(" ")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
     # html tag after url?
-    indexend = oldsource.find("<", indexid)
+    indexend = oldsource.find("<")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
     # some parameters in url?
-    indexend = oldsource.find("&", indexid)
+    indexend = oldsource.find("&")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
     # some parameters in url?
-    indexend = oldsource.find("?", indexid)
+    indexend = oldsource.find("?")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
@@ -42,6 +38,14 @@ def getidfromoldsource(oldsource):
         oldsource = oldsource[:len(oldsource)-1]
 
     return oldsource
+
+def getidfromoldsource(oldsource):
+    indexid = oldsource.find("id=")
+    if (indexid < 0):
+        return oldsource
+
+    oldsource = oldsource[indexid+3:]
+    return stripid(oldsource)
 
 # commons source may have human readable stuff in it
 # parse to plain url
@@ -123,13 +127,30 @@ def getnewsourcefromoldsource(srcvalue):
 
     return ""
 
+# get pages immediately under cat
+# and upto depth of 1 in subcats
+def getcatpages(pywikibot, commonssite, maincat, recurse=False):
+    cat = pywikibot.Category(commonssite, maincat)
+    pages = list(commonssite.categorymembers(cat))
+
+    # no recursion by default, just get into depth of 1
+    if (recurse == True):
+        subcats = list(cat.subcategories())
+        for subcat in subcats:
+            subpages = commonssite.categorymembers(subcat)
+            for subpage in subpages:
+                pages.append(subpage)
+
+    return pages
+
 # ------ main()
 
 # site = pywikibot.Site("fi", "wikipedia")
-site = pywikibot.Site("commons", "commons")
-site.login()
-cat = pywikibot.Category(site, "Category:Kuvasiskot")
-pages = site.categorymembers(cat)
+commonssite = pywikibot.Site("commons", "commons")
+commonssite.login()
+
+# get list of pages upto depth of 1 
+pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 
 rowcount = 1
 rowlimit = 10

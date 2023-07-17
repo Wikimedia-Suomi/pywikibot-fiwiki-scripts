@@ -162,29 +162,51 @@ def download_and_convert_tiff_to_jpg(url):
 
 # ----- /FinnaData
 
-def getlinkourceid(oldsource):
+# strip id from other things that may be after it:
+# there might be part of url or some html in same field..
+def stripid(oldsource):
+    # space after url?
+    indexend = oldsource.find(" ")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # html tag after url?
+    indexend = oldsource.find("<")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # some parameters in url?
+    indexend = oldsource.find("&")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # some parameters in url?
+    indexend = oldsource.find("?")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    if (oldsource.endswith("\n")):
+        oldsource = oldsource[:len(oldsource)-1]
+
+    return oldsource
+
+# link might have "show?id=<id>" which we handle here
+# if it has "Record/<id>" handle it separately
+def getlinksourceid(oldsource):
     strlen = len("id=")
     indexid = oldsource.find("id=")
     if (indexid < 0):
         return ""
-    indexend = oldsource.find("&", indexid)
-    if (indexend < 0):
-        indexend = oldsource.find(" ", indexid)
-        if (indexend < 0):
-            indexend = len(oldsource)-1
-        
-    return oldsource[indexid+strlen:indexend]
+    oldsource = oldsource[indexid+strlen:]
+    return stripid(oldsource)
 
 def getrecordid(oldsource):
     strlen = len("/Record/")
     indexid = oldsource.find("/Record/")
     if (indexid < 0):
         return ""
-    indexend = oldsource.find(" ", indexid)
-    if (indexend < 0):
-        indexend = len(oldsource)-1
-        
-    return oldsource[indexid+strlen:indexend]
+    oldsource = oldsource[indexid+strlen:]
+    return stripid(oldsource)
     
 # commons source may have human readable stuff in it
 # parse to plain url
@@ -333,6 +355,22 @@ def parsemetaidfromfinnapage(finnaurl):
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
 
+# get pages immediately under cat
+# and upto depth of 1 in subcats
+def getcatpages(pywikibot, commonssite, maincat, recurse=False):
+    cat = pywikibot.Category(commonssite, maincat)
+    pages = list(commonssite.categorymembers(cat))
+
+    # no recursion by default, just get into depth of 1
+    if (recurse == True):
+        subcats = list(cat.subcategories())
+        for subcat in subcats:
+            subpages = commonssite.categorymembers(subcat)
+            for subpage in subpages:
+                pages.append(subpage)
+
+    return pages
+
 # ------ main()
 
 # TODO: check wikidata for correct qcodes
@@ -351,13 +389,9 @@ wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
 # site = pywikibot.Site("fi", "wikipedia")
 commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
-cat = pywikibot.Category(commonssite, "Category:Kuvasiskot")
 
-pages = commonssite.categorymembers(cat)
-
-#subcat = cat.subcategories()
-#members = cat.members()
-#repository = site.data_repository()
+# get list of pages upto depth of 1 
+pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 
 rowcount = 1
 rowlimit = 500
@@ -401,7 +435,7 @@ for page in pages:
                     kkid = getkuvakokoelmatidfromurl(srcvalue)
                 if (srcvalue.find("finna.fi") > 0):
                     finnasource = srcvalue
-                    finnaid = getlinkourceid(srcvalue)
+                    finnaid = getlinksourceid(srcvalue)
                     if (finnaid == ""):
                         finnaid = getrecordid(srcvalue)
                         if (finnaid == ""):
@@ -415,7 +449,7 @@ for page in pages:
                     kkid = getkuvakokoelmatidfromurl(srcvalue)
                 if (srcvalue.find("finna.fi") > 0):
                     finnasource = srcvalue
-                    finnaid = getlinkourceid(srcvalue)
+                    finnaid = getlinksourceid(srcvalue)
                     if (finnaid == ""):
                         finnaid = getrecordid(srcvalue)
                         if (finnaid == ""):

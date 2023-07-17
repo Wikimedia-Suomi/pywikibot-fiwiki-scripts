@@ -147,12 +147,32 @@ def download_and_convert_tiff_to_jpg(url):
         tiff_image.convert('RGB').save(fp, "JPEG", quality=95)
     return fp.name    
 
+# get pages immediately under cat
+# and upto depth of 1 in subcats
+def getcatpages(pywikibot, commonssite, maincat, recurse=False):
+    cat = pywikibot.Category(commonssite, maincat)
+    pages = list(commonssite.categorymembers(cat))
+
+    # no recursion by default, just get into depth of 1
+    if (recurse == True):
+        subcats = list(cat.subcategories())
+        for subcat in subcats:
+            subpages = commonssite.categorymembers(subcat)
+            for subpage in subpages:
+                pages.append(subpage)
+
+    return pages
+
 # ------- main()
 
-site = pywikibot.Site("commons", "commons")
-site.login()
-cat = pywikibot.Category(site, "Category:Kuvasiskot")
-pages = site.categorymembers(cat)
+commonssite = pywikibot.Site("commons", "commons")
+commonssite.login()
+
+# get list of pages upto depth of 1 
+pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+
+#cat = pywikibot.Category(commonssite, "Category:Kuvasiskot")
+#pages = site.categorymembers(cat)
 
 rowcount = 1
 rowlimit = 10
