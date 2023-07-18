@@ -94,8 +94,8 @@ def get_finna_record(id):
         exit(1)
 
 
-def converthashtoint(h, hashlen=16):
-    return int(str(h), hashlen)
+def converthashtoint(h, base=16):
+    return int(str(h), base)
 
 # Compares if the image is same using similarity hashing
 # method is to convert images to 64bit integers and then
@@ -106,7 +106,7 @@ def converthashtoint(h, hashlen=16):
 # difference hashing
 # http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
 #
-def is_same_image(img1, img2, hashlen=16):
+def is_same_image(img1, img2):
 
     phash1 = imagehash.phash(img1)
     dhash1 = imagehash.dhash(img1)
@@ -167,6 +167,7 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+#pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
 #cat = pywikibot.Category(commonssite, "Category:Kuvasiskot")
 #pages = site.categorymembers(cat)
@@ -217,7 +218,6 @@ for page in pages:
             print("Skipping collection (can't match by hash due similarities): " + finna_id)
             continue
 
-
         imagesExtended=finna_record['records'][0]['imagesExtended'][0]
 
         # Test copyright
@@ -237,7 +237,7 @@ for page in pages:
 
         # Test if image is same using similarity hashing
         # default hashlength is 16, try comparison with increased length as well?
-        if not is_same_image(finna_image, commons_image, 256):
+        if not is_same_image(finna_image, commons_image):
             print("Not same image, skipping: " + finna_id)
             continue
 
