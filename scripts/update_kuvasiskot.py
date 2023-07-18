@@ -96,34 +96,32 @@ def get_finna_record(id):
 # Perceptual hashing 
 # http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
 
-def calculate_phash(im):
-    hash = imagehash.phash(im)
-    hash_int=int(str(hash),16)
+def calculate_phash(img, hashlen=16):
+    hash = imagehash.phash(img)
+    hash_int=int(str(hash), hashlen)
     return hash_int
 
 # difference hashing
 # http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
 
-def calculate_dhash(im):
-    hash = imagehash.dhash(im)
-    hash_int=int(str(hash),16)
+def calculate_dhash(img, hashlen=16):
+    hash = imagehash.dhash(img)
+    hash_int=int(str(hash), hashlen)
     return hash_int
 
 # Compares if the image is same using similarity hashing
 # method is to convert images to 64bit integers and then
 # calculate hamming distance. 
 
-def is_same_image(url1, url2):
+def is_same_image(img1, img2, hashlen=16):
 
     # Open the image1 with Pillow
-    im1 = Image.open(urllib.request.urlopen(url1))
-    phash1_int=calculate_phash(im1)
-    dhash1_int=calculate_dhash(im1)
+    phash1_int=calculate_phash(img1, hashlen)
+    dhash1_int=calculate_dhash(img1, hashlen)
 
     # Open the image2 with Pillow
-    im2 = Image.open(urllib.request.urlopen(url2))
-    phash2_int=calculate_phash(im2)
-    dhash2_int=calculate_dhash(im2)
+    phash2_int=calculate_phash(img2, hashlen)
+    dhash2_int=calculate_dhash(img2, hashlen)
 
     # Hamming distance difference
     phash_diff = bin(phash1_int ^ phash2_int).count('1')
@@ -237,8 +235,14 @@ for page in pages:
         finna_thumbnail_url="https://finna.fi" + imagesExtended['urls']['small']
         commons_thumbnail_url=file_page.get_file_url(url_width=500)
 
+        # TODO: check here that download works, 
+        # also try to reuse without downloading multiple times
+        finna_image = Image.open(urllib.request.urlopen(finna_thumbnail_url))
+        commons_image = Image.open(urllib.request.urlopen(commons_thumbnail_url))
+
         # Test if image is same using similarity hashing
-        if not is_same_image(finna_thumbnail_url, commons_thumbnail_url):
+        # default hashlength is 16, try comparison with increased length as well?
+        if not is_same_image(finna_image, commons_image, 16):
             print("Not same image, skipping: " + finna_id)
             continue
 
