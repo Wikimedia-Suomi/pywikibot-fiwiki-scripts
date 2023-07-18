@@ -93,43 +93,38 @@ def get_finna_record(id):
         print("Finna API query failed: " + url)
         exit(1)
 
-# Perceptual hashing 
-# http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
 
-def calculate_phash(img, hashlen=16):
-    hash = imagehash.phash(img)
-    hash_int=int(str(hash), hashlen)
-    return hash_int
-
-# difference hashing
-# http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
-
-def calculate_dhash(img, hashlen=16):
-    hash = imagehash.dhash(img)
-    hash_int=int(str(hash), hashlen)
-    return hash_int
+def converthashtoint(h, hashlen=16):
+    return int(str(h), hashlen)
 
 # Compares if the image is same using similarity hashing
 # method is to convert images to 64bit integers and then
 # calculate hamming distance. 
-
+#
+# Perceptual hashing 
+# http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
+# difference hashing
+# http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
+#
 def is_same_image(img1, img2, hashlen=16):
 
-    # Open the image1 with Pillow
-    phash1_int=calculate_phash(img1, hashlen)
-    dhash1_int=calculate_dhash(img1, hashlen)
+    phash1 = imagehash.phash(img1)
+    dhash1 = imagehash.dhash(img1)
+    phash1_int = converthashtoint(phash1)
+    dhash1_int = converthashtoint(dhash1)
 
-    # Open the image2 with Pillow
-    phash2_int=calculate_phash(img2, hashlen)
-    dhash2_int=calculate_dhash(img2, hashlen)
+    phash2 = imagehash.phash(img2)
+    dhash2 = imagehash.dhash(img2)
+    phash2_int = converthashtoint(phash2)
+    dhash2_int = converthashtoint(dhash2)
 
     # Hamming distance difference
     phash_diff = bin(phash1_int ^ phash2_int).count('1')
     dhash_diff = bin(dhash1_int ^ dhash2_int).count('1') 
 
     # print hamming distance
-    print("Phash diff: " + str(phash_diff))
-    print("Dhash diff: " + str(dhash_diff))
+    print("Phash diff: " + str(phash_diff) + ", image1: " + str(phash1_int) + ", image2: " + str(phash2_int))
+    print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(dhash1_int) + ", image2: " + str(dhash2_int))
 
     # max distance for same is that least one is 0 and second is max 3
 
@@ -193,7 +188,7 @@ for page in pages:
     if file_info.width > 2000 or file_info.height > 2000:
         print("Skipping " + page.title() + ", width or height over 2000")
         continue
-        
+
     print(page.title())
 
     # Find ids used in Finna
@@ -242,12 +237,9 @@ for page in pages:
 
         # Test if image is same using similarity hashing
         # default hashlength is 16, try comparison with increased length as well?
-        if not is_same_image(finna_image, commons_image, 16):
+        if not is_same_image(finna_image, commons_image, 256):
             print("Not same image, skipping: " + finna_id)
             continue
-
-        # TODO: verify finna image really is in better resolution than what is commons
-        # before uploading
 
         hires = imagesExtended['highResolution']['original'][0]
 
@@ -268,12 +260,11 @@ for page in pages:
             print(f"File format Finna (MIME type): {hires['format']}")
             continue
 
+        # verify finna image really is in better resolution than what is in commons
+        # before uploading
         finnawidth = hires['data']['width']['value']
         finnaheight = hires['data']['height']['value']
         
-        #debug
-        #print("finna widthxheight: " + finnawidth + "x" + finnaheight)
-
         if file_info.width > int(finnawidth) or file_info.height > int(finnaheight):
             print("Skipping " + page.title() + ", resolution already higher than finna: " + finnawidth + "x" + finnaheight)
             continue
