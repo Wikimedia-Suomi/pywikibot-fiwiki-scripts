@@ -248,6 +248,7 @@ for page in pages:
         if hires["format"] == "tif" and file_info.mime == 'image/tiff':
             image_file=hires['url']
         elif hires["format"] == "tif" and file_info.mime == 'image/jpeg':
+            print("converting image from tiff to jpeg") # log it
             image_file=download_and_convert_tiff_to_jpg(hires['url'])
             local_file=True    
         elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
