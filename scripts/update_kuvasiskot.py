@@ -63,24 +63,28 @@ def finna_api_parameter(name, value):
 def get_finna_record(id):
 
     url="https://api.finna.fi/v1/record?id=" +  urllib.parse.quote_plus(id)
-    url+= finna_api_parameter('field[]', 'geoLocations')
     url+= finna_api_parameter('field[]', 'id')
     url+= finna_api_parameter('field[]', 'title')
     url+= finna_api_parameter('field[]', 'subTitle')
     url+= finna_api_parameter('field[]', 'summary')
-    url+= finna_api_parameter('field[]', 'buildings')
-    url+= finna_api_parameter('field[]', 'formats')
     url+= finna_api_parameter('field[]', 'imageRights')
     url+= finna_api_parameter('field[]', 'images')
     url+= finna_api_parameter('field[]', 'imagesExtended')
-    url+= finna_api_parameter('field[]', 'onlineUrls')
     url+= finna_api_parameter('field[]', 'openUrl')
     url+= finna_api_parameter('field[]', 'nonPresenterAuthors')
     url+= finna_api_parameter('field[]', 'onlineUrls')
     url+= finna_api_parameter('field[]', 'subjects')
+    url+= finna_api_parameter('field[]', 'geoLocations')
+    url+= finna_api_parameter('field[]', 'buildings')
+    url+= finna_api_parameter('field[]', 'identifierString')
+    url+= finna_api_parameter('field[]', 'collections')
+    url+= finna_api_parameter('field[]', 'institutions')
     url+= finna_api_parameter('field[]', 'classifications')
     url+= finna_api_parameter('field[]', 'events')
-    url+= finna_api_parameter('field[]', 'identifierString')
+    url+= finna_api_parameter('field[]', 'languages')
+    url+= finna_api_parameter('field[]', 'originalLanguages')
+    url+= finna_api_parameter('field[]', 'year')
+    url+= finna_api_parameter('field[]', 'formats')
 
     try:
         response = requests.get(url)
@@ -205,16 +209,21 @@ for page in pages:
     for finna_id in finna_ids:
         finna_record = get_finna_record(finna_id)
 
-        if finna_record['status']!='OK':
-            print("Skipping (status not OK): " + finna_id)
+        if (finna_record['status'] != 'OK'):
+            print("Skipping (status not OK): " + finnaid + " status: " + finna_record['status'])
             continue
 
-        if finna_record['resultCount']!=1:
-            print("Skipping (result not 1): " + finna_id)
+        if (finna_record['resultCount'] != 1):
+            print("Skipping (result not 1): " + finnaid + " count: " + str(finna_record['resultCount']))
             continue
 
-        # just for debug
-        #print("Page " + page.title() + " has finna ID: " + finna_id)
+        # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
+        # skip coins in "Antellin kokoelma" as hashes will be too similar
+        finna_collections = finna_record['records'][0]['collections']
+        if ("Antellin kokoelma" in finna_collections):
+            print("Skipping collection (can't match by hash due similarities): " + finna_id)
+            continue
+
 
         imagesExtended=finna_record['records'][0]['imagesExtended'][0]
 
@@ -232,9 +241,12 @@ for page in pages:
         if not is_same_image(finna_thumbnail_url, commons_thumbnail_url):
             print("Not same image, skipping: " + finna_id)
             continue
-            
-        hires=imagesExtended['highResolution']['original'][0]
-              
+
+        # TODO: verify finna image really is in better resolution than what is commons
+        # before uploading
+
+        hires = imagesExtended['highResolution']['original'][0]
+
         # Select which file to upload.
         local_file=False
         if hires["format"] == "tif" and file_info.mime == 'image/tiff':
@@ -250,6 +262,16 @@ for page in pages:
             print("Exit: Unhandled mime-type")
             print(f"File format Commons (MIME type): {file_info.mime}")
             print(f"File format Finna (MIME type): {hires['format']}")
+            continue
+
+        finnawidth = hires['data']['width']['value']
+        finnaheight = hires['data']['height']['value']
+        
+        #debug
+        #print("finna widthxheight: " + finnawidth + "x" + finnaheight)
+
+        if file_info.width > int(finnawidth) or file_info.height > int(finnaheight):
+            print("Skipping " + page.title() + ", resolution already higher than finna: " + finnawidth + "x" + finnaheight)
             continue
 
         finna_record_url="https://finna.fi/Record/" + finna_id
