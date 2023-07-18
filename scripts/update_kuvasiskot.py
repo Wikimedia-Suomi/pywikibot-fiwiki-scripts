@@ -17,6 +17,7 @@ import pywikibot
 import re
 import urllib
 import requests
+import hashlib
 import imagehash
 import io
 import os
@@ -123,8 +124,11 @@ def is_same_image(img1, img2):
     dhash_diff = bin(dhash1_int ^ dhash2_int).count('1') 
 
     # print hamming distance
-    print("Phash diff: " + str(phash_diff) + ", image1: " + str(phash1_int) + ", image2: " + str(phash2_int))
-    print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(dhash1_int) + ", image2: " + str(dhash2_int))
+    if (phash_diff == 0 and dhash_diff == 0):
+        print("Both hashes are equal")
+    else:
+        print("Phash diff: " + str(phash_diff) + ", image1: " + str(phash1) + ", image2: " + str(phash2))
+        print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(dhash1) + ", image2: " + str(dhash2))
 
     # max distance for same is that least one is 0 and second is max 3
 
@@ -134,6 +138,21 @@ def is_same_image(img1, img2):
         return True
     else:
         return False
+
+def isidentical(img1, img2):
+    shaimg1 = hashlib.sha1()
+    shaimg1.update(img1.tobytes())
+    digest1 = shaimg1.digest()
+
+    shaimg2 = hashlib.sha1()
+    shaimg2.update(img2.tobytes())
+    digest2 = shaimg2.digest()
+
+    print("digest1: " + shaimg1.hexdigest() + " digest2: " + shaimg2.hexdigest())
+    
+    if (digest1 == digest2):
+        return True
+    return False
 
 def download_and_convert_tiff_to_jpg(url):
     response = requests.get(url, stream=True)
@@ -233,7 +252,14 @@ for page in pages:
         # TODO: check here that download works, 
         # also try to reuse without downloading multiple times
         finna_image = Image.open(urllib.request.urlopen(finna_thumbnail_url))
+        #finna_image.load()
         commons_image = Image.open(urllib.request.urlopen(commons_thumbnail_url))
+        #commons_image.load()
+
+        # we can't upload identical files, commons will check matching hashes anyway
+        #if (isidentical(finna_image, commons_image) == True):
+            #print("Images are identical files, skipping: " + finna_id)
+            #continue
 
         # Test if image is same using similarity hashing
         # default hashlength is 16, try comparison with increased length as well?
