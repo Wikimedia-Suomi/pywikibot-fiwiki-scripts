@@ -93,7 +93,7 @@ def get_finna_record(id):
         print("Finna API query failed: " + url)
         exit(1)
 
-
+# convert string to base 16 integer for calculating difference
 def converthashtoint(h, base=16):
     return int(str(h), base)
 
