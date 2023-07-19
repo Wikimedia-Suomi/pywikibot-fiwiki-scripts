@@ -325,7 +325,7 @@ for page in pages:
                 finna_image_url = hires['url']
         elif file_info.mime == 'image/jpeg':
             if (need_index == False):
-                image_file_name = "https://finna.fi" +  imagesExtended['urls']['large']
+                finna_image_url = "https://finna.fi" +  imagesExtended['urls']['large']
         else:
             print("Exit: Unhandled mime-type")
             print(f"File format Commons (MIME type): {file_info.mime}")
@@ -346,8 +346,10 @@ for page in pages:
         print(comment)
 
         # Ignore warnigs = True because we update files
-        file_page.upload(image_file_name, comment=comment,ignore_warnings=True)
-        if local_file:
+        if (local_file == False):
+            file_page.upload(finna_image_url, comment=comment,ignore_warnings=True)
+        if (local_file == True):
+            file_page.upload(image_file_name, comment=comment,ignore_warnings=True)
             os.unlink(image_file_name)
 
         # don't try too many at once
