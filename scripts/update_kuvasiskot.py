@@ -251,9 +251,11 @@ for page in pages:
             continue
 
         # get image from commons for comparison
-        commons_thumbnail_url=file_page.get_file_url(url_width=500)
+        commons_thumbnail_url = file_page.get_file_url(url_width=500)
         commons_thumb = downloadimage(commons_thumbnail_url)
 
+        finna_image_url = ""
+        need_index = False
         match_found = False
         # 'images' can have array of multiple images, need to select correct one
         # -> loop through them (they should have just different &index= in them)
@@ -269,6 +271,7 @@ for page in pages:
             # Test if image is same using similarity hashing
             if (is_same_image(finna_thumb, commons_thumb) == True):
                 match_found = True
+                finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
 
         if (len(imageList) > 1):
             print("Multiple images for same item: " + str(len(imageList)))
@@ -281,6 +284,8 @@ for page in pages:
                 # Test if image is same using similarity hashing
                 if (is_same_image(finna_thumb, commons_thumb) == True):
                     match_found = True
+                    need_index = True
+                    finna_image_url = finna_thumbnail_url
                     break
                 else:
                     f_imgindex = f_imgindex + 1
@@ -290,6 +295,7 @@ for page in pages:
             continue
 
         print("Matching image found: " + finna_id)
+        finna_record_url = "https://finna.fi/Record/" + finna_id
 
         hires = imagesExtended['highResolution']['original'][0]
 
@@ -301,20 +307,25 @@ for page in pages:
         if file_info.width >= int(finnawidth) or file_info.height >= int(finnaheight):
             print("Skipping " + page.title() + ", resolution already equal or higher than finna: " + finnawidth + "x" + finnaheight)
             continue
-
+            
         # Select which file to upload.
         local_file=False
         if hires["format"] == "tif" and file_info.mime == 'image/tiff':
-            image_file_name = hires['url']
+            if (need_index == False):
+                finna_image_url = hires['url']
         elif hires["format"] == "tif" and file_info.mime == 'image/jpeg':
             print("converting image from tiff to jpeg") # log it
-            local_image = downloadimage(hires['url'])
+            if (need_index == False):
+                finna_image_url = hires['url']
+            local_image = downloadimage(finna_image_url)
             image_file_name = convert_tiff_to_jpg(local_image)
             local_file=True    
         elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
-            image_file_name = hires['url']
+            if (need_index == False):
+                finna_image_url = hires['url']
         elif file_info.mime == 'image/jpeg':
-            image_file_name = "https://finna.fi" +  imagesExtended['urls']['large']
+            if (need_index == False):
+                image_file_name = "https://finna.fi" +  imagesExtended['urls']['large']
         else:
             print("Exit: Unhandled mime-type")
             print(f"File format Commons (MIME type): {file_info.mime}")
@@ -331,7 +342,6 @@ for page in pages:
             #print("Images are identical files, skipping: " + finna_id)
             #continue
 
-        finna_record_url = "https://finna.fi/Record/" + finna_id
         comment = "Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
         print(comment)
 
