@@ -154,14 +154,22 @@ def isidentical(img1, img2):
         return True
     return False
 
-def download_and_convert_tiff_to_jpg(url):
-    response = requests.get(url, stream=True)
-    response.raise_for_status()
-                            
-    tiff_image = Image.open(io.BytesIO(response.content))
+def convert_tiff_to_jpg(tiff_image):
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as fp:
         tiff_image.convert('RGB').save(fp, "JPEG", quality=95)
     return fp.name    
+
+# note: commons at least once has thrown error due to client policy?
+# "Client Error: Forbidden. Please comply with the User-Agent policy"
+# keep an eye out for problems..
+def downloadimage(url):
+    headers={'User-Agent': 'pywikibot'}
+    # Image.open(urllib.request.urlopen(url, headers=headers))
+
+    response = requests.get(url, headers=headers, stream=True)
+    response.raise_for_status()
+                            
+    return Image.open(io.BytesIO(response.content))
 
 # get pages immediately under cat
 # and upto depth of 1 in subcats
@@ -249,43 +257,18 @@ for page in pages:
         finna_thumbnail_url="https://finna.fi" + imagesExtended['urls']['small']
         commons_thumbnail_url=file_page.get_file_url(url_width=500)
 
-        # TODO: check here that download works, 
+        # check here that download works, 
         # also try to reuse without downloading multiple times
-        finna_image = Image.open(urllib.request.urlopen(finna_thumbnail_url))
-        #finna_image.load()
-        commons_image = Image.open(urllib.request.urlopen(commons_thumbnail_url))
-        #commons_image.load()
-
-        # we can't upload identical files, commons will check matching hashes anyway
-        #if (isidentical(finna_image, commons_image) == True):
-            #print("Images are identical files, skipping: " + finna_id)
-            #continue
+        finna_thumb = downloadimage(finna_thumbnail_url)
+        commons_thumb = downloadimage(commons_thumbnail_url)
 
         # Test if image is same using similarity hashing
         # default hashlength is 16, try comparison with increased length as well?
-        if not is_same_image(finna_image, commons_image):
+        if not is_same_image(finna_thumb, commons_thumb):
             print("Not same image, skipping: " + finna_id)
             continue
 
         hires = imagesExtended['highResolution']['original'][0]
-
-        # Select which file to upload.
-        local_file=False
-        if hires["format"] == "tif" and file_info.mime == 'image/tiff':
-            image_file=hires['url']
-        elif hires["format"] == "tif" and file_info.mime == 'image/jpeg':
-            print("converting image from tiff to jpeg") # log it
-            image_file=download_and_convert_tiff_to_jpg(hires['url'])
-            local_file=True    
-        elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
-            image_file=hires['url']
-        elif file_info.mime == 'image/jpeg':
-            image_file="https://finna.fi" +  imagesExtended['urls']['large']
-        else:
-            print("Exit: Unhandled mime-type")
-            print(f"File format Commons (MIME type): {file_info.mime}")
-            print(f"File format Finna (MIME type): {hires['format']}")
-            continue
 
         # verify finna image really is in better resolution than what is in commons
         # before uploading
@@ -296,14 +279,43 @@ for page in pages:
             print("Skipping " + page.title() + ", resolution already higher than finna: " + finnawidth + "x" + finnaheight)
             continue
 
-        finna_record_url="https://finna.fi/Record/" + finna_id
-        comment="Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
+        # Select which file to upload.
+        local_file=False
+        if hires["format"] == "tif" and file_info.mime == 'image/tiff':
+            image_file_name = hires['url']
+        elif hires["format"] == "tif" and file_info.mime == 'image/jpeg':
+            print("converting image from tiff to jpeg") # log it
+            local_image = downloadimage(hires['url'])
+            image_file_name = convert_tiff_to_jpg(local_image)
+            local_file=True    
+        elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
+            image_file_name = hires['url']
+        elif file_info.mime == 'image/jpeg':
+            image_file_name = "https://finna.fi" +  imagesExtended['urls']['large']
+        else:
+            print("Exit: Unhandled mime-type")
+            print(f"File format Commons (MIME type): {file_info.mime}")
+            print(f"File format Finna (MIME type): {hires['format']}")
+            continue
+
+        # can't upload if identical to the one in commons:
+        # compare hash of converted image if necessary,
+        # otherwise get full image for both (not thumbnails)
+        #if (local_file == False):
+            #finna_image = downloadimage(image_file_name)
+        #commons_image = downloadimage(commons_thumbnail_url)
+        #if (isidentical(image_file_name, commons_image) == True):
+            #print("Images are identical files, skipping: " + finna_id)
+            #continue
+
+        finna_record_url = "https://finna.fi/Record/" + finna_id
+        comment = "Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
         print(comment)
 
         # Ignore warnigs = True because we update files
-        file_page.upload(image_file, comment=comment,ignore_warnings=True)
+        file_page.upload(image_file_name, comment=comment,ignore_warnings=True)
         if local_file:
-            os.unlink(image_file)
+            os.unlink(image_file_name)
 
         # don't try too many at once
         if (rowcount >= rowlimit):
