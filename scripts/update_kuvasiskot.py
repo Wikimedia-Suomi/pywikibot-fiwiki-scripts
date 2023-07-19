@@ -194,7 +194,7 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
-#pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
+pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
 rowcount = 1
 rowlimit = 10
@@ -249,34 +249,47 @@ for page in pages:
         if imagesExtended['rights']['copyright'] != "CC BY 4.0":
             print("Incorrect copyright: " + imagesExtended['rights']['copyright'])
             continue
-            
-        # TODO: 'images' can have array of multiple images, need to select correct one
+
+        # get image from commons for comparison
+        commons_thumbnail_url=file_page.get_file_url(url_width=500)
+        commons_thumb = downloadimage(commons_thumbnail_url)
+
+        match_found = False
+        # 'images' can have array of multiple images, need to select correct one
         # -> loop through them (they should have just different &index= in them)
         # and compare with the image in commons
         imageList = finna_record['records'][0]['images']
         if (len(imageList) == 0):
             print("no images for item")
-            continue
+
+        if (len(imageList) == 1):
+            finna_thumbnail_url = "https://finna.fi" + imagesExtended['urls']['small']
+            finna_thumb = downloadimage(finna_thumbnail_url)
+            
+            # Test if image is same using similarity hashing
+            if (is_same_image(finna_thumb, commons_thumb) == True):
+                match_found = True
+
         if (len(imageList) > 1):
             print("Multiple images for same item: " + str(len(imageList)))
-            #for img in imageList:
-            # select right image..
+            
+            f_imgindex = 0
+            for img in imageList:
+                finna_thumbnail_url = "https://finna.fi" + img
+                finna_thumb = downloadimage(finna_thumbnail_url)
 
+                # Test if image is same using similarity hashing
+                if (is_same_image(finna_thumb, commons_thumb) == True):
+                    match_found = True
+                    break
+                else:
+                    f_imgindex = f_imgindex + 1
 
-        # Confirm that images are same using imagehash
-        finna_thumbnail_url="https://finna.fi" + imagesExtended['urls']['small']
-        commons_thumbnail_url=file_page.get_file_url(url_width=500)
-
-        # check here that download works, 
-        # also try to reuse without downloading multiple times
-        finna_thumb = downloadimage(finna_thumbnail_url)
-        commons_thumb = downloadimage(commons_thumbnail_url)
-
-        # Test if image is same using similarity hashing
-        # default hashlength is 16, try comparison with increased length as well?
-        if not is_same_image(finna_thumb, commons_thumb):
-            print("Not same image, skipping: " + finna_id)
+        if (match_found == False):
+            print("No matching image found, skipping: " + finna_id)
             continue
+
+        print("Matching image found: " + finna_id)
 
         hires = imagesExtended['highResolution']['original'][0]
 
