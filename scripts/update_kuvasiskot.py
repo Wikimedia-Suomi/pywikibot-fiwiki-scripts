@@ -347,8 +347,10 @@ for page in pages:
 
         # Ignore warnigs = True because we update files
         if (local_file == False):
+            print("uploading from url: " + finna_image_url)
             file_page.upload(finna_image_url, comment=comment,ignore_warnings=True)
         if (local_file == True):
+            print("uploading converted local file ")
             file_page.upload(image_file_name, comment=comment,ignore_warnings=True)
             os.unlink(image_file_name)
 
