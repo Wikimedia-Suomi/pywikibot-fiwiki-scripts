@@ -275,8 +275,8 @@ for page in pages:
         finnawidth = hires['data']['width']['value']
         finnaheight = hires['data']['height']['value']
         
-        if file_info.width > int(finnawidth) or file_info.height > int(finnaheight):
-            print("Skipping " + page.title() + ", resolution already higher than finna: " + finnawidth + "x" + finnaheight)
+        if file_info.width >= int(finnawidth) or file_info.height >= int(finnaheight):
+            print("Skipping " + page.title() + ", resolution already equal or higher than finna: " + finnawidth + "x" + finnaheight)
             continue
 
         # Select which file to upload.
