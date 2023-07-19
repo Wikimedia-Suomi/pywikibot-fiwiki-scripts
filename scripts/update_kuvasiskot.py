@@ -193,11 +193,8 @@ commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 
 # get list of pages upto depth of 1 
-pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
-
-#cat = pywikibot.Category(commonssite, "Category:Kuvasiskot")
-#pages = site.categorymembers(cat)
 
 rowcount = 1
 rowlimit = 10
@@ -245,15 +242,28 @@ for page in pages:
             print("Skipping collection (can't match by hash due similarities): " + finna_id)
             continue
 
-        imagesExtended=finna_record['records'][0]['imagesExtended'][0]
+        imagesExtended = finna_record['records'][0]['imagesExtended'][0]
 
-        # Test copyright
+        # Test copyright (old field: rights, but request has imageRights?)
+        # imageRights = finna_record['records'][0]['imageRights']
         if imagesExtended['rights']['copyright'] != "CC BY 4.0":
             print("Incorrect copyright: " + imagesExtended['rights']['copyright'])
             continue
+            
+        # TODO: 'images' can have array of multiple images, need to select correct one
+        # -> loop through them (they should have just different &index= in them)
+        # and compare with the image in commons
+        imageList = finna_record['records'][0]['images']
+        if (len(imageList) == 0):
+            print("no images for item")
+            continue
+        if (len(imageList) > 1):
+            print("Multiple images for same item: " + str(len(imageList)))
+            #for img in imageList:
+            # select right image..
+
 
         # Confirm that images are same using imagehash
-
         finna_thumbnail_url="https://finna.fi" + imagesExtended['urls']['small']
         commons_thumbnail_url=file_page.get_file_url(url_width=500)
 
