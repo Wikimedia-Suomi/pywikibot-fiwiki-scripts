@@ -200,7 +200,7 @@ pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsink
 
 
 rowcount = 1
-rowlimit = 10
+rowlimit = 50
 
 for page in pages:
     if page.namespace() != 6:  # 6 is the namespace ID for files
@@ -231,11 +231,11 @@ for page in pages:
         finna_record = get_finna_record(finna_id)
 
         if (finna_record['status'] != 'OK'):
-            print("Skipping (status not OK): " + finnaid + " status: " + finna_record['status'])
+            print("Skipping (status not OK): " + finna_id + " status: " + finna_record['status'])
             continue
 
         if (finna_record['resultCount'] != 1):
-            print("Skipping (result not 1): " + finnaid + " count: " + str(finna_record['resultCount']))
+            print("Skipping (result not 1): " + finna_id + " count: " + str(finna_record['resultCount']))
             continue
 
         # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
@@ -302,6 +302,12 @@ for page in pages:
         finna_record_url = "https://finna.fi/Record/" + finna_id
 
         # note! 'original' might point to different image than used above! different server in some cases
+        hires = imagesExtended['highResolution']
+
+        # there is at least one case where this is not available?
+        if "original" not in hires:
+            print("WARN: 'original' not found hires image, skipping: " + finna_id)
+            continue
         hires = imagesExtended['highResolution']['original'][0]
 
         # verify finna image really is in better resolution than what is in commons
