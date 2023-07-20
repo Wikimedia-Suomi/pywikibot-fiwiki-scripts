@@ -102,45 +102,41 @@ def get_finna_record(id):
         print("Finna API query failed: " + url)
         exit(1)
 
-# Perceptual hashing 
-# http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
-
-def calculate_phash(im):
-    hash = imagehash.phash(im)
-    hash_int=int(str(hash),16)
-    return hash_int
-
-# difference hashing
-# http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
-
-def calculate_dhash(im):
-    hash = imagehash.dhash(im)
-    hash_int=int(str(hash),16)
-    return hash_int
+# convert string to base 16 integer for calculating difference
+def converthashtoint(h, base=16):
+    return int(str(h), base)
 
 # Compares if the image is same using similarity hashing
 # method is to convert images to 64bit integers and then
 # calculate hamming distance. 
+#
+# Perceptual hashing 
+# http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
+# difference hashing
+# http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
+#
+def is_same_image(img1, img2):
 
-def is_same_image(url1, url2):
+    phash1 = imagehash.phash(img1)
+    dhash1 = imagehash.dhash(img1)
+    phash1_int = converthashtoint(phash1)
+    dhash1_int = converthashtoint(dhash1)
 
-    # Open the image1 with Pillow
-    im1 = Image.open(urllib.request.urlopen(url1))
-    phash1_int=calculate_phash(im1)
-    dhash1_int=calculate_dhash(im1)
-
-    # Open the image2 with Pillow
-    im2 = Image.open(urllib.request.urlopen(url2))
-    phash2_int=calculate_phash(im2)
-    dhash2_int=calculate_dhash(im2)
+    phash2 = imagehash.phash(img2)
+    dhash2 = imagehash.dhash(img2)
+    phash2_int = converthashtoint(phash2)
+    dhash2_int = converthashtoint(dhash2)
 
     # Hamming distance difference
     phash_diff = bin(phash1_int ^ phash2_int).count('1')
     dhash_diff = bin(dhash1_int ^ dhash2_int).count('1') 
 
     # print hamming distance
-    print("Phash diff: " + str(phash_diff))
-    print("Dhash diff: " + str(dhash_diff))
+    if (phash_diff == 0 and dhash_diff == 0):
+        print("Both hashes are equal")
+    else:
+        print("Phash diff: " + str(phash_diff) + ", image1: " + str(phash1) + ", image2: " + str(phash2))
+        print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(dhash1) + ", image2: " + str(dhash2))
 
     # max distance for same is that least one is 0 and second is max 3
 
@@ -151,14 +147,22 @@ def is_same_image(url1, url2):
     else:
         return False
 
-def download_and_convert_tiff_to_jpg(url):
-    response = requests.get(url, stream=True)
-    response.raise_for_status()
-                            
-    tiff_image = Image.open(io.BytesIO(response.content))
+def convert_tiff_to_jpg(tiff_image):
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as fp:
         tiff_image.convert('RGB').save(fp, "JPEG", quality=95)
     return fp.name    
+
+# note: commons at least once has thrown error due to client policy?
+# "Client Error: Forbidden. Please comply with the User-Agent policy"
+# keep an eye out for problems..
+def downloadimage(url):
+    headers={'User-Agent': 'pywikibot'}
+    # Image.open(urllib.request.urlopen(url, headers=headers))
+
+    response = requests.get(url, headers=headers, stream=True)
+    response.raise_for_status()
+                            
+    return Image.open(io.BytesIO(response.content))
 
 # ----- /FinnaData
 
@@ -501,8 +505,8 @@ for page in pages:
  
     # kuvasiskot has "musketti" as part of identier, alternatively "museovirasto" may be used in some cases
     if (finnaid.find("musketti") < 0 and finnaid.find("museovirasto") < 0):
-        print("Skipping. " + page.title() + " - not appropriate id: " + finnaid)
-        continue
+        print("WARN: unexpected id in: " + page.title() + ", id: " + finnaid)
+        #continue
         
     if (len(finnaid) >= 50):
         print("WARN: finna id in " + page.title() + " is unusually long? bug or garbage in url? ")
@@ -530,8 +534,8 @@ for page in pages:
         if (len(finnasource) > 0):
             finnaurl = geturlfromsource(finnasource)
             if (finnaurl == ""):
-                print("WARN: could not parse finna url from source in " + page.title() + " , skipping, source: " + finnasource)
-                continue
+                print("WARN: could not parse finna url from source in " + page.title() + ", source: " + finnasource)
+                #continue
     
         # obsolete id -> try to fetch page and locate current ID
         finnaid = parsemetaidfromfinnapage(sourceurl)
@@ -542,8 +546,8 @@ for page in pages:
             print("new finna ID found: " + finnaid)
             sourceurl = "https://www.finna.fi/Record/" + finnaid
         else:
-            print("WARN: unexpected finna id in " + page.title() + " , skipping, id from finna: " + finnaid)
-            continue
+            print("WARN: unexpected finna id in " + page.title() + ", id from finna: " + finnaid)
+            #continue
 
     finna_record = get_finna_record(finnaid)
     if (finna_record['status'] != 'OK'):
@@ -565,18 +569,25 @@ for page in pages:
         if coll in d_labeltoqcode:
             collectionqcodes.append(d_labeltoqcode[coll])
 
-    # Test copyright
+    # Test copyright (old field: rights, but request has imageRights?)
+    # imageRights = finna_record['records'][0]['imageRights']
     imagesExtended = finna_record['records'][0]['imagesExtended'][0]
     if (imagesExtended['rights']['copyright'] != "CC BY 4.0"):
         print("Incorrect copyright: " + imagesExtended['rights']['copyright'])
         continue
 
     # Confirm that images are same using imagehash
+
+    # get image from commons for comparison
+    commons_thumbnail_url = file_page.get_file_url(url_width=500)
+    commons_thumb = downloadimage(commons_thumbnail_url)
+
+    # get image from finna for comparison
     finna_thumbnail_url = "https://finna.fi" + imagesExtended['urls']['small']
-    commons_thumbnail_url = filepage.get_file_url(url_width=500)
+    finna_thumb = downloadimage(finna_thumbnail_url)
 
     # Test if image is same using similarity hashing
-    if not is_same_image(finna_thumbnail_url, commons_thumbnail_url):
+    if not is_same_image(finna_thumb, commons_thumb):
         print("Not same image, skipping: " + finnaid)
         continue
 
