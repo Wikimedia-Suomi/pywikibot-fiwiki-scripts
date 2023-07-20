@@ -429,10 +429,11 @@ commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 
 # get list of pages upto depth of 1 
-pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki")
 
 rowcount = 1
-rowlimit = 500
+rowlimit = 10
 
 for page in pages:
     # 14 is category -> recurse into subcategories
@@ -579,7 +580,7 @@ for page in pages:
     # Confirm that images are same using imagehash
 
     # get image from commons for comparison
-    commons_thumbnail_url = file_page.get_file_url(url_width=500)
+    commons_thumbnail_url = filepage.get_file_url(url_width=500)
     commons_thumb = downloadimage(commons_thumbnail_url)
 
     # get image from finna for comparison
