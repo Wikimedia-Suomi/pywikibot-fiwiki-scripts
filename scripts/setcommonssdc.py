@@ -511,6 +511,10 @@ for page in pages:
     if (finnaid.find("profium.com") > 0):
         print("WARN: unusable url (redirector) in: " + page.title() + ", id: " + finnaid)
         continue
+
+    if (len(finnaid) == 0):
+        print("Could not find a finna id in " + page.title() + ", skipping.")
+        continue
         
     if (len(finnaid) >= 50):
         print("WARN: finna id in " + page.title() + " is unusually long? bug or garbage in url? ")
@@ -596,7 +600,9 @@ for page in pages:
         continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
-    # note: this causes exception if page isn't made yet, see alternative
+    # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
+    # repo == site == commonssite
+    #testitem = pywikibot.ItemPage(commonssite, 'Q1') # test something like this?
     wditem = page.data_item()  # Get the data item associated with the page
     data = wditem.get() # all the properties in json-format
     
