@@ -194,7 +194,10 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
-pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
+#pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
+
+pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki")
+
 
 rowcount = 1
 rowlimit = 10
@@ -286,6 +289,7 @@ for page in pages:
                     match_found = True
                     need_index = True
                     finna_image_url = finna_thumbnail_url
+                    print("Matching image index: " + str(f_imgindex))
                     break
                 else:
                     f_imgindex = f_imgindex + 1
@@ -297,6 +301,7 @@ for page in pages:
         print("Matching image found: " + finna_id)
         finna_record_url = "https://finna.fi/Record/" + finna_id
 
+        # note! 'original' might point to different image than used above! different server in some cases
         hires = imagesExtended['highResolution']['original'][0]
 
         # verify finna image really is in better resolution than what is in commons
@@ -307,8 +312,10 @@ for page in pages:
         if file_info.width >= int(finnawidth) or file_info.height >= int(finnaheight):
             print("Skipping " + page.title() + ", resolution already equal or higher than finna: " + finnawidth + "x" + finnaheight)
             continue
-            
+
         # Select which file to upload.
+        # Note! 'url' might point to different server than any other url in same data!
+        # -> it might be somehow different image then as well (see 'original' above)
         local_file=False
         if hires["format"] == "tif" and file_info.mime == 'image/tiff':
             if (need_index == False):
