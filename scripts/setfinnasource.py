@@ -150,7 +150,8 @@ commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 
 # get list of pages upto depth of 1 
-pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki")
 
 rowcount = 1
 rowlimit = 10
@@ -178,6 +179,9 @@ for page in pages:
             if template.has("Source"):
                 par = template.get("Source")
                 srcvalue = str(par.value)
+                if (srcvalue.find("profium.com") > 0):
+                    print("WARN: unusable url (redirector) in: " + page.title() + ", source: " + srcvalue)
+                    break
                 if (srcvalue.find("finna.fi") < 0 and srcvalue.find("kuvakokoelmat.fi") < 0):
                     print("unknown source, skipping")
                     break
@@ -196,6 +200,9 @@ for page in pages:
             if template.has("source"):
                 par = template.get("source")
                 srcvalue = str(par.value)
+                if (srcvalue.find("profium.com") > 0):
+                    print("WARN: unusable url (redirector) in: " + page.title() + ", source: " + srcvalue)
+                    break
                 if (srcvalue.find("finna.fi") < 0 and srcvalue.find("kuvakokoelmat.fi") < 0):
                     print("unknown source, skipping")
                     break

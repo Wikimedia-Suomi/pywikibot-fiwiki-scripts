@@ -508,6 +508,9 @@ for page in pages:
     if (finnaid.find("musketti") < 0 and finnaid.find("museovirasto") < 0):
         print("WARN: unexpected id in: " + page.title() + ", id: " + finnaid)
         #continue
+    if (finnaid.find("profium.com") > 0):
+        print("WARN: unusable url (redirector) in: " + page.title() + ", id: " + finnaid)
+        continue
         
     if (len(finnaid) >= 50):
         print("WARN: finna id in " + page.title() + " is unusually long? bug or garbage in url? ")
