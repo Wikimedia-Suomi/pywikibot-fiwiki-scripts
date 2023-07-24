@@ -405,7 +405,8 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
         for subcat in subcats:
             subpages = commonssite.categorymembers(subcat)
             for subpage in subpages:
-                pages.append(subpage)
+                if subpage not in pages: # avoid duplicates
+                    pages.append(subpage)
 
     return pages
 
