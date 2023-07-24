@@ -410,6 +410,19 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 
     return pages
 
+# brute force check if wikibase exists for structured data:
+# need to add it manually for now if it doesn't
+def doessdcbaseexist(page):
+    try:
+        wditem = page.data_item()  # Get the data item associated with the page
+        #if (wditem.exists() == False):
+        data = wditem.get() # all the properties in json-format
+        return True # no exception -> ok, we can use it
+    except:
+        print("failed to retrieve finna page")
+
+    return False
+
 # ------ main()
 
 # TODO: check wikidata for correct qcodes
@@ -434,7 +447,7 @@ commonssite.login()
 pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki")
 
 rowcount = 1
-rowlimit = 10
+rowlimit = 100
 
 for page in pages:
     # 14 is category -> recurse into subcategories
@@ -604,6 +617,9 @@ for page in pages:
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
     # repo == site == commonssite
     #testitem = pywikibot.ItemPage(commonssite, 'Q1') # test something like this?
+    if (doessdcbaseexist(page) == False):
+        print("Wikibase item does not yet exist for: " + page.title() + ", id: " + finnaid)
+        continue
     wditem = page.data_item()  # Get the data item associated with the page
     data = wditem.get() # all the properties in json-format
     
