@@ -444,7 +444,7 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
-pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki")
+pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 
 rowcount = 1
 rowlimit = 100
@@ -581,7 +581,17 @@ for page in pages:
         continue
 
     print("finna record ok: " + finnaid)
-        
+
+    if "records" not in finna_record:
+        print("WARN: 'records' not found in finna record, skipping: " + finnaid)
+        continue
+    if (len(finna_record['records']) == 0):
+        print("WARN: empty array of 'records' for finna record, skipping: " + finnaid)
+        continue
+    if "collections" not in finna_record['records'][0]:
+        print("WARN: 'collections' not found in finna record, skipping: " + finnaid)
+        continue
+
     # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
     finna_collections = finna_record['records'][0]['collections']
     
@@ -590,6 +600,10 @@ for page in pages:
     for coll in finna_collections:
         if coll in d_labeltoqcode:
             collectionqcodes.append(d_labeltoqcode[coll])
+
+    if "imagesExtended" not in finna_record['records'][0]:
+        print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
+        continue
 
     # Test copyright (old field: rights, but request has imageRights?)
     # imageRights = finna_record['records'][0]['imageRights']
@@ -695,21 +709,21 @@ for page in pages:
 
     #pywikibot.info('----')
     #pywikibot.showDiff(oldtext, newtext,2)
-    summary='Adding structured data to file'
-    pywikibot.info('Edit summary: {}'.format(summary))
+    #summary='Adding structured data to file'
+    #pywikibot.info('Edit summary: {}'.format(summary))
 
-    question='Do you want to accept these changes?'
-    choice = pywikibot.input_choice(
-                question,
-                [('Yes', 'y'),('No', 'N'),('Quit', 'q')],
-                default='N',
-                automatic_quit=False
-            )
+    #question='Do you want to accept these changes?'
+    #choice = pywikibot.input_choice(
+    #            question,
+    #            [('Yes', 'y'),('No', 'N'),('Quit', 'q')],
+    #            default='N',
+    #            automatic_quit=False
+    #        )
 
-    pywikibot.info(choice)
-    if choice == 'q':
-        print("Asked to exit. Exiting.")
-        exit()
+    #pywikibot.info(choice)
+    #if choice == 'q':
+    #    print("Asked to exit. Exiting.")
+    #    exit()
 
     #if choice == 'y':
         # script setfinnasource is used for this
@@ -726,8 +740,8 @@ for page in pages:
             #commonssite.addClaim(wditem, finna_claim)
 
     # don't try too many at once
-    if (rowcount >= rowlimit):
-        print("Limit reached")
-        exit(1)
-        break
+    #if (rowcount >= rowlimit):
+    #    print("Limit reached")
+    #    exit(1)
+    #    break
 
