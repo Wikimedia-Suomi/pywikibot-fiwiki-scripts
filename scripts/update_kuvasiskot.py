@@ -196,7 +196,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
-pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki")
+pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 
 
 rowcount = 1
@@ -306,9 +306,13 @@ for page in pages:
 
         # there is at least one case where this is not available?
         if "original" not in hires:
-            print("WARN: 'original' not found hires image, skipping: " + finna_id)
+            print("WARN: 'original' not found in hires image, skipping: " + finna_id)
             continue
         hires = imagesExtended['highResolution']['original'][0]
+
+        if "data" not in hires:
+            print("WARN: 'data' not found in hires image, skipping: " + finna_id)
+            continue
 
         # verify finna image really is in better resolution than what is in commons
         # before uploading
