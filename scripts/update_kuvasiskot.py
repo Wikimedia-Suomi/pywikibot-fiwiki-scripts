@@ -314,6 +314,9 @@ for page in pages:
         if "data" not in hires:
             print("WARN: 'data' not found in hires image, skipping: " + finna_id)
             continue
+        if "width" not in hires['data'] or "height" not in hires['data']:
+            print("WARN: 'width' or 'height' not found in hires-data for image, skipping: " + finna_id)
+            continue
 
         # verify finna image really is in better resolution than what is in commons
         # before uploading
