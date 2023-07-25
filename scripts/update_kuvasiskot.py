@@ -188,13 +188,22 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 
     return pages
 
+# check for list of images we are forbidden from changing (403 error)
+def isblockedimage(page):
+    pagename = str(page)
+    if (pagename.find("Dubrovnik Lounge & Lobby") >= 0):
+        return True
+
+    return False
+
 def getlinkedpages(pywikibot, commonssite):
     listpage = pywikibot.Page(commonssite, 'user:FinnaUploadBot/filelist')  # The page you're interested in
 
     pages = list()
     # Get all linked pages from the page
     for linked_page in listpage.linkedPages():
-        if linked_page not in pages: # avoid duplicates
+        # avoid duplicates and those we are blocked from modifying (403 error)
+        if linked_page not in pages and isblockedimage(linked_page) == False: 
             pages.append(linked_page)
 
     return pages
@@ -229,7 +238,7 @@ for page in pages:
         print("Skipping " + page.title() + ", width or height over 2000")
         continue
 
-    print(page.title())
+    print(" -- [ " + page.title() + " ] --")
 
     # Find ids used in Finna
     finna_ids=get_finna_ids(page)
