@@ -212,7 +212,7 @@ commonssite.login()
 pages = getlinkedpages(pywikibot, commonssite)
 
 rowcount = 1
-rowlimit = 50
+rowlimit = 100
 
 for page in pages:
     if page.namespace() != 6:  # 6 is the namespace ID for files
@@ -279,10 +279,6 @@ for page in pages:
             print("Incorrect copyright: " + imagesExtended['rights']['copyright'])
             continue
 
-        # get image from commons for comparison
-        commons_thumbnail_url = file_page.get_file_url(url_width=500)
-        commons_thumb = downloadimage(commons_thumbnail_url)
-
         finna_image_url = ""
         need_index = False
         match_found = False
@@ -294,6 +290,10 @@ for page in pages:
             print("no images for item")
 
         if (len(imageList) == 1):
+            # get image from commons for comparison
+            commons_thumbnail_url = file_page.get_file_url(url_width=500)
+            commons_thumb = downloadimage(commons_thumbnail_url)
+        
             finna_thumbnail_url = "https://finna.fi" + imagesExtended['urls']['small']
             finna_thumb = downloadimage(finna_thumbnail_url)
             
@@ -301,20 +301,31 @@ for page in pages:
             if (is_same_image(finna_thumb, commons_thumb) == True):
                 match_found = True
                 finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
+                #finna_image = downloadimage(finna_image_url)
+
+                # get full image for further comparison
+                commons_image_url = file_page.get_file_url()
+                commons_image = downloadimage(commons_image_url)
 
         if (len(imageList) > 1):
+            # multiple images in finna related to same item -> 
+            # need to pick the one that is closest match
             print("Multiple images for same item: " + str(len(imageList)))
+
+            # get image from commons for comparison:
+            # try to use same size
+            commons_image_url = file_page.get_file_url()
+            commons_image = downloadimage(commons_image_url)
             
             f_imgindex = 0
             for img in imageList:
-                finna_thumbnail_url = "https://finna.fi" + img
-                finna_thumb = downloadimage(finna_thumbnail_url)
+                finna_image_url = "https://finna.fi" + img
+                finna_image = downloadimage(finna_image_url)
 
                 # Test if image is same using similarity hashing
-                if (is_same_image(finna_thumb, commons_thumb) == True):
+                if (is_same_image(finna_image, commons_image) == True):
                     match_found = True
                     need_index = True
-                    finna_image_url = finna_thumbnail_url
                     print("Matching image index: " + str(f_imgindex))
                     break
                 else:
@@ -380,13 +391,20 @@ for page in pages:
 
         # can't upload if identical to the one in commons:
         # compare hash of converted image if necessary,
-        # otherwise get full image for both (not thumbnails)
-        #if (local_file == False):
-            #finna_image = downloadimage(image_file_name)
-        #commons_image = downloadimage(commons_thumbnail_url)
-        #if (isidentical(image_file_name, commons_image) == True):
-            #print("Images are identical files, skipping: " + finna_id)
-            #continue
+        # need to compare full image for both (not thumbnails)
+        if (local_file == False):
+            # get full image before trying to upload:
+            # code above might have switched to another
+            # from multiple different images
+            local_image = downloadimage(finna_image_url)
+            if (isidentical(local_image, commons_image) == True):
+                print("Images are identical files, skipping: " + finna_id)
+                continue
+        else:
+            converted_image = Image.open(image_file_name)
+            if (isidentical(converted_image, commons_image) == True):
+                print("Images are identical files, skipping: " + finna_id)
+                continue
 
         comment = "Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
         print(comment)
