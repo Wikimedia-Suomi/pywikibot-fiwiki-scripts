@@ -410,6 +410,17 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 
     return pages
 
+def getlinkedpages(pywikibot, commonssite):
+    listpage = pywikibot.Page(commonssite, 'user:FinnaUploadBot/filelist')  # The page you're interested in
+
+    pages = list()
+    # Get all linked pages from the page
+    for linked_page in listpage.linkedPages():
+        if linked_page not in pages: # avoid duplicates
+            pages.append(linked_page)
+
+    return pages
+
 # brute force check if wikibase exists for structured data:
 # need to add it manually for now if it doesn't
 def doessdcbaseexist(page):
@@ -444,7 +455,9 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
-pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
+#pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
+
+pages = getlinkedpages(pywikibot, commonssite)
 
 rowcount = 1
 rowlimit = 100
@@ -550,7 +563,7 @@ for page in pages:
     print("finna ID found: " + finnaid)
     sourceurl = "https://www.finna.fi/Record/" + finnaid
 
-    if (finnaid.find("musketti") >= 0):
+    if (finnaid.find("musketti") >= 0 or finnaid.find("hkm.HKM") >= 0):
         # check if the source has something other than url in it as well..
         # if it has some human-readable things try to parse real url
         if (len(finnasource) > 0):
@@ -564,7 +577,7 @@ for page in pages:
         if (finnaid == ""):
             print("WARN: could not parse current finna id in " + page.title() + " , skipping, url: " + sourceurl)
             continue
-        if (finnaid.find("museovirasto.") == 0):
+        if (finnaid.find("museovirasto.") == 0 or finnaid.find("hkm.") == 0):
             print("new finna ID found: " + finnaid)
             sourceurl = "https://www.finna.fi/Record/" + finnaid
         else:

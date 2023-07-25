@@ -144,6 +144,17 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 
     return pages
 
+def getlinkedpages(pywikibot, commonssite):
+    listpage = pywikibot.Page(commonssite, 'user:FinnaUploadBot/filelist')  # The page you're interested in
+
+    pages = list()
+    # Get all linked pages from the page
+    for linked_page in listpage.linkedPages():
+        if linked_page not in pages: # avoid duplicates
+            pages.append(linked_page)
+
+    return pages
+
 # ------ main()
 
 # site = pywikibot.Site("fi", "wikipedia")
@@ -152,7 +163,9 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
-pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki")
+#pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
+
+pages = getlinkedpages(pywikibot, commonssite)
 
 rowcount = 1
 rowlimit = 10
