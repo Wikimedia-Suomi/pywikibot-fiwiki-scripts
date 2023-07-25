@@ -555,6 +555,10 @@ for page in pages:
         finnaid = leftfrom(finnaid, "?")
         finnaid = leftfrom(finnaid, "&")
         print("note: finna id in " + page.title() + " is " + finnaid)
+
+    if (finnaid.find("\n") > 0 
+        print("WARN: removing newline from: " + page.title())
+        finnaid = leftfrom(finnaid, "\n")
         
     if (finnaid.endswith("\n")):
         print("WARN: finna id in " + page.title() + " ends with newline ")
@@ -577,6 +581,10 @@ for page in pages:
         if (finnaid == ""):
             print("WARN: could not parse current finna id in " + page.title() + " , skipping, url: " + sourceurl)
             continue
+        if (finnaid.find("\n") > 0 
+            finnaid = leftfrom(finnaid, "\n")
+            print("WARN: removed newline from new finna id for: " + page.title() + ", " + finnaid )
+           
         if (finnaid.find("museovirasto.") == 0 or finnaid.find("hkm.") == 0):
             print("new finna ID found: " + finnaid)
             sourceurl = "https://www.finna.fi/Record/" + finnaid
