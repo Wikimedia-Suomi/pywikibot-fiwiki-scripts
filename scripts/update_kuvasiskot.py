@@ -250,11 +250,25 @@ for page in pages:
             print("Skipping (result not 1): " + finna_id + " count: " + str(finna_record['resultCount']))
             continue
 
+        if "records" not in finna_record:
+            print("WARN: 'records' not found in finna record, skipping: " + finna_id)
+            continue
+        if (len(finna_record['records']) == 0):
+            print("WARN: empty array of 'records' for finna record, skipping: " + finna_id)
+            continue
+        if "collections" not in finna_record['records'][0]:
+            print("WARN: 'collections' not found in finna record, skipping: " + finna_id)
+            continue
+
         # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
         # skip coins in "Antellin kokoelma" as hashes will be too similar
         finna_collections = finna_record['records'][0]['collections']
         if ("Antellin kokoelma" in finna_collections):
             print("Skipping collection (can't match by hash due similarities): " + finna_id)
+            continue
+
+        if "imagesExtended" not in finna_record['records'][0]:
+            print("WARN: 'imagesExtended' not found in finna record, skipping: " + finna_id)
             continue
 
         imagesExtended = finna_record['records'][0]['imagesExtended'][0]
