@@ -455,9 +455,9 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
-#pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
+pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 
-pages = getlinkedpages(pywikibot, commonssite)
+#pages = getlinkedpages(pywikibot, commonssite)
 
 rowcount = 1
 rowlimit = 100
@@ -556,7 +556,7 @@ for page in pages:
         finnaid = leftfrom(finnaid, "&")
         print("note: finna id in " + page.title() + " is " + finnaid)
 
-    if (finnaid.find("\n") > 0 
+    if (finnaid.find("\n") > 0):
         print("WARN: removing newline from: " + page.title())
         finnaid = leftfrom(finnaid, "\n")
         
@@ -581,7 +581,7 @@ for page in pages:
         if (finnaid == ""):
             print("WARN: could not parse current finna id in " + page.title() + " , skipping, url: " + sourceurl)
             continue
-        if (finnaid.find("\n") > 0 
+        if (finnaid.find("\n") > 0):
             finnaid = leftfrom(finnaid, "\n")
             print("WARN: removed newline from new finna id for: " + page.title() + ", " + finnaid )
            
