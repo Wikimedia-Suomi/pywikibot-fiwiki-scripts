@@ -348,6 +348,47 @@ def addcollectiontostatements(pywikibot, wikidata_site, collection):
     coll_claim.setTarget(qualifier_targetcoll)
     return coll_claim
 
+# https&#x3A;&#x2F;&#x2F;api.finna.fi&#x2F;v1&#x2F;record&#x3F;id&#x3D;
+def parseapiidfromfinnapage(finnapage):
+    index = finnapage.find(';api.finna.fi&')
+    if (index < 0):
+        return ""
+    finnapage = finnapage[index:]        
+
+    index = finnapage.find('id')
+    if (index < 0):
+        return ""
+    index = finnapage.find('&#x3D;')
+    if (index < 0):
+        return ""
+    index = index + len("&#x3D;")
+    finnapage = finnapage[index:]
+    
+    indexend = finnapage.find('&amp')
+    if (indexend < 0):
+        indexend = finnapage.find('&')
+        if (indexend < 0):
+            indexend = finnapage.find('"')
+            if (indexend < 0):
+                indexend = finnapage.find('>')
+                if (indexend < 0):
+                    return ""
+    finnapage = finnapage[:indexend]
+    return finnapage
+
+def parsedatarecordidfromfinnapage(finnapage):
+    attrlen = len('data-record-id="')
+    indexid = finnapage.find('data-record-id="')
+    if (indexid < 0):
+        return ""
+        
+    indexid = indexid+attrlen
+    indexend = finnapage.find('"', indexid)
+    if (indexend < 0):
+        return ""
+
+    return finnapage[indexid:indexend]
+
 # fetch metapage from finna and try to parse current ID from the page
 # since we might have obsolete ID.
 # new ID is needed API query.
@@ -377,18 +418,15 @@ def parsemetaidfromfinnapage(finnaurl):
     #except:
         #print("failed to retrieve finna page")
         #return ""
-        
-    attrlen = len('data-record-id="')
-    indexid = finnapage.find('data-record-id="')
-    if (indexid < 0):
-        return ""
-        
-    indexid = indexid+attrlen
-    indexend = finnapage.find('"', indexid)
-    if (indexend < 0):
-        return ""
 
-    return finnapage[indexid:indexend]
+    # try a new method to parse the id..
+    newid = parseapiidfromfinnapage(finnapage)
+    if (len(newid) > 0):
+        print("new id from finna: " + newid)
+        return newid
+
+    # try alternate attribute or give up: this doesn't exist in every page
+    return parsedatarecordidfromfinnapage(finnapage)
 
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
@@ -430,7 +468,7 @@ def doessdcbaseexist(page):
         data = wditem.get() # all the properties in json-format
         return True # no exception -> ok, we can use it
     except:
-        print("failed to retrieve finna page")
+        print("failed to retrieve structured data")
 
     return False
 
@@ -455,12 +493,14 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
-pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
-
+#pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getlinkedpages(pywikibot, commonssite)
 
+
+pages = getcatpages(pywikibot, commonssite, "Botanists from Finland")
+
 rowcount = 1
-rowlimit = 100
+rowlimit = 10
 
 for page in pages:
     # 14 is category -> recurse into subcategories
