@@ -171,6 +171,55 @@ def downloadimage(url):
                             
     return Image.open(io.BytesIO(response.content))
 
+# strip id from other things that may be after it:
+# there might be part of url or some html in same field..
+def stripid(oldsource):
+    # space after url?
+    indexend = oldsource.find(" ")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # html tag after url?
+    indexend = oldsource.find("<")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find(">")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # wikimarkup after url?
+    indexend = oldsource.find("[")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("]")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("{")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("}")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # some parameters in url?
+    indexend = oldsource.find("&")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("#")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # some parameters in url?
+    indexend = oldsource.find("?")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # linefeed at end?
+    if (oldsource.endswith("\n")):
+        oldsource = oldsource[:len(oldsource)-1]
+
+    return oldsource
+
 # if there's garbage in id, strip to where it ends
 def leftfrom(string, char):
     index = string.find(char)
@@ -265,17 +314,15 @@ for page in pages:
 
     for finnaid in finna_ids:
 
-        if (finnaid.find("?") > 0 or finnaid.find("&") > 0 or finnaid.find("<") > 0 or finnaid.find("#") > 0):
+        if (finnaid.find("?") > 0 or finnaid.find("&") > 0 or finnaid.find("<") > 0 or finnaid.find(">") > 0 or finnaid.find("#") > 0 or finnaid.find("[") > 0 or finnaid.find("]") > 0 or finnaid.find("{") > 0 or finnaid.find("}") > 0):
             print("WARN: finna id in " + page.title() + " has unexpected characters, bug or garbage in url? ")
             
             # strip pointless parts if any
-            finnaid = leftfrom(finnaid, "<")
-            finnaid = leftfrom(finnaid, "?")
-            finnaid = leftfrom(finnaid, "&")
-            finnaid = leftfrom(finnaid, "#")
-    
-        finna_record = get_finna_record(finnaid)
+            finnaid = stripid(finnaid)
+            print("note: finna id in " + page.title() + " is " + finnaid)
 
+        # try to fetch metadata with finna API    
+        finna_record = get_finna_record(finnaid)
         if (finna_record['status'] != 'OK'):
             print("Skipping (status not OK): " + finnaid + " status: " + finna_record['status'])
             continue

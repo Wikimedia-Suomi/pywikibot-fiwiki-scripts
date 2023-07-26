@@ -23,9 +23,29 @@ def stripid(oldsource):
     indexend = oldsource.find("<")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
+    indexend = oldsource.find(">")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # wikimarkup after url?
+    indexend = oldsource.find("[")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("]")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("{")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("}")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
 
     # some parameters in url?
     indexend = oldsource.find("&")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("#")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
@@ -34,6 +54,7 @@ def stripid(oldsource):
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
+    # linefeed at end?
     if (oldsource.endswith("\n")):
         oldsource = oldsource[:len(oldsource)-1]
 
@@ -168,7 +189,7 @@ commonssite.login()
 pages = getlinkedpages(pywikibot, commonssite)
 
 rowcount = 1
-rowlimit = 10
+#rowlimit = 10
 
 for page in pages:
     if page.namespace() != 6:  # 6 is the namespace ID for files

@@ -178,9 +178,29 @@ def stripid(oldsource):
     indexend = oldsource.find("<")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
+    indexend = oldsource.find(">")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # wikimarkup after url?
+    indexend = oldsource.find("[")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("]")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("{")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("}")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
 
     # some parameters in url?
     indexend = oldsource.find("&")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("#")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
@@ -189,6 +209,7 @@ def stripid(oldsource):
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
+    # linefeed at end?
     if (oldsource.endswith("\n")):
         oldsource = oldsource[:len(oldsource)-1]
 
@@ -586,14 +607,13 @@ for page in pages:
         print("WARN: finna id in " + page.title() + " is unusually long? bug or garbage in url? ")
     if (len(finnaid) <= 5):
         print("WARN: finna id in " + page.title() + " is unusually short? bug or garbage in url? ")
-    if (finnaid.find("?") > 0 or finnaid.find("&") > 0 or finnaid.find("<") > 0):
+    if (finnaid.find("?") > 0 or finnaid.find("&") > 0 or finnaid.find("<") > 0 or finnaid.find(">") > 0 or finnaid.find("#") > 0 or finnaid.find("[") > 0 or finnaid.find("]") > 0 or finnaid.find("{") > 0 or finnaid.find("}") > 0):
         print("WARN: finna id in " + page.title() + " has unexpected characters, bug or garbage in url? ")
         
-        # strip pointless parts if any
-        finnaid = leftfrom(finnaid, "<")
-        finnaid = leftfrom(finnaid, "?")
-        finnaid = leftfrom(finnaid, "&")
+        # remove strange charaters and stuff after if any
+        finnaid = stripid(finnaid)
         print("note: finna id in " + page.title() + " is " + finnaid)
+
 
     if (finnaid.find("\n") > 0):
         print("WARN: removing newline from: " + page.title())
