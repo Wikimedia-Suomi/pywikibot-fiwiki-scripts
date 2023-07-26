@@ -171,6 +171,14 @@ def downloadimage(url):
                             
     return Image.open(io.BytesIO(response.content))
 
+# if there's garbage in id, strip to where it ends
+def leftfrom(string, char):
+    index = string.find(char)
+    if (index > 0):
+        return string[:index]
+
+    return string
+
 # get pages immediately under cat
 # and upto depth of 1 in subcats
 def getcatpages(pywikibot, commonssite, maincat, recurse=False):
@@ -220,8 +228,8 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 pages = getlinkedpages(pywikibot, commonssite)
 
-rowcount = 1
-rowlimit = 100
+#rowcount = 1
+#rowlimit = 100
 
 for page in pages:
     if page.namespace() != 6:  # 6 is the namespace ID for files
@@ -248,36 +256,46 @@ for page in pages:
         print("Skipping " + page.title() + " (no known finna ID)")
         continue
 
-    for finna_id in finna_ids:
-        finna_record = get_finna_record(finna_id)
+    for finnaid in finna_ids:
+
+        if (finnaid.find("?") > 0 or finnaid.find("&") > 0 or finnaid.find("<") > 0 or finnaid.find("#") > 0):
+            print("WARN: finna id in " + page.title() + " has unexpected characters, bug or garbage in url? ")
+            
+            # strip pointless parts if any
+            finnaid = leftfrom(finnaid, "<")
+            finnaid = leftfrom(finnaid, "?")
+            finnaid = leftfrom(finnaid, "&")
+            finnaid = leftfrom(finnaid, "#")
+    
+        finna_record = get_finna_record(finnaid)
 
         if (finna_record['status'] != 'OK'):
-            print("Skipping (status not OK): " + finna_id + " status: " + finna_record['status'])
+            print("Skipping (status not OK): " + finnaid + " status: " + finna_record['status'])
             continue
 
         if (finna_record['resultCount'] != 1):
-            print("Skipping (result not 1): " + finna_id + " count: " + str(finna_record['resultCount']))
+            print("Skipping (result not 1): " + finnaid + " count: " + str(finna_record['resultCount']))
             continue
 
         if "records" not in finna_record:
-            print("WARN: 'records' not found in finna record, skipping: " + finna_id)
+            print("WARN: 'records' not found in finna record, skipping: " + finnaid)
             continue
         if (len(finna_record['records']) == 0):
-            print("WARN: empty array of 'records' for finna record, skipping: " + finna_id)
+            print("WARN: empty array of 'records' for finna record, skipping: " + finnaid)
             continue
         if "collections" not in finna_record['records'][0]:
-            print("WARN: 'collections' not found in finna record, skipping: " + finna_id)
+            print("WARN: 'collections' not found in finna record, skipping: " + finnaid)
             continue
 
         # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
         # skip coins in "Antellin kokoelma" as hashes will be too similar
         finna_collections = finna_record['records'][0]['collections']
         if ("Antellin kokoelma" in finna_collections):
-            print("Skipping collection (can't match by hash due similarities): " + finna_id)
+            print("Skipping collection (can't match by hash due similarities): " + finnaid)
             continue
 
         if "imagesExtended" not in finna_record['records'][0]:
-            print("WARN: 'imagesExtended' not found in finna record, skipping: " + finna_id)
+            print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
             continue
 
         imagesExtended = finna_record['records'][0]['imagesExtended'][0]
@@ -341,26 +359,26 @@ for page in pages:
                     f_imgindex = f_imgindex + 1
 
         if (match_found == False):
-            print("No matching image found, skipping: " + finna_id)
+            print("No matching image found, skipping: " + finnaid)
             continue
 
-        print("Matching image found: " + finna_id)
-        finna_record_url = "https://finna.fi/Record/" + finna_id
+        print("Matching image found: " + finnaid)
+        finna_record_url = "https://finna.fi/Record/" + finnaid
 
         # note! 'original' might point to different image than used above! different server in some cases
         hires = imagesExtended['highResolution']
 
         # there is at least one case where this is not available?
         if "original" not in hires:
-            print("WARN: 'original' not found in hires image, skipping: " + finna_id)
+            print("WARN: 'original' not found in hires image, skipping: " + finnaid)
             continue
         hires = imagesExtended['highResolution']['original'][0]
 
         if "data" not in hires:
-            print("WARN: 'data' not found in hires image, skipping: " + finna_id)
+            print("WARN: 'data' not found in hires image, skipping: " + finnaid)
             continue
         if "width" not in hires['data'] or "height" not in hires['data']:
-            print("WARN: 'width' or 'height' not found in hires-data for image, skipping: " + finna_id)
+            print("WARN: 'width' or 'height' not found in hires-data for image, skipping: " + finnaid)
             continue
 
         # verify finna image really is in better resolution than what is in commons
@@ -407,12 +425,12 @@ for page in pages:
             # from multiple different images
             local_image = downloadimage(finna_image_url)
             if (isidentical(local_image, commons_image) == True):
-                print("Images are identical files, skipping: " + finna_id)
+                print("Images are identical files, skipping: " + finnaid)
                 continue
         else:
             converted_image = Image.open(image_file_name)
             if (isidentical(converted_image, commons_image) == True):
-                print("Images are identical files, skipping: " + finna_id)
+                print("Images are identical files, skipping: " + finnaid)
                 continue
 
         comment = "Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
@@ -428,9 +446,9 @@ for page in pages:
             os.unlink(image_file_name)
 
         # don't try too many at once
-        if (rowcount >= rowlimit):
-            print("Limit reached")
-            exit(1)
-            break
-        rowcount += 1
+        #if (rowcount >= rowlimit):
+        #    print("Limit reached")
+        #    exit(1)
+        #    break
+        #rowcount += 1
 
