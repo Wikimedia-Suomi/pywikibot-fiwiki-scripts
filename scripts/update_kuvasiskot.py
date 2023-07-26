@@ -439,6 +439,10 @@ for page in pages:
             if (isidentical(converted_image, commons_image) == True):
                 print("Images are identical files, skipping: " + finnaid)
                 continue
+            # at least one image fails in conversion, see if there are others
+            if (is_same_image(converted_image, commons_image) == False):
+                print("ERROR! Images are NOT same after conversion! " + finnaid)
+                exit(1)
 
         comment = "Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
         print(comment)
