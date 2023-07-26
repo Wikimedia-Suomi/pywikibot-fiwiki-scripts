@@ -683,7 +683,7 @@ for page in pages:
 
     if (len(imageList) == 1):
         # get image from commons for comparison
-        commons_thumbnail_url = file_page.get_file_url(url_width=500)
+        commons_thumbnail_url = filepage.get_file_url(url_width=500)
         commons_thumb = downloadimage(commons_thumbnail_url)
     
         finna_thumbnail_url = "https://finna.fi" + imagesExtended['urls']['small']
@@ -706,7 +706,7 @@ for page in pages:
 
         # get image from commons for comparison:
         # try to use same size
-        commons_image_url = file_page.get_file_url()
+        commons_image_url = filepage.get_file_url()
         commons_image = downloadimage(commons_image_url)
         
         f_imgindex = 0
