@@ -191,7 +191,8 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
         for subcat in subcats:
             subpages = commonssite.categorymembers(subcat)
             for subpage in subpages:
-                if subpage not in pages: # avoid duplicates
+                # avoid duplicates and those we are blocked from modifying (403 error)
+                if subpage not in pages and isblockedimage(linked_page) == False:
                     pages.append(subpage)
 
     return pages
@@ -200,6 +201,8 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 def isblockedimage(page):
     pagename = str(page)
     if (pagename.find("Dubrovnik Lounge & Lobby") >= 0):
+        return True
+    if (pagename.find("Tuohipallo eli Rapapalli eli Meätshä.jpg") >= 0):
         return True
 
     return False
