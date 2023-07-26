@@ -494,13 +494,12 @@ commonssite.login()
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
-#pages = getlinkedpages(pywikibot, commonssite)
+pages = getlinkedpages(pywikibot, commonssite)
 
-
-pages = getcatpages(pywikibot, commonssite, "Botanists from Finland")
+#pages = getcatpages(pywikibot, commonssite, "Botanists from Finland")
 
 rowcount = 1
-rowlimit = 10
+#rowlimit = 10
 
 for page in pages:
     # 14 is category -> recurse into subcategories
@@ -655,6 +654,10 @@ for page in pages:
 
     # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
     finna_collections = finna_record['records'][0]['collections']
+
+    #if ("Antellin kokoelma" in finna_collections):
+        #print("Skipping collection (can't match by hash due similarities): " + finnaid)
+        #continue
     
     collectionqcodes = list()
     # lookup qcode by label TODO: fetch from wikidata 
@@ -673,19 +676,55 @@ for page in pages:
         print("Incorrect copyright: " + imagesExtended['rights']['copyright'])
         continue
 
-    # Confirm that images are same using imagehash
+    # 'images' can have array of multiple images, need to select correct one
+    # -> loop through them (they should have just different &index= in them)
+    # and compare with the image in commons
+    imageList = finna_record['records'][0]['images']
 
-    # get image from commons for comparison
-    commons_thumbnail_url = filepage.get_file_url(url_width=500)
-    commons_thumb = downloadimage(commons_thumbnail_url)
+    if (len(imageList) == 1):
+        # get image from commons for comparison
+        commons_thumbnail_url = file_page.get_file_url(url_width=500)
+        commons_thumb = downloadimage(commons_thumbnail_url)
+    
+        finna_thumbnail_url = "https://finna.fi" + imagesExtended['urls']['small']
+        finna_thumb = downloadimage(finna_thumbnail_url)
+        
+        # Test if image is same using similarity hashing
+        if (is_same_image(finna_thumb, commons_thumb) == True):
+            match_found = True
+            finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
+            #finna_image = downloadimage(finna_image_url)
 
-    # get image from finna for comparison
-    finna_thumbnail_url = "https://finna.fi" + imagesExtended['urls']['small']
-    finna_thumb = downloadimage(finna_thumbnail_url)
+            # get full image for further comparison
+            #commons_image_url = file_page.get_file_url()
+            #commons_image = downloadimage(commons_image_url)
 
-    # Test if image is same using similarity hashing
-    if not is_same_image(finna_thumb, commons_thumb):
-        print("Not same image, skipping: " + finnaid)
+    if (len(imageList) > 1):
+        # multiple images in finna related to same item -> 
+        # need to pick the one that is closest match
+        print("Multiple images for same item: " + str(len(imageList)))
+
+        # get image from commons for comparison:
+        # try to use same size
+        commons_image_url = file_page.get_file_url()
+        commons_image = downloadimage(commons_image_url)
+        
+        f_imgindex = 0
+        for img in imageList:
+            finna_image_url = "https://finna.fi" + img
+            finna_image = downloadimage(finna_image_url)
+
+            # Test if image is same using similarity hashing
+            if (is_same_image(finna_image, commons_image) == True):
+                match_found = True
+                need_index = True
+                print("Matching image index: " + str(f_imgindex))
+                break
+            else:
+                f_imgindex = f_imgindex + 1
+
+    if (match_found == False):
+        print("No matching image found, skipping: " + finnaid)
         continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
