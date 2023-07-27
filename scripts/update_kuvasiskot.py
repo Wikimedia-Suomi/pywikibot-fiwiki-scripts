@@ -257,6 +257,8 @@ def isblockedimage(page):
     # conversion from tiff is borked somehow -> avoid uploading for now
     if (pagename.find("Synnytyslaitoksen rakennus Tampereella.jpg") >= 0):
         return True
+    if (pagename.find("Viipurin lääninvankila 1918.jpg") >= 0):
+        return True
 
     return False
 
