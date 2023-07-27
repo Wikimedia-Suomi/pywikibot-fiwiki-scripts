@@ -701,6 +701,7 @@ for page in pages:
     # and compare with the image in commons
     imageList = finna_record['records'][0]['images']
 
+    match_found = False
     if (len(imageList) == 1):
         # get image from commons for comparison
         commons_thumbnail_url = filepage.get_file_url(url_width=500)
