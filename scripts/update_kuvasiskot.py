@@ -259,6 +259,8 @@ def isblockedimage(page):
         return True
     if (pagename.find("Viipurin lääninvankila 1918.jpg") >= 0):
         return True
+    if (pagename.find("Vilho Penttilä, Kansallis-Osake-Pankin talo, Kauppakatu 4, Tampere.jpg") >= 0):
+        return True
 
     return False
 
