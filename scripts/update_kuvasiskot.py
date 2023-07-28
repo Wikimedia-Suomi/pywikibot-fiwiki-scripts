@@ -375,6 +375,13 @@ for page in pages:
         finna_image_url = ""
         need_index = False
         match_found = False
+        
+        # there is at least one case where this is not available?
+        # -> save from further comparison by checking early
+        if "original" not in imagesExtended['highResolution']:
+            print("WARN: 'original' not found in hires image, skipping: " + finnaid)
+            continue
+        
         # 'images' can have array of multiple images, need to select correct one
         # -> loop through them (they should have just different &index= in them)
         # and compare with the image in commons
@@ -438,10 +445,13 @@ for page in pages:
         if "original" not in hires:
             print("WARN: 'original' not found in hires image, skipping: " + finnaid)
             continue
-        
+            
         # TODO: try to use the one from "imagesExtended"
         # (see logic after this)
         hires = imagesExtended['highResolution']['original'][0]
+
+        # TODO: compare with "original" (whatever that is)
+        #hiresurl = imagesExtended['highResolution']['original'][0]['url']
 
         if "data" not in hires:
             print("WARN: 'data' not found in hires image, skipping: " + finnaid)
