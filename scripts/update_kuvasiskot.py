@@ -249,9 +249,13 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 # check for list of images we are forbidden from changing (403 error)
 def isblockedimage(page):
     pagename = str(page)
+    
     if (pagename.find("Dubrovnik Lounge & Lobby") >= 0):
         return True
     if (pagename.find("Tuohipallo eli Rapapalli eli Meätshä.jpg") >= 0):
+        return True
+        
+    if (pagename.find("Aapeli-Liisi-Kivioja-1909.jpg") >= 0 ):
         return True
         
     # conversion from tiff is borked somehow -> avoid uploading for now
@@ -260,6 +264,10 @@ def isblockedimage(page):
     if (pagename.find("Viipurin lääninvankila 1918.jpg") >= 0):
         return True
     if (pagename.find("Vilho Penttilä, Kansallis-Osake-Pankin talo, Kauppakatu 4, Tampere.jpg") >= 0):
+        return True
+
+    # close but not close enough
+    if (pagename.find("Western Finnish student guard.jpg") >= 0):
         return True
 
     return False
@@ -438,21 +446,31 @@ for page in pages:
         if "data" not in hires:
             print("WARN: 'data' not found in hires image, skipping: " + finnaid)
             continue
+        
+        # some images don't have size information in the API..
         if "width" not in hires['data'] or "height" not in hires['data']:
-            print("WARN: 'width' or 'height' not found in hires-data for image, skipping: " + finnaid)
+            print("WARN: 'width' or 'height' not found in hires-data for image, id: " + finnaid + ", image is: " + str(finna_image.width) + "x" + str(finna_image.height))
             
             # try to use from image instead?
             #finnawidth = finna_image.width
             #finnaheight = finna_image.height
+            
+            # it seems sizes might be missing when image is upscaled and not "original"?
+            # -> verify this
+            # -> skip image for now
             continue
-
-        # verify finna image really is in better resolution than what is in commons
-        # before uploading
-        finnawidth = hires['data']['width']['value']
-        finnaheight = hires['data']['height']['value']
+        else:
+            # verify finna image really is in better resolution than what is in commons
+            # before uploading
+            finnawidth = int(hires['data']['width']['value'])
+            finnaheight = int(hires['data']['height']['value'])
         
-        if file_info.width >= int(finnawidth) or file_info.height >= int(finnaheight):
-            print("Skipping " + page.title() + ", resolution already equal or higher than finna: " + finnawidth + "x" + finnaheight)
+        if file_info.width >= finnawidth or file_info.height >= finnaheight:
+            print("Skipping " + page.title() + ", resolution already equal or higher than finna: " + str(finnawidth) + "x" + str(finnaheight))
+            continue
+            
+        if "format" not in hires:
+            print("WARN: 'format' not found in hires image, skipping: " + finnaid)
             continue
 
         # Select which file to upload.
@@ -498,7 +516,7 @@ for page in pages:
             # internal consistency of the API has an error?
             if (is_same_image(local_image, finna_image) == False):
                 print("WARN: Images are NOT same in the API! " + finnaid)
-                continue
+                exit(1)
         else:
             converted_image = Image.open(image_file_name)
             if (isidentical(converted_image, commons_image) == True):
