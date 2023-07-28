@@ -386,7 +386,7 @@ for page in pages:
             if (is_same_image(finna_thumb, commons_thumb) == True):
                 match_found = True
                 finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
-                #finna_image = downloadimage(finna_image_url)
+                finna_image = downloadimage(finna_image_url)
 
                 # get full image for further comparison
                 commons_image_url = file_page.get_file_url()
@@ -437,6 +437,10 @@ for page in pages:
             continue
         if "width" not in hires['data'] or "height" not in hires['data']:
             print("WARN: 'width' or 'height' not found in hires-data for image, skipping: " + finnaid)
+            
+            # try to use from image instead?
+            #finnawidth = finna_image.width
+            #finnaheight = finna_image.height
             continue
 
         # verify finna image really is in better resolution than what is in commons
