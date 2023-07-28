@@ -430,6 +430,9 @@ for page in pages:
         if "original" not in hires:
             print("WARN: 'original' not found in hires image, skipping: " + finnaid)
             continue
+        
+        # TODO: try to use the one from "imagesExtended"
+        # (see logic after this)
         hires = imagesExtended['highResolution']['original'][0]
 
         if "data" not in hires:
@@ -471,7 +474,8 @@ for page in pages:
                 finna_image_url = hires['url']
         elif file_info.mime == 'image/jpeg':
             if (need_index == False):
-                finna_image_url = "https://finna.fi" +  imagesExtended['urls']['large']
+                # this is already same from earlier -> we can remove this
+                finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
         else:
             print("Exit: Unhandled mime-type")
             print(f"File format Commons (MIME type): {file_info.mime}")
@@ -488,6 +492,12 @@ for page in pages:
             local_image = downloadimage(finna_image_url)
             if (isidentical(local_image, commons_image) == True):
                 print("Images are identical files, skipping: " + finnaid)
+                continue
+                
+            # verify that the image we have picked above is the same as in earlier step:
+            # internal consistency of the API has an error?
+            if (is_same_image(local_image, finna_image) == False):
+                print("WARN: Images are NOT same in the API! " + finnaid)
                 continue
         else:
             converted_image = Image.open(image_file_name)
