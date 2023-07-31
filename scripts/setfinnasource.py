@@ -137,9 +137,11 @@ def getnewsourcefromoldsource(srcvalue):
     if (srcvalue.find("kuvakokoelmat.fi") > 0):
         kkid = getkuvakokoelmatidfromurl(srcvalue)
         newfinnaid = convertkuvakokoelmatid(kkid)
-        newfinnaid = urllib.parse.quote(newfinnaid) # quote for url
-        #newsourceurl = "https://www.finna.fi/Record/" + newfinnaid
-        return getnewsourceforfinna(newfinnaid)
+        if (len(newfinnaid) > 0):
+            newfinnaid = urllib.parse.quote(newfinnaid) # quote for url
+            #newsourceurl = "https://www.finna.fi/Record/" + newfinnaid
+            return getnewsourceforfinna(newfinnaid)
+        return "" # failed to parse, don't add anything
         
     if (srcvalue.find("finna.fi") > 0):
         # finna.fi url
