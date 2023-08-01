@@ -8,6 +8,8 @@ import json
 
 def createMediainfoClaim(site, media_identifier, property, value):
    csrf_token = site.tokens['csrf']
+   # payload documentation
+   # https://www.wikidata.org/w/api.php?action=help&modules=wbcreateclaim
    payload = {
       'action' : 'wbcreateclaim',
       'format' : u'json',
@@ -44,6 +46,8 @@ def addCaption(site, media_identifier, lang, caption):
 
 def wbEditEntity(site, media_identifier, data):
    csrf_token = site.tokens['csrf']
+   # payload documentation
+   # https://www.wikidata.org/w/api.php?action=help&modules=wbeditentity
    payload = {
       'action' : 'wbeditentity',
       'format' : u'json',
