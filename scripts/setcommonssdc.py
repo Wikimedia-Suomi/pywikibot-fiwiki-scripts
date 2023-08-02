@@ -195,6 +195,9 @@ def stripid(oldsource):
     indexend = oldsource.find("}")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
+    indexend = oldsource.find("|")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
 
     # some parameters in url?
     indexend = oldsource.find("&")
@@ -448,9 +451,15 @@ def parsemetaidfromfinnapage(finnaurl):
         print("new id from finna: " + newid)
         return newid
 
-    # try alternate attribute or give up: this doesn't exist in every page
-    return parsedatarecordidfromfinnapage(finnapage)
+    newid = parsedatarecordidfromfinnapage(finnapage)
+    if (len(newid) > 0):
+        # in case there is url encoding in place..
+        #newid = newid.replace("%3A", ":")
+        print("new id from finna: " + newid)
+        return newid
 
+    return ""
+    
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
 

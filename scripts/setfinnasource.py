@@ -40,6 +40,9 @@ def stripid(oldsource):
     indexend = oldsource.find("}")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
+    indexend = oldsource.find("|")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
 
     # some parameters in url?
     indexend = oldsource.find("&")
