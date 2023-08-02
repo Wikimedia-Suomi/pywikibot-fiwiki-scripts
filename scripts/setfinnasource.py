@@ -193,6 +193,8 @@ pages = getlinkedpages(pywikibot, commonssite)
 rowcount = 1
 #rowlimit = 10
 
+print("Pages found: " + str(len(pages)))
+
 for page in pages:
     if page.namespace() != 6:  # 6 is the namespace ID for files
         continue

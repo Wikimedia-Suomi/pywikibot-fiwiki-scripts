@@ -443,6 +443,8 @@ def parsemetaidfromfinnapage(finnaurl):
     # try a new method to parse the id..
     newid = parseapiidfromfinnapage(finnapage)
     if (len(newid) > 0):
+        # sometimes finna has this html code instead of url encoding..
+        newid = newid.replace("&#x25;3A", ":")
         print("new id from finna: " + newid)
         return newid
 
@@ -521,6 +523,8 @@ pages = getlinkedpages(pywikibot, commonssite)
 
 rowcount = 1
 #rowlimit = 10
+
+print("Pages found: " + str(len(pages)))
 
 for page in pages:
     # 14 is category -> recurse into subcategories

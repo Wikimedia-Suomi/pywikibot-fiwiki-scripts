@@ -265,6 +265,8 @@ def isblockedimage(page):
         return True
     if (pagename.find("Vilho Penttilä, Kansallis-Osake-Pankin talo, Kauppakatu 4, Tampere.jpg") >= 0):
         return True
+    if (pagename.find("Yrjo-Kilpinen-1951.jpg") >= 0):
+        return True
 
     # close but not close enough
     if (pagename.find("Western Finnish student guard.jpg") >= 0):
@@ -298,6 +300,8 @@ pages = getlinkedpages(pywikibot, commonssite)
 
 #rowcount = 1
 #rowlimit = 100
+
+print("Pages found: " + str(len(pages)))
 
 for page in pages:
     if page.namespace() != 6:  # 6 is the namespace ID for files
