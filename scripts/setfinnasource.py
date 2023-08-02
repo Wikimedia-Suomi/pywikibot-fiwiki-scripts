@@ -217,7 +217,7 @@ for page in pages:
     templatelist = wikicode.filter_templates()
 
     for template in wikicode.filter_templates():
-        if template.name.matches("Information") or template.name.matches("Photograph") or template.name.matches("Artwork"):
+        if template.name.matches("Information") or template.name.matches("Photograph") or template.name.matches("Artwork") or template.name.matches("Art Photo"):
             if template.has("Source"):
                 par = template.get("Source")
                 srcvalue = str(par.value)

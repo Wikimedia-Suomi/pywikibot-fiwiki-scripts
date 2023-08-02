@@ -115,15 +115,15 @@ def converthashtoint(h, base=16):
 # difference hashing
 # http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
 #
-def is_same_image(img1, img2):
+def is_same_image(img1, img2, hashlen=16):
 
-    phash1 = imagehash.phash(img1)
-    dhash1 = imagehash.dhash(img1)
+    phash1 = imagehash.phash(img1, hash_size=hashlen)
+    dhash1 = imagehash.dhash(img1, hash_size=hashlen)
     phash1_int = converthashtoint(phash1)
     dhash1_int = converthashtoint(dhash1)
 
-    phash2 = imagehash.phash(img2)
-    dhash2 = imagehash.dhash(img2)
+    phash2 = imagehash.phash(img2, hash_size=hashlen)
+    dhash2 = imagehash.dhash(img2, hash_size=hashlen)
     phash2_int = converthashtoint(phash2)
     dhash2_int = converthashtoint(dhash2)
 
@@ -567,7 +567,7 @@ for page in pages:
     finnasource = ""
     for template in wikicode.filter_templates():
         # at least three different templates have been used..
-        if template.name.matches("Information") or template.name.matches("Photograph") or template.name.matches("Artwork"):
+        if template.name.matches("Information") or template.name.matches("Photograph") or template.name.matches("Artwork") or template.name.matches("Art Photo"):
             if template.has("Source"):
                 par = template.get("Source")
                 srcvalue = str(par.value)
