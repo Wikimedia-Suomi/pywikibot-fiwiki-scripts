@@ -603,6 +603,16 @@ for page in pages:
         # TODO: update source information to include new id
         # -> use setfinnasource.py for now
         #addFinnaIdForKuvakokoelmatSource = True
+
+    if (len(finnaid) == 0):
+        # urls coming from wikidata instead of in page?
+        finna_ids = get_finna_ids(page):
+        if (len(finna_ids) >= 1):
+            print("NOTE: " + page.title() + " has external urls but not in expected place")
+            # might have something usable..
+        else:
+            print("Could not find a finna id in " + page.title() + ", skipping.")
+        continue
  
     # kuvasiskot has "musketti" as part of identier, alternatively "museovirasto" may be used in some cases
     if (finnaid.find("musketti") < 0 and finnaid.find("museovirasto") < 0):
@@ -610,10 +620,6 @@ for page in pages:
         #continue
     if (finnaid.find("profium.com") > 0):
         print("WARN: unusable url (redirector) in: " + page.title() + ", id: " + finnaid)
-        continue
-
-    if (len(finnaid) == 0):
-        print("Could not find a finna id in " + page.title() + ", skipping.")
         continue
         
     if (len(finnaid) >= 50):
