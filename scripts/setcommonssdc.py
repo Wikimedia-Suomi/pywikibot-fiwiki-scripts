@@ -606,7 +606,7 @@ for page in pages:
 
     if (len(finnaid) == 0):
         # urls coming from wikidata instead of in page?
-        finna_ids = get_finna_ids(page):
+        finna_ids = get_finna_ids(page)
         if (len(finna_ids) >= 1):
             print("NOTE: " + page.title() + " has external urls but not in expected place")
             # might have something usable..
