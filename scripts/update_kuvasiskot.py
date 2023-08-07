@@ -280,6 +280,8 @@ def isblockedimage(page):
         return True
     if (pagename.find("Pekka-Koivistoinen-1982.jpg") >= 0):
         return True
+    if (pagename.find("Jarl-Louhija-1978.jpg") >= 0):
+        return True
 
     # close but not close enough
     if (pagename.find("Western Finnish student guard.jpg") >= 0):
@@ -306,10 +308,10 @@ commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 
 # get list of pages upto depth of 1 
-#pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
-pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
+#pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getlinkedpages(pywikibot, commonssite)
 
 #rowcount = 1
