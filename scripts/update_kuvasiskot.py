@@ -244,7 +244,7 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
             subpages = commonssite.categorymembers(subcat)
             for subpage in subpages:
                 # avoid duplicates and those we are blocked from modifying (403 error)
-                if subpage not in pages and isblockedimage(linked_page) == False:
+                if subpage not in pages and isblockedimage(subpage) == False:
                     pages.append(subpage)
 
     return pages
@@ -262,6 +262,7 @@ def isblockedimage(page):
         return True
         
     # conversion from tiff is borked somehow -> avoid uploading for now
+    # (python does not handle floating point format in some tiffs correctly?)
     if (pagename.find("Synnytyslaitoksen rakennus Tampereella.jpg") >= 0):
         return True
     if (pagename.find("Viipurin lääninvankila 1918.jpg") >= 0):
@@ -269,6 +270,8 @@ def isblockedimage(page):
     if (pagename.find("Vilho Penttilä, Kansallis-Osake-Pankin talo, Kauppakatu 4, Tampere.jpg") >= 0):
         return True
     if (pagename.find("Yrjo-Kilpinen-1951.jpg") >= 0):
+        return True
+    if (pagename.find("Pekka-Koivistoinen-1982.jpg") >= 0):
         return True
 
     # close but not close enough
@@ -298,8 +301,8 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
-#pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
-pages = getlinkedpages(pywikibot, commonssite)
+pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
+#pages = getlinkedpages(pywikibot, commonssite)
 
 #rowcount = 1
 #rowlimit = 100
