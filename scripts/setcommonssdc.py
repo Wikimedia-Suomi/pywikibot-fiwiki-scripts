@@ -466,8 +466,13 @@ def getnewsourceforfinna(finnarecord):
 # get pages immediately under cat
 # and upto depth of 1 in subcats
 def getcatpages(pywikibot, commonssite, maincat, recurse=False):
+    final_pages = list()
     cat = pywikibot.Category(commonssite, maincat)
     pages = list(commonssite.categorymembers(cat))
+
+    for page in pages:
+        if page not in final_pages:
+            final_pages.append(page)
 
     # no recursion by default, just get into depth of 1
     if (recurse == True):
@@ -476,12 +481,12 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
             subpages = commonssite.categorymembers(subcat)
             for subpage in subpages:
                 if subpage not in pages: # avoid duplicates
-                    pages.append(subpage)
+                    final_pages.append(page)
 
-    return pages
+    return final_pages
 
-def getlinkedpages(pywikibot, commonssite):
-    listpage = pywikibot.Page(commonssite, 'user:FinnaUploadBot/filelist')  # The page you're interested in
+def getlinkedpages(pywikibot, commonssite, linkpage):
+    listpage = pywikibot.Page(commonssite, linkpage)  # The page you're interested in
 
     pages = list()
     # Get all linked pages from the page
@@ -526,7 +531,8 @@ commonssite.login()
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
-pages = getlinkedpages(pywikibot, commonssite)
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
+pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 
 #pages = getcatpages(pywikibot, commonssite, "Botanists from Finland")
 

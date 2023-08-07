@@ -107,7 +107,7 @@ def converthashtoint(h, base=16):
 # difference hashing
 # http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
 #
-def is_same_image(img1, img2, hashlen=16):
+def is_same_image(img1, img2, hashlen=8):
 
     phash1 = imagehash.phash(img1, hash_size=hashlen)
     dhash1 = imagehash.dhash(img1, hash_size=hashlen)
@@ -282,6 +282,14 @@ def isblockedimage(page):
         return True
     if (pagename.find("Jarl-Louhija-1978.jpg") >= 0):
         return True
+    if (pagename.find("Jani-Volanen-1993.jpg") >= 0):
+        return True
+    if (pagename.find("Juha-Lehtola-1993.jpg") >= 0):
+        return True
+    if (pagename.find("Kauko-Royhka-Combo-1991.jpg") >= 0):
+        return True
+    if (pagename.find("Mara-Salminen-1991.jpg") >= 0):
+        return True
 
     # close but not close enough
     if (pagename.find("Western Finnish student guard.jpg") >= 0):
@@ -289,8 +297,8 @@ def isblockedimage(page):
 
     return False
 
-def getlinkedpages(pywikibot, commonssite):
-    listpage = pywikibot.Page(commonssite, 'user:FinnaUploadBot/filelist')  # The page you're interested in
+def getlinkedpages(pywikibot, commonssite, linkpage):
+    listpage = pywikibot.Page(commonssite, linkpage)  # The page you're interested in
 
     pages = list()
     # Get all linked pages from the page
@@ -308,11 +316,12 @@ commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 
 # get list of pages upto depth of 1 
-pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
-#pages = getlinkedpages(pywikibot, commonssite)
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
+pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 
 #rowcount = 1
 #rowlimit = 100
