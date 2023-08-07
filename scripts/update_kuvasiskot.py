@@ -234,8 +234,14 @@ def leftfrom(string, char):
 # get pages immediately under cat
 # and upto depth of 1 in subcats
 def getcatpages(pywikibot, commonssite, maincat, recurse=False):
+    final_pages = list()
     cat = pywikibot.Category(commonssite, maincat)
     pages = list(commonssite.categorymembers(cat))
+    
+    for page in pages:
+        if isblockedimage(page) == False:
+            if page not in final_pages:
+                final_pages.append(page)
 
     # no recursion by default, just get into depth of 1
     if (recurse == True):
@@ -244,10 +250,11 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
             subpages = commonssite.categorymembers(subcat)
             for subpage in subpages:
                 # avoid duplicates and those we are blocked from modifying (403 error)
-                if subpage not in pages and isblockedimage(subpage) == False:
-                    pages.append(subpage)
+                if isblockedimage(subpage) == False:
+                    if subpage not in pages:
+                        final_pages.append(subpage)
 
-    return pages
+    return final_pages
 
 # check for list of images we are forbidden from changing (403 error)
 def isblockedimage(page):
@@ -287,8 +294,9 @@ def getlinkedpages(pywikibot, commonssite):
     # Get all linked pages from the page
     for linked_page in listpage.linkedPages():
         # avoid duplicates and those we are blocked from modifying (403 error)
-        if linked_page not in pages and isblockedimage(linked_page) == False: 
-            pages.append(linked_page)
+        if isblockedimage(linked_page) == False: 
+            if linked_page not in pages:
+                pages.append(linked_page)
 
     return pages
 
