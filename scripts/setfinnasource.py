@@ -8,8 +8,17 @@ import json
 import urllib
 from urllib.request import urlopen
 
-def getnewsourceforfinna(finnarecord):
-    return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
+import urllib3
+
+def getnewfinnarecordurl(finnarecordid):
+    if (len(finnarecordid) == 0):
+        return ""
+    return "https://finna.fi/Record/" + finnarecordid
+
+def getnewsourceforfinna(finnarecordurl, finnarecordid):
+    if (len(finnarecordurl) == 0 or len(finnarecordid) == 0):
+        return ""
+    return "<br>Image record page in Finna: [" + finnarecordurl + " " + finnarecordid + "]\n"
 
 # strip id from other things that may be after it:
 # there might be part of url or some html in same field..
@@ -141,17 +150,47 @@ def getnewsourcefromoldsource(srcvalue):
         kkid = getkuvakokoelmatidfromurl(srcvalue)
         newfinnaid = convertkuvakokoelmatid(kkid)
         if (len(newfinnaid) > 0):
-            newfinnaid = urllib.parse.quote(newfinnaid) # quote for url
+            return urllib.parse.quote(newfinnaid) # quote for url
             #newsourceurl = "https://www.finna.fi/Record/" + newfinnaid
-            return getnewsourceforfinna(newfinnaid)
         return "" # failed to parse, don't add anything
         
     if (srcvalue.find("finna.fi") > 0):
         # finna.fi url
-        finnarecord = getidfromoldsource(srcvalue)
-        return getnewsourceforfinna(finnarecord)
+        return getidfromoldsource(srcvalue)
 
     return ""
+
+# fetch metapage from finna and check if we have a valid url
+# since we might have obsolete ID.
+def getfinnapage(finnaurl):
+
+    finnapage = ""
+
+    try:
+        request = urllib.request.Request(finnaurl)
+        print("request done: " + finnaurl)
+
+        response = urllib.request.urlopen(request)
+        if (response.readable() == False):
+            print("response not readable")
+
+        htmlbytes = response.read()
+        finnapage = htmlbytes.decode("utf8")
+
+        #print("page: " + finnapage)
+        return True # page found
+        
+    except urllib.error.HTTPError as e:
+        print(e.__dict__)
+        return False
+    except urllib.error.URLError as e:
+        print(e.__dict__)
+        return False
+    #except:
+        #print("failed to retrieve finna page")
+        #return False
+
+    return False
 
 # get pages immediately under cat
 # and upto depth of 1 in subcats
@@ -170,8 +209,8 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 
     return pages
 
-def getlinkedpages(pywikibot, commonssite):
-    listpage = pywikibot.Page(commonssite, 'user:FinnaUploadBot/filelist')  # The page you're interested in
+def getlinkedpages(pywikibot, commonssite, linkpage):
+    listpage = pywikibot.Page(commonssite, linkpage)  # The page you're interested in
 
     pages = list()
     # Get all linked pages from the page
@@ -191,7 +230,8 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 
-pages = getlinkedpages(pywikibot, commonssite)
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
+pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 
 rowcount = 1
 #rowlimit = 10
@@ -206,6 +246,7 @@ for page in pages:
     if filepage.isRedirectPage():
         continue    
 
+    newsourceurl = ""
     changed = False
     oldtext=page.text
 
@@ -231,12 +272,16 @@ for page in pages:
                     # already has metapage
                     print("already has metapage link, skipping")
                     break
-                newsource = getnewsourcefromoldsource(srcvalue)
-                if (newsource != srcvalue and len(newsource) > 0):
+                newsourcetext = ""
+                newsourceid = getnewsourcefromoldsource(srcvalue)
+                newsourceurl = getnewfinnarecordurl(newsourceid)
+                if (len(newsourceurl) > 0):
+                    newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
+                if (newsourcetext != srcvalue and len(newsourcetext) > 0):
                     # remove newline from existing before appending
                     if (srcvalue.endswith("\n")):
                         srcvalue = srcvalue[:len(srcvalue)-1]
-                    par.value = srcvalue + newsource
+                    par.value = srcvalue + newsourcetext
                     changed = True
 
             if template.has("source"):
@@ -252,17 +297,25 @@ for page in pages:
                     # already has metapage
                     print("already has metapage link, skipping")
                     break
-                newsource = getnewsourcefromoldsource(srcvalue)
-                if (newsource != srcvalue and len(newsource) > 0):
+                newsourcetext = ""
+                newsourceid = getnewsourcefromoldsource(srcvalue)
+                newsourceurl = getnewfinnarecordurl(newsourceid)
+                if (len(newsourceurl) > 0):
+                    newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
+                if (newsourcetext != srcvalue and len(newsourcetext) > 0):
                     # remove newline from existing before appending
                     if (srcvalue.endswith("\n")):
                         srcvalue = srcvalue[:len(srcvalue)-1]
-                    par.value = srcvalue + newsource
+                    par.value = srcvalue + newsourcetext
                     changed = True
  
     if (changed == False):
         print("no change, skipping")
         continue
+    if (getfinnapage(newsourceurl) == False):
+        print("Failed to get finna metapage with new url: " + newsourceurl)
+        continue
+    print("Found finna metapage with new url: " + newsourceurl)
 
     newtext = str(wikicode)
 
