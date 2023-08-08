@@ -129,7 +129,8 @@ def convertkuvakokoelmatid(kkid):
         return ""
 
     # verify
-    if (kkid.startswith("HK") == False and kkid.startswith("JOKA") == False):
+    if (kkid.startswith("HK") == False and kkid.startswith("JOKA") == False
+        and kkid.startswith("SUK") == False):
         print("does not start appropriately: " + kkid)
         return ""
 
@@ -142,9 +143,12 @@ def convertkuvakokoelmatid(kkid):
         # underscores to dash
         # add prefix
         kkid = kkid[:index] + ":" + kkid[index+1:]
-        kkid = kkid.replace("_", "-")
+        #kkid = kkid.replace("_", "-")
+        kkid = kkid.replace("_", ":") # some images seem to need colon?
 
     if (kkid.startswith("JOKA") == True):
+        kkid = kkid.replace("_", ":")
+    if (kkid.startswith("SUK") == True):
         kkid = kkid.replace("_", ":")
 
     musketti = "musketti.M012:" + kkid
