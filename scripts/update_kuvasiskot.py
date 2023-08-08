@@ -107,7 +107,7 @@ def converthashtoint(h, base=16):
 # difference hashing
 # http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
 #
-def is_same_image(img1, img2, hashlen=16):
+def is_same_image(img1, img2, hashlen=8):
 
     phash1 = imagehash.phash(img1, hash_size=hashlen)
     dhash1 = imagehash.dhash(img1, hash_size=hashlen)
@@ -290,8 +290,6 @@ def isblockedimage(page):
         return True
     if (pagename.find("Mara-Salminen-1991.jpg") >= 0):
         return True
-    if (pagename.find(":Hakkinen-Aaltonen-race-1967.jpg") >= 0):
-        return True
 
     # close but not close enough
     if (pagename.find("Western Finnish student guard.jpg") >= 0):
@@ -421,22 +419,17 @@ for page in pages:
             print("no images for item")
 
         if (len(imageList) == 1):
-            # get image from commons for comparison
-            commons_thumbnail_url = file_page.get_file_url(url_width=500)
-            commons_thumb = downloadimage(commons_thumbnail_url)
+            # get image from commons for comparison:
+            # try to use same size
+            commons_image_url = file_page.get_file_url()
+            commons_image = downloadimage(commons_image_url)
         
-            finna_thumbnail_url = "https://finna.fi" + imagesExtended['urls']['small']
-            finna_thumb = downloadimage(finna_thumbnail_url)
+            finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
+            finna_image = downloadimage(finna_image_url)
             
             # Test if image is same using similarity hashing
-            if (is_same_image(finna_thumb, commons_thumb) == True):
+            if (is_same_image(finna_image, commons_image) == True):
                 match_found = True
-                finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
-                finna_image = downloadimage(finna_image_url)
-
-                # get full image for further comparison
-                commons_image_url = file_page.get_file_url()
-                commons_image = downloadimage(commons_image_url)
 
         if (len(imageList) > 1):
             # multiple images in finna related to same item -> 
@@ -557,7 +550,7 @@ for page in pages:
             # internal consistency of the API has an error?
             if (is_same_image(local_image, finna_image) == False):
                 print("WARN: Images are NOT same in the API! " + finnaid)
-                exit(1)
+                continue
         else:
             converted_image = Image.open(image_file_name)
             if (isidentical(converted_image, commons_image) == True):
@@ -566,7 +559,7 @@ for page in pages:
             # at least one image fails in conversion, see if there are others
             if (is_same_image(converted_image, commons_image) == False):
                 print("ERROR! Images are NOT same after conversion! " + finnaid)
-                exit(1)
+                continue
 
         comment = "Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
         print(comment)
