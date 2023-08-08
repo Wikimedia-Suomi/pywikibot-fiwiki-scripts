@@ -282,7 +282,8 @@ def convertkuvakokoelmatid(kkid):
         return ""
 
     # verify
-    if (kkid.startswith("HK") == False and kkid.startswith("JOKA") == False):
+    if (kkid.startswith("HK") == False and kkid.startswith("JOKA") == False
+        and kkid.startswith("SUK") == False):
         print("does not start appropriately: " + kkid)
         return ""
 
@@ -298,6 +299,14 @@ def convertkuvakokoelmatid(kkid):
         kkid = kkid.replace("_", "-")
 
     if (kkid.startswith("JOKA") == True):
+        # if there is one underscore -> set to colon
+        #kkid = kkid.replace("_", ":")
+        # if there is two -> only set the latter one to colon and leave first as underscore
+        indexlast = kkid.rfind("_", 0, len(kkid)-1)
+        if (indexlast > 0):
+            kkid = kkid[:indexlast] + ":" + kkid[indexlast+1:]
+
+    if (kkid.startswith("SUK") == True):
         kkid = kkid.replace("_", ":")
 
     musketti = "musketti.M012:" + kkid
