@@ -107,7 +107,7 @@ def converthashtoint(h, base=16):
 # difference hashing
 # http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
 #
-def is_same_image(img1, img2, hashlen=8):
+def is_same_image(img1, img2, hashlen=16):
 
     phash1 = imagehash.phash(img1, hash_size=hashlen)
     dhash1 = imagehash.dhash(img1, hash_size=hashlen)
@@ -289,6 +289,8 @@ def isblockedimage(page):
     if (pagename.find("Kauko-Royhka-Combo-1991.jpg") >= 0):
         return True
     if (pagename.find("Mara-Salminen-1991.jpg") >= 0):
+        return True
+    if (pagename.find(":Hakkinen-Aaltonen-race-1967.jpg") >= 0):
         return True
 
     # close but not close enough
