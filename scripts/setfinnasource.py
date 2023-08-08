@@ -129,19 +129,24 @@ def convertkuvakokoelmatid(kkid):
         return ""
 
     # verify
-    if (kkid.startswith("HK") == False):
+    if (kkid.startswith("HK") == False and kkid.startswith("JOKA") == False):
         print("does not start appropriately: " + kkid)
         return ""
 
-    index = kkid.find("_")
-    if (index < 0):
-        print("no underscores: " + kkid)
-        return ""
-    # one underscore to colon
-    # underscores to dash
-    # add prefix
-    kkid = kkid[:index] + ":" + kkid[index+1:]
-    kkid = kkid.replace("_", "-")
+    if (kkid.startswith("HK") == True):
+        index = kkid.find("_")
+        if (index < 0):
+            print("no underscores: " + kkid)
+            return ""
+        # one underscore to colon
+        # underscores to dash
+        # add prefix
+        kkid = kkid[:index] + ":" + kkid[index+1:]
+        kkid = kkid.replace("_", "-")
+
+    if (kkid.startswith("JOKA") == True):
+        kkid = kkid.replace("_", ":")
+
     musketti = "musketti.M012:" + kkid
     return musketti
 
