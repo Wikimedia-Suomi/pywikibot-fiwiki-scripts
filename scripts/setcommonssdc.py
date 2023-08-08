@@ -115,7 +115,7 @@ def converthashtoint(h, base=16):
 # difference hashing
 # http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
 #
-def is_same_image(img1, img2, hashlen=16):
+def is_same_image(img1, img2, hashlen=8):
 
     phash1 = imagehash.phash(img1, hash_size=hashlen)
     dhash1 = imagehash.dhash(img1, hash_size=hashlen)
@@ -282,19 +282,24 @@ def convertkuvakokoelmatid(kkid):
         return ""
 
     # verify
-    if (kkid.startswith("HK") == False):
+    if (kkid.startswith("HK") == False and kkid.startswith("JOKA") == False):
         print("does not start appropriately: " + kkid)
         return ""
 
-    index = kkid.find("_")
-    if (index < 0):
-        print("no underscores: " + kkid)
-        return ""
-    # one underscore to colon
-    # underscores to dash
-    # add prefix
-    kkid = kkid[:index] + ":" + kkid[index+1:]
-    kkid = kkid.replace("_", "-")
+    if (kkid.startswith("HK") == True):
+        index = kkid.find("_")
+        if (index < 0):
+            print("no underscores: " + kkid)
+            return ""
+        # one underscore to colon
+        # underscores to dash
+        # add prefix
+        kkid = kkid[:index] + ":" + kkid[index+1:]
+        kkid = kkid.replace("_", "-")
+
+    if (kkid.startswith("JOKA") == True):
+        kkid = kkid.replace("_", ":")
+
     musketti = "musketti.M012:" + kkid
     return musketti
 
@@ -305,6 +310,18 @@ def leftfrom(string, char):
         return string[:index]
 
     return string
+
+# parse Q-code from link
+def getqcodefromwikidatalink(target):
+    targetqcode = str(target)
+    index = targetqcode.find(":")
+    if (index < 0):
+        return ""
+    indexend = targetqcode.find("]", index)
+    if (indexend < 0):
+        return ""
+    targetqcode = targetqcode[index+1:indexend]
+    return targetqcode
     
 # parse claims or statements from commons SDC
 def getcollectiontargetqcode(statements, collections):
@@ -316,11 +333,8 @@ def getcollectiontargetqcode(statements, collections):
         # target is expected to be like: [[wikidata:Q118976025]]
         target = claim.getTarget()
 
-        targetqcode = str(target)        
-        index = targetqcode.find(":")
-        if (index > 0):
-            indexend = targetqcode.find("]", index)
-            targetqcode = targetqcode[index+1:indexend]
+        # parse Q-code from link
+        targetqcode = getqcodefromwikidatalink(target)
 
         # no need to add if SDC-data already has a target
         # -> remove from collections to add
@@ -342,6 +356,37 @@ def getcollectiontargetqcode(statements, collections):
 
     # return list of those to be added
     return collections
+
+# is license in statements
+#P275, "CC BY 4.0" is Q20007257
+def islicenseinstatements(statements, license):
+    if (license != "CC BY 4.0"):
+        # bug? we only support one license currently
+        return False
+    if "P275" not in statements:
+        return False
+    claimlist = statements["P275"]    
+    for claim in claimlist:
+        target = claim.getTarget()
+        targetqcode = getqcodefromwikidatalink(target)
+        if (targetqcode == "Q20007257"):
+            return True
+        else:
+            print("License is NOT as expected, Q-code: " + targetqcode)
+
+    return False
+
+def addlicensetostatements(pywikibot, wikidata_site, license):
+    if (license != "CC BY 4.0"):
+        # bug? we only support one license currently
+        return False
+
+    licqcode = "Q20007257"
+    claim_licp = 'P275'  # property ID for "license"
+    lic_claim = pywikibot.Claim(wikidata_site, claim_licp)
+    qualifier_targetlic = pywikibot.ItemPage(wikidata_site, licqcode)
+    lic_claim.setTarget(qualifier_targetlic)
+    return lic_claim
 
 def isidinstatements(statements, newid):
     if "P9478" not in statements:
@@ -387,16 +432,22 @@ def parseapiidfromfinnapage(finnapage):
         return ""
     index = index + len("&#x3D;")
     finnapage = finnapage[index:]
+
+    indexend = finnapage.find('"')
+    if (indexend < 0):
+        indexend = finnapage.find('>')
+        if (indexend < 0):
+            return ""
+    finnapage = finnapage[:indexend]
+    
+    # convert html code to character (if any)
+    finnapage = finnapage.replace("&#x25;3A", ":")
     
     indexend = finnapage.find('&amp')
     if (indexend < 0):
         indexend = finnapage.find('&')
         if (indexend < 0):
-            indexend = finnapage.find('"')
-            if (indexend < 0):
-                indexend = finnapage.find('>')
-                if (indexend < 0):
-                    return ""
+            return ""
     finnapage = finnapage[:indexend]
     return finnapage
 
@@ -821,6 +872,15 @@ for page in pages:
         flag_add_source = True
     else:
         print("no need to add source")
+
+    # is license in statements
+    #P275, "CC BY 4.0" is Q20007257
+    if (islicenseinstatements(claims, "CC BY 4.0") == False):
+        print("NOTE: license missing or not same in statements")
+        lic_claim = addlicensetostatements(pywikibot, wikidata_site, "CC BY 4.0")
+        commonssite.addClaim(wditem, lic_claim)
+    else:
+        print("license found in statements, OK")
 
     # check SDC and try match with finna list collectionqcodes
     collectionstoadd = getcollectiontargetqcode(claims, collectionqcodes)
