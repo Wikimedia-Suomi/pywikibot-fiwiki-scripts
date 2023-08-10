@@ -283,7 +283,9 @@ def convertkuvakokoelmatid(kkid):
 
     # verify
     if (kkid.startswith("HK") == False and kkid.startswith("JOKA") == False
-        and kkid.startswith("SUK") == False and kkid.startswith("1993") == False):
+        and kkid.startswith("SUK") == False and kkid.startswith("SMK") == False 
+        and kkid.startswith("KK") == False 
+        and kkid.startswith("1") == False):
         print("does not start appropriately: " + kkid)
         return ""
 
@@ -309,7 +311,13 @@ def convertkuvakokoelmatid(kkid):
     if (kkid.startswith("SUK") == True):
         kkid = kkid.replace("_", ":")
 
-    if (kkid.startswith("1993") == True):
+    if (kkid.startswith("SMK") == True):
+        kkid = kkid.replace("_", ":")
+
+    if (kkid.startswith("KK") == True):
+        kkid = kkid.replace("_", ":")
+
+    if (kkid.startswith("1") == True):
         kkid = "HK" + kkid
         kkid = kkid.replace("_", ":")
 
@@ -392,7 +400,8 @@ def islicenseinstatements(statements, license):
 
     return False
 
-def addlicensetostatements(pywikibot, wikidata_site, license):
+#P854, sourceurl
+def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
     if (license != "CC BY 4.0"):
         # bug? we only support one license currently
         return False
@@ -402,7 +411,16 @@ def addlicensetostatements(pywikibot, wikidata_site, license):
     lic_claim = pywikibot.Claim(wikidata_site, claim_licp)
     qualifier_targetlic = pywikibot.ItemPage(wikidata_site, licqcode)
     lic_claim.setTarget(qualifier_targetlic)
+    
+    # note: this add qualifer but we want "reference" type
+    qualifier_url = pywikibot.Claim(wikidata_site, 'P854')  # property ID for source URL (reference url)
+    qualifier_url.setTarget(sourceurl)
+    lic_claim.addSource(qualifier_url, summary='Adding reference URL qualifier')
+    # is there "addreference()"?
+    
     return lic_claim
+
+# TODO: check if 'P275' is missing 'P854' as reference url
 
 def isidinstatements(statements, newid):
     if "P9478" not in statements:
@@ -795,22 +813,17 @@ for page in pages:
 
     match_found = False
     if (len(imageList) == 1):
-        # get image from commons for comparison
-        commons_thumbnail_url = filepage.get_file_url(url_width=500)
-        commons_thumb = downloadimage(commons_thumbnail_url)
+        # get image from commons for comparison:
+        # try to use same size
+        commons_image_url = filepage.get_file_url()
+        commons_image = downloadimage(commons_image_url)
     
-        finna_thumbnail_url = "https://finna.fi" + imagesExtended['urls']['small']
-        finna_thumb = downloadimage(finna_thumbnail_url)
+        finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
+        finna_image = downloadimage(finna_image_url)
         
         # Test if image is same using similarity hashing
-        if (is_same_image(finna_thumb, commons_thumb) == True):
+        if (is_same_image(finna_image, commons_image) == True):
             match_found = True
-            finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
-            #finna_image = downloadimage(finna_image_url)
-
-            # get full image for further comparison
-            #commons_image_url = file_page.get_file_url()
-            #commons_image = downloadimage(commons_image_url)
 
     if (len(imageList) > 1):
         # multiple images in finna related to same item -> 
@@ -891,9 +904,10 @@ for page in pages:
 
     # is license in statements
     #P275, "CC BY 4.0" is Q20007257
+    #P854, sourceurl
     if (islicenseinstatements(claims, "CC BY 4.0") == False):
         print("NOTE: license missing or not same in statements")
-        lic_claim = addlicensetostatements(pywikibot, wikidata_site, "CC BY 4.0")
+        lic_claim = addlicensetostatements(pywikibot, wikidata_site, "CC BY 4.0", sourceurl)
         commonssite.addClaim(wditem, lic_claim)
     else:
         print("license found in statements, OK")
