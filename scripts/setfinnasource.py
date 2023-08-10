@@ -118,7 +118,11 @@ def getkuvakokoelmatidfromurl(source):
     # .jpg or something at end? remove from id
     indexlast = kkid.rfind(".", 0, len(source)-1)
     if (indexlast > 0):
-        kkid = kkid[:indexlast]
+        # if the part after dot is a number -> leave it
+        remainder = kkid[indexlast+1:]
+        if (remainder.isnumeric() == False):
+            # if it is image type extension -> remove it (not part of ID)
+            kkid = kkid[:indexlast]
     return kkid
 
 # if there's garbage in id, strip to where it ends
