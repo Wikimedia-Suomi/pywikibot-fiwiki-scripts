@@ -105,6 +105,12 @@ def geturlfromsource(source):
 def getkuvakokoelmatidfromurl(source):
     # if there is human readable stuff in source -> strip to just url
     source = geturlfromsource(source)
+
+    indexstart = source.find("kuvakokoelmat.fi")
+    if (indexstart <= 0):
+        print("something went wrong, unexpected domain in: " + source)
+        return ""
+    source = source[indexstart:]
     
     indexlast = source.rfind("/", 0, len(source)-1)
     if (indexlast < 0):
@@ -183,6 +189,8 @@ def convertkuvakokoelmatid(kkid):
 
     # url may have something else in it -> remove it
     kkid = leftfrom(kkid, "#")
+    kkid = leftfrom(kkid, "]")
+    #kkid = stripid(kkid)
 
     musketti = "musketti.M012:" + kkid
     return musketti
@@ -234,6 +242,14 @@ def getfinnapage(finnaurl):
 
     return False
 
+# filter blocked images that can't be updated for some reason
+def isblockedimage(page):
+    pagename = str(page)
+
+    # no blocking currently here
+
+    return False
+
 # get pages immediately under cat
 # and upto depth of 1 in subcats
 def getcatpages(pywikibot, commonssite, maincat, recurse=False):
@@ -246,8 +262,9 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
         for subcat in subcats:
             subpages = commonssite.categorymembers(subcat)
             for subpage in subpages:
-                if subpage not in pages: # avoid duplicates
-                    pages.append(subpage)
+                if isblockedimage(subpage) == False: 
+                    if subpage not in pages: # avoid duplicates
+                        pages.append(subpage)
 
     return pages
 
@@ -257,8 +274,9 @@ def getlinkedpages(pywikibot, commonssite, linkpage):
     pages = list()
     # Get all linked pages from the page
     for linked_page in listpage.linkedPages():
-        if linked_page not in pages: # avoid duplicates
-            pages.append(linked_page)
+        if isblockedimage(linked_page) == False: 
+            if linked_page not in pages: # avoid duplicates
+                pages.append(linked_page)
 
     return pages
 
