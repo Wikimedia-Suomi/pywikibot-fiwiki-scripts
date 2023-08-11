@@ -395,8 +395,9 @@ def islicenseinstatements(statements, license):
         targetqcode = getqcodefromwikidatalink(target)
         if (targetqcode == "Q20007257"):
             return True
-        else:
-            print("License is NOT as expected, Q-code: " + targetqcode)
+        #else:
+            # may have multiple licenses, just ignore (cc by sa/nc..)
+            #print("License is NOT as expected, Q-code: " + targetqcode)
 
     return False
 
@@ -421,6 +422,32 @@ def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
     return lic_claim
 
 # TODO: check if 'P275' is missing 'P854' as reference url
+def checklicensesources(statements, sourceurl):
+    if "P275" not in statements:
+        print("license property not in statements")
+        return False
+
+    # note: there may be more than on license per item (not equal)
+    # so check source is under appropriate license..
+    claimlist = statements["P275"]    
+    for claim in claimlist:
+        target = claim.getTarget()
+        targetqcode = getqcodefromwikidatalink(target)
+        if (targetqcode != "Q20007257"): # not our license
+            #print("DEBUG: unsupported license: " + targetqcode)
+            continue
+    
+        sourcelist = claim.getSources()
+        for source in sourcelist:
+            for key, value in source.items():
+                for v in value: # v is another claim..
+                    vtarget = v.getTarget()
+                    if (vtarget == sourceurl):
+                        matchfound = True
+                        print("license source found")
+                        return True
+        print("license source not found, url: " + sourceurl)
+    return False
 
 def isidinstatements(statements, newid):
     if "P9478" not in statements:
@@ -911,6 +938,10 @@ for page in pages:
         commonssite.addClaim(wditem, lic_claim)
     else:
         print("license found in statements, OK")
+        if (checklicensesources(claims, sourceurl) == False):
+            print("license source not found in statements")
+        else:
+            print("license source found in statements, OK")
 
     # check SDC and try match with finna list collectionqcodes
     collectionstoadd = getcollectiontargetqcode(claims, collectionqcodes)
