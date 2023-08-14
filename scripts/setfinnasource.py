@@ -149,7 +149,7 @@ def convertkuvakokoelmatid(kkid):
     # verify
     if (kkid.startswith("HK") == False and kkid.startswith("JOKA") == False
         and kkid.startswith("SUK") == False and kkid.startswith("SMK") == False 
-        and kkid.startswith("KK") == False 
+        and kkid.startswith("KK") == False and kkid.startswith("VKK") == False 
         and kkid.startswith("1") == False):
         print("does not start appropriately: " + kkid)
         return ""
@@ -181,6 +181,9 @@ def convertkuvakokoelmatid(kkid):
         kkid = kkid.replace("_", ":")
 
     if (kkid.startswith("KK") == True):
+        kkid = kkid.replace("_", ":")
+
+    if (kkid.startswith("VKK") == True):
         kkid = kkid.replace("_", ":")
 
     if (kkid.startswith("1") == True):
