@@ -284,7 +284,7 @@ def convertkuvakokoelmatid(kkid):
     # verify
     if (kkid.startswith("HK") == False and kkid.startswith("JOKA") == False
         and kkid.startswith("SUK") == False and kkid.startswith("SMK") == False 
-        and kkid.startswith("KK") == False 
+        and kkid.startswith("KK") == False and kkid.startswith("VKK") == False 
         and kkid.startswith("1") == False):
         print("does not start appropriately: " + kkid)
         return ""
@@ -315,6 +315,9 @@ def convertkuvakokoelmatid(kkid):
         kkid = kkid.replace("_", ":")
 
     if (kkid.startswith("KK") == True):
+        kkid = kkid.replace("_", ":")
+
+    if (kkid.startswith("VKK") == True):
         kkid = kkid.replace("_", ":")
 
     if (kkid.startswith("1") == True):
@@ -401,27 +404,7 @@ def islicenseinstatements(statements, license):
 
     return False
 
-#P854, sourceurl
-def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
-    if (license != "CC BY 4.0"):
-        # bug? we only support one license currently
-        return False
-
-    licqcode = "Q20007257"
-    claim_licp = 'P275'  # property ID for "license"
-    lic_claim = pywikibot.Claim(wikidata_site, claim_licp)
-    qualifier_targetlic = pywikibot.ItemPage(wikidata_site, licqcode)
-    lic_claim.setTarget(qualifier_targetlic)
-    
-    # note: this add qualifer but we want "reference" type
-    qualifier_url = pywikibot.Claim(wikidata_site, 'P854')  # property ID for source URL (reference url)
-    qualifier_url.setTarget(sourceurl)
-    lic_claim.addSource(qualifier_url, summary='Adding reference URL qualifier')
-    # is there "addreference()"?
-    
-    return lic_claim
-
-# TODO: check if 'P275' is missing 'P854' as reference url
+# check if 'P275' is missing 'P854' with reference url
 def checklicensesources(statements, sourceurl):
     if "P275" not in statements:
         print("license property not in statements")
@@ -440,14 +423,57 @@ def checklicensesources(statements, sourceurl):
         sourcelist = claim.getSources()
         for source in sourcelist:
             for key, value in source.items():
-                for v in value: # v is another claim..
-                    vtarget = v.getTarget()
-                    if (vtarget == sourceurl):
-                        matchfound = True
-                        print("license source found")
-                        return True
+                if key == "P854":
+                    for v in value: # v is another claim..
+                        vtarget = v.getTarget()
+                        if (vtarget == sourceurl):
+                            matchfound = True
+                            print("license source found")
+                            return True
         print("license source not found, url: " + sourceurl)
     return False
+
+#P275, license
+#P854, sourceurl
+def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
+    if (license != "CC BY 4.0"):
+        # bug? we only support one license currently
+        return False
+
+    licqcode = "Q20007257"
+    lic_claim = pywikibot.Claim(wikidata_site, "P275") # property ID for "license"
+    qualifier_targetlic = pywikibot.ItemPage(wikidata_site, licqcode)
+    lic_claim.setTarget(qualifier_targetlic)
+    
+    # note: this add qualifer but we want "reference" type
+    qualifier_url = pywikibot.Claim(wikidata_site, 'P854')  # property ID for source URL (reference url)
+    qualifier_url.setTarget(sourceurl)
+    lic_claim.addSource(qualifier_url, summary='Adding reference URL qualifier')
+    # is there "addreference()"?
+    
+    return lic_claim
+
+def addreferencetolicense(pywikibot, wikidata_site, license, sourceurl):
+    if (license != "CC BY 4.0"):
+        # bug? we only support one license currently
+        return False
+
+    # if there are multiple licenses, check that we add source to right one
+    claimlist = statements["P275"]    
+    for claim in claimlist:
+        target = claim.getTarget()
+        targetqcode = getqcodefromwikidatalink(target)
+        if (targetqcode != "Q20007257"): # not our license
+            #print("DEBUG: unsupported license: " + targetqcode)
+            continue
+
+        # note: this add qualifer but we want "reference" type
+        #qualifier_url = pywikibot.Claim(wikidata_site, 'P854')  # property ID for source URL (reference url)
+        #qualifier_url.setTarget(sourceurl)
+        #claim.addSource(qualifier_url, summary='Adding reference URL qualifier')
+        # is there "addreference()"?
+    
+    return True
 
 def isidinstatements(statements, newid):
     if "P9478" not in statements:
@@ -932,16 +958,16 @@ for page in pages:
     # is license in statements
     #P275, "CC BY 4.0" is Q20007257
     #P854, sourceurl
-    if (islicenseinstatements(claims, "CC BY 4.0") == False):
-        print("NOTE: license missing or not same in statements")
-        lic_claim = addlicensetostatements(pywikibot, wikidata_site, "CC BY 4.0", sourceurl)
-        commonssite.addClaim(wditem, lic_claim)
-    else:
-        print("license found in statements, OK")
-        if (checklicensesources(claims, sourceurl) == False):
-            print("license source not found in statements")
-        else:
-            print("license source found in statements, OK")
+    #if (islicenseinstatements(claims, "CC BY 4.0") == False):
+        #print("NOTE: license missing or not same in statements")
+        #lic_claim = addlicensetostatements(pywikibot, wikidata_site, "CC BY 4.0", sourceurl)
+        #commonssite.addClaim(wditem, lic_claim)
+    #else:
+        #print("license found in statements, OK")
+        #if (checklicensesources(claims, sourceurl) == False):
+            #print("license source not found in statements")
+        #else:
+            #print("license source found in statements, OK")
 
     # check SDC and try match with finna list collectionqcodes
     collectionstoadd = getcollectiontargetqcode(claims, collectionqcodes)
