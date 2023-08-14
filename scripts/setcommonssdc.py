@@ -144,13 +144,10 @@ def is_same_image(img1, img2, hashlen=8):
         return True
     elif phash_diff < 4 and dhash_diff == 0:
         return True
+    elif (phash_diff + dhash_diff) <= 4:
+        return True
     else:
         return False
-
-def convert_tiff_to_jpg(tiff_image):
-    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as fp:
-        tiff_image.convert('RGB').save(fp, "JPEG", quality=95)
-    return fp.name    
 
 # note: commons at least once has thrown error due to client policy?
 # "Client Error: Forbidden. Please comply with the User-Agent policy"
@@ -601,6 +598,13 @@ def parsemetaidfromfinnapage(finnaurl):
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
 
+# filter blocked images that can't be updated for some reason
+def isblockedimage(page):
+    pagename = str(page)
+
+    # no blocking currently here
+    return False
+
 # get pages immediately under cat
 # and upto depth of 1 in subcats
 def getcatpages(pywikibot, commonssite, maincat, recurse=False):
@@ -609,8 +613,9 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
     pages = list(commonssite.categorymembers(cat))
 
     for page in pages:
-        if page not in final_pages:
-            final_pages.append(page)
+        if isblockedimage(page) == False:
+            if page not in final_pages:
+                final_pages.append(page)
 
     # no recursion by default, just get into depth of 1
     if (recurse == True):
@@ -618,8 +623,9 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
         for subcat in subcats:
             subpages = commonssite.categorymembers(subcat)
             for subpage in subpages:
-                if subpage not in pages: # avoid duplicates
-                    final_pages.append(page)
+                if isblockedimage(subpage) == False: 
+                    if subpage not in pages: # avoid duplicates
+                        final_pages.append(page)
 
     return final_pages
 
@@ -629,8 +635,9 @@ def getlinkedpages(pywikibot, commonssite, linkpage):
     pages = list()
     # Get all linked pages from the page
     for linked_page in listpage.linkedPages():
-        if linked_page not in pages: # avoid duplicates
-            pages.append(linked_page)
+        if isblockedimage(linked_page) == False: 
+            if linked_page not in pages: # avoid duplicates
+                pages.append(linked_page)
 
     return pages
 
@@ -670,9 +677,11 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
-pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 
 #pages = getcatpages(pywikibot, commonssite, "Botanists from Finland")
+
+pages = getcatpages(pywikibot, commonssite, "Category:Ilmari Kianto", True)
 
 rowcount = 1
 #rowlimit = 10
@@ -855,8 +864,10 @@ for page in pages:
     # Test copyright (old field: rights, but request has imageRights?)
     # imageRights = finna_record['records'][0]['imageRights']
     imagesExtended = finna_record['records'][0]['imagesExtended'][0]
-    if (imagesExtended['rights']['copyright'] != "CC BY 4.0"):
-        print("Incorrect copyright: " + imagesExtended['rights']['copyright'])
+    # should be CC BY 4.0 or Public domain
+    copyrightlicense = imagesExtended['rights']['copyright']
+    if (copyrightlicense != "CC BY 4.0" and copyrightlicense != "PDM"):
+        print("Incorrect copyright: " + copyrightlicense)
         continue
 
     # 'images' can have array of multiple images, need to select correct one
@@ -958,6 +969,7 @@ for page in pages:
     # is license in statements
     #P275, "CC BY 4.0" is Q20007257
     #P854, sourceurl
+    #if (copyrightlicense == "CC BY 4.0"): # maybe be PDM
     #if (islicenseinstatements(claims, "CC BY 4.0") == False):
         #print("NOTE: license missing or not same in statements")
         #lic_claim = addlicensetostatements(pywikibot, wikidata_site, "CC BY 4.0", sourceurl)

@@ -136,7 +136,7 @@ def is_same_image(img1, img2, hashlen=8):
         return True
     elif phash_diff < 4 and dhash_diff == 0:
         return True
-    elif (phash_diff + dhash_diff) < 4:
+    elif (phash_diff + dhash_diff) <= 4:
         return True
     else:
         return False
@@ -315,9 +315,12 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Ilmari Kianto", True)
+
+
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
-pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 
 #rowcount = 1
 #rowlimit = 100
@@ -393,8 +396,10 @@ for page in pages:
 
         # Test copyright (old field: rights, but request has imageRights?)
         # imageRights = finna_record['records'][0]['imageRights']
-        if imagesExtended['rights']['copyright'] != "CC BY 4.0":
-            print("Incorrect copyright: " + imagesExtended['rights']['copyright'])
+        # should be CC BY 4.0 or Public domain
+        copyrightlicense = imagesExtended['rights']['copyright']
+        if (copyrightlicense != "CC BY 4.0" and copyrightlicense != "PDM"):
+            print("Incorrect copyright: " + copyrightlicense)
             continue
 
         finna_image_url = ""
