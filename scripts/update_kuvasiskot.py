@@ -131,14 +131,17 @@ def is_same_image(img1, img2, hashlen=8):
         print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(dhash1) + ", image2: " + str(dhash2))
 
     # max distance for same is that least one is 0 and second is max 3
-
+    
     if phash_diff == 0 and dhash_diff < 4:
         return True
     elif phash_diff < 4 and dhash_diff == 0:
         return True
+    elif (phash_diff + dhash_diff) < 4:
+        return True
     else:
         return False
 
+# if image is identical (not just similar) after conversion (avoid reupload)
 def isidentical(img1, img2):
     shaimg1 = hashlib.sha1()
     shaimg1.update(img1.tobytes())
@@ -156,7 +159,7 @@ def isidentical(img1, img2):
 
 def convert_tiff_to_jpg(tiff_image):
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as fp:
-        tiff_image.convert('RGB').save(fp, "JPEG", quality=95)
+        tiff_image.convert('RGB').save(fp, "JPEG", quality=100)
     return fp.name    
 
 # note: commons at least once has thrown error due to client policy?
@@ -259,7 +262,16 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 # check for list of images we are forbidden from changing (403 error)
 def isblockedimage(page):
     pagename = str(page)
-    
+
+    # if there is svg file for some reason -> skip it
+    if (pagename.find(".svg") >= 0):
+        return True
+
+    # commons scales down and size comparison fails -> skip this for now
+    if (pagename.find("Bronze age socketed axes from Finland.jpg") >= 0):
+        return True
+
+    # 403 forbidden when uploading new version
     if (pagename.find("Dubrovnik Lounge & Lobby") >= 0):
         return True
     if (pagename.find("Tuohipallo eli Rapapalli eli Meätshä.jpg") >= 0):
@@ -272,23 +284,7 @@ def isblockedimage(page):
     # (python does not handle floating point format in some tiffs correctly?)
     if (pagename.find("Synnytyslaitoksen rakennus Tampereella.jpg") >= 0):
         return True
-    if (pagename.find("Viipurin lääninvankila 1918.jpg") >= 0):
-        return True
     if (pagename.find("Vilho Penttilä, Kansallis-Osake-Pankin talo, Kauppakatu 4, Tampere.jpg") >= 0):
-        return True
-    if (pagename.find("Yrjo-Kilpinen-1951.jpg") >= 0):
-        return True
-    if (pagename.find("Pekka-Koivistoinen-1982.jpg") >= 0):
-        return True
-    if (pagename.find("Jarl-Louhija-1978.jpg") >= 0):
-        return True
-    if (pagename.find("Jani-Volanen-1993.jpg") >= 0):
-        return True
-    if (pagename.find("Juha-Lehtola-1993.jpg") >= 0):
-        return True
-    if (pagename.find("Kauko-Royhka-Combo-1991.jpg") >= 0):
-        return True
-    if (pagename.find("Mara-Salminen-1991.jpg") >= 0):
         return True
 
     # close but not close enough
@@ -502,7 +498,8 @@ for page in pages:
         if file_info.width >= finnawidth or file_info.height >= finnaheight:
             print("Skipping " + page.title() + ", resolution already equal or higher than finna: " + str(finnawidth) + "x" + str(finnaheight))
             continue
-            
+        #print("DEBUG: Resolution for " + page.title() + " in finna: " + str(finnawidth) + "x" + str(finnaheight) + " old: " + str(file_info.width) + "x" + str(file_info.height))
+
         if "format" not in hires:
             print("WARN: 'format' not found in hires image, skipping: " + finnaid)
             continue
