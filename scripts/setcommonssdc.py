@@ -381,6 +381,18 @@ def getcollectiontargetqcode(statements, collections):
     # return list of those to be added
     return collections
 
+# check if publisher exists in data
+def ispublisherinstatements(statements, publisherqcode):
+    if "P123" not in statements:
+        return False
+    claimlist = statements["P123"]    
+    for claim in claimlist:
+        target = claim.getTarget()
+        targetqcode = getqcodefromwikidatalink(target)
+        if (targetqcode == publisherqcode):
+            return True
+    return False
+
 # is license in statements
 #P275, "CC BY 4.0" is Q20007257
 def islicenseinstatements(statements, license):
@@ -598,6 +610,38 @@ def parsemetaidfromfinnapage(finnaurl):
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
 
+def getqcodeforfinnapublisher(finna_record):
+    if "records" not in finna_record:
+        print("ERROR: no no records in finna record")
+        return ""
+
+    records = finna_record['records'][0]
+    if "institutions" not in records:
+        print("WARN: no institutions in finna record")
+        
+        if "buildings" not in records:
+            print("ERROR: no institutions or buildings in finna record" + str(records))
+            return ""
+        else:
+            finnainstitutions = records['buildings'][0]
+            print("found building in finna record: " + str(finnainstitutions))
+    else:
+        finnainstitutions = records['institutions'][0]
+        print("found institution in finna record: " + str(finnainstitutions))
+
+    qpublisher = ""
+    for key, val in finnainstitutions.items():
+        #print("val is: " + val)
+        if (val == "Museovirasto"):
+            qpublisher = "Q3029524"
+            break
+        if (val == "Sotamuseo"):
+            qpublisher = "Q283140"
+            break
+    if (len(qpublisher) > 0):
+        print("found qcode for publisher: " + qpublisher)
+    return qpublisher
+
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
     pagename = str(page)
@@ -679,9 +723,10 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 
-#pages = getcatpages(pywikibot, commonssite, "Botanists from Finland")
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 
-pages = getcatpages(pywikibot, commonssite, "Category:Ilmari Kianto", True)
+#pages = getcatpages(pywikibot, commonssite, "Botanists from Finland")
+#pages = getcatpages(pywikibot, commonssite, "Category:Ilmari Kianto", True)
 
 rowcount = 1
 #rowlimit = 10
@@ -857,6 +902,15 @@ for page in pages:
         if coll in d_labeltoqcode:
             collectionqcodes.append(d_labeltoqcode[coll])
 
+    finnainstitutions = getqcodeforfinnapublisher(finna_record)
+    if (len(finnainstitutions) == 0):
+        print("WARN: failed to find publisher in finna for: " + finnaid)
+        continue
+    else:
+        ## DEBUG
+        print("found publisher " + finnainstitutions + " in finna for: " + finnaid)
+        #exit(1) ## TEST
+
     if "imagesExtended" not in finna_record['records'][0]:
         print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
         continue
@@ -917,6 +971,8 @@ for page in pages:
         print("No matching image found, skipping: " + finnaid)
         continue
 
+    finnainstitutions = getqcodeforfinnapublisher(finna_record)
+
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
     # repo == site == commonssite
@@ -924,6 +980,9 @@ for page in pages:
     if (doessdcbaseexist(page) == False):
         print("Wikibase item does not yet exist for: " + page.title() + ", id: " + finnaid)
         continue
+
+    ## TODO: add something P1163 (mime-type) to force creation of sdc-data
+        
     wditem = page.data_item()  # Get the data item associated with the page
     data = wditem.get() # all the properties in json-format
     
@@ -954,12 +1013,24 @@ for page in pages:
         qualifier_operator.setTarget(qualifier_targetop)
         source_claim.addQualifier(qualifier_operator, summary='Adding operator qualifier')
 
-        # P123 "publisher"
-        # Q3029524 Finnish Heritage Agency (Museovirasto)
-        qualifier_publisher = pywikibot.Claim(wikidata_site, 'P123')  # property ID for "publisher"
-        qualifier_targetpub = pywikibot.ItemPage(wikidata_site, 'Q3029524')  # Finnish Heritage Agency (Museovirasto)
-        qualifier_publisher.setTarget(qualifier_targetpub)
-        source_claim.addQualifier(qualifier_publisher, summary='Adding publisher qualifier')
+        # fix error with sa-kuvat in sdc-data..
+        fix_sa_publisher = False
+        if (qpublisher == "Q283140" and ispublisherinstatements(claims, "Q3029524") == True):
+            print("changing publisher")
+            # need to remove wrong publisher first..
+            qualifier_publisher = pywikibot.Claim(wikidata_site, 'P123')  # property ID for "publisher"
+            qualifier_targetpub = pywikibot.ItemPage(wikidata_site, "Q283140")  # Finnish Heritage Agency (Museovirasto)
+            qualifier_publisher.changeTarget(qualifier_targetpub)
+            fix_sa_publisher = True
+
+        if (len(qpublisher) > 0 and fix_sa_publisher == False):
+            if (ispublisherinstatements(claims, qpublisher) == False):
+                # P123 "publisher"
+                # Q3029524 Finnish Heritage Agency (Museovirasto)
+                qualifier_publisher = pywikibot.Claim(wikidata_site, 'P123')  # property ID for "publisher"
+                qualifier_targetpub = pywikibot.ItemPage(wikidata_site, qpublisher)  # Finnish Heritage Agency (Museovirasto)
+                qualifier_publisher.setTarget(qualifier_targetpub)
+                source_claim.addQualifier(qualifier_publisher, summary='Adding publisher qualifier')
 
         commonssite.addClaim(wditem, source_claim)
         flag_add_source = True
