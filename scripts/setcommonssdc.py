@@ -383,14 +383,27 @@ def getcollectiontargetqcode(statements, collections):
 
 # check if publisher exists in data
 def ispublisherinstatements(statements, publisherqcode):
-    if "P123" not in statements:
+    if "P7482" not in statements: # P7482 is source of file
+        #print("source of file not found")
         return False
-    claimlist = statements["P123"]    
+    claimlist = statements["P7482"]    
     for claim in claimlist:
         target = claim.getTarget()
         targetqcode = getqcodefromwikidatalink(target)
-        if (targetqcode == publisherqcode):
-            return True
+        if (targetqcode != "Q74228490"): # file available on internet
+            #print("not available on internet") # DEBUG
+            continue
+    
+        if "P123" in claim.qualifiers:
+            foiquali = claim.qualifiers["P123"]
+            for fclaim in foiquali:
+                ftarget = fclaim.getTarget()
+                fqcode = getqcodefromwikidatalink(ftarget)
+                if (fqcode == publisherqcode):
+                    #print("publisher qcode found: " + fqcode)
+                    return True
+
+    #print("did not find publisherqcode: " + str(publisherqcode))
     return False
 
 # is license in statements
@@ -612,7 +625,7 @@ def getnewsourceforfinna(finnarecord):
 
 def getqcodeforfinnapublisher(finna_record):
     if "records" not in finna_record:
-        print("ERROR: no no records in finna record")
+        print("ERROR: no records in finna record")
         return ""
 
     records = finna_record['records'][0]
@@ -748,6 +761,25 @@ for page in pages:
 
     print(" ////////", rowcount, ": [ " + page.title() + " ] ////////")
     rowcount += 1
+
+    #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
+    # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
+    # repo == site == commonssite
+    #testitem = pywikibot.ItemPage(commonssite, 'Q1') # test something like this?
+    if (doessdcbaseexist(page) == False):
+        print("Wikibase item does not yet exist for: " + page.title() + ", id: " + finnaid)
+        continue
+
+    ## TODO: add something P1163 (mime-type) to force creation of sdc-data
+
+    wditem = page.data_item()  # Get the data item associated with the page
+    sdcdata = wditem.get() # all the properties in json-format
+    
+    if "statements" not in sdcdata:
+        print("No statements found for claims: " + finnaid)
+        continue
+    claims = sdcdata['statements']  # claims are just one step from dataproperties down
+
 
     #site = pywikibot.Site("wikidata", "wikidata")
     #repo = site.data_repository()
@@ -902,14 +934,18 @@ for page in pages:
         if coll in d_labeltoqcode:
             collectionqcodes.append(d_labeltoqcode[coll])
 
-    finnainstitutions = getqcodeforfinnapublisher(finna_record)
-    if (len(finnainstitutions) == 0):
-        print("WARN: failed to find publisher in finna for: " + finnaid)
-        continue
+    publisherqcode = getqcodeforfinnapublisher(finna_record)
+    if (len(publisherqcode) == 0):
+        print("WARN: failed to find a publisher in finna for: " + finnaid)
+        #continue
     else:
-        ## DEBUG
-        print("found publisher " + finnainstitutions + " in finna for: " + finnaid)
-        #exit(1) ## TEST
+        print("found publisher " + publisherqcode + " in finna for: " + finnaid)
+        if (ispublisherinstatements(claims, publisherqcode) == False):
+            print("publisher " + publisherqcode + " not found in commons for: " + finnaid)
+            continue # DEBUG
+        else:
+            print("publisher " + publisherqcode + " found in commons for: " + finnaid)
+    exit(1)
 
     if "imagesExtended" not in finna_record['records'][0]:
         print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
@@ -971,29 +1007,10 @@ for page in pages:
         print("No matching image found, skipping: " + finnaid)
         continue
 
-    finnainstitutions = getqcodeforfinnapublisher(finna_record)
-
-    #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
-    # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
-    # repo == site == commonssite
-    #testitem = pywikibot.ItemPage(commonssite, 'Q1') # test something like this?
-    if (doessdcbaseexist(page) == False):
-        print("Wikibase item does not yet exist for: " + page.title() + ", id: " + finnaid)
-        continue
-
-    ## TODO: add something P1163 (mime-type) to force creation of sdc-data
-        
-    wditem = page.data_item()  # Get the data item associated with the page
-    data = wditem.get() # all the properties in json-format
-    
-    if "statements" not in data:
-        print("No statements found for claims: " + finnaid)
-        continue
-    claims = data['statements']  # claims are just one step from dataproperties down
-
     flag_add_source = False
     flag_add_collection = False
     flag_add_finna = False
+    fix_sa_publisher = False
 
     claim_sourcep = 'P7482'  # property ID for "source of file"
     if claim_sourcep not in claims:
@@ -1001,7 +1018,7 @@ for page in pages:
         item_internet = pywikibot.ItemPage(wikidata_site, 'Q74228490')  # file available on the internet
         source_claim = pywikibot.Claim(wikidata_site, claim_sourcep)
         source_claim.setTarget(item_internet)
-    
+
         # P973 "described at URL"
         qualifier_url = pywikibot.Claim(wikidata_site, 'P973')  # property ID for "described at URL"
         qualifier_url.setTarget(sourceurl)
@@ -1014,8 +1031,7 @@ for page in pages:
         source_claim.addQualifier(qualifier_operator, summary='Adding operator qualifier')
 
         # fix error with sa-kuvat in sdc-data..
-        fix_sa_publisher = False
-        if (qpublisher == "Q283140" and ispublisherinstatements(claims, "Q3029524") == True):
+        if (publisherqcode == "Q283140" and ispublisherinstatements(claims, "Q3029524") == True):
             print("changing publisher")
             # need to remove wrong publisher first..
             qualifier_publisher = pywikibot.Claim(wikidata_site, 'P123')  # property ID for "publisher"
@@ -1023,12 +1039,12 @@ for page in pages:
             qualifier_publisher.changeTarget(qualifier_targetpub)
             fix_sa_publisher = True
 
-        if (len(qpublisher) > 0 and fix_sa_publisher == False):
-            if (ispublisherinstatements(claims, qpublisher) == False):
+        if (len(publisherqcode) > 0 and fix_sa_publisher == False):
+            if (ispublisherinstatements(claims, publisherqcode) == False):
                 # P123 "publisher"
                 # Q3029524 Finnish Heritage Agency (Museovirasto)
                 qualifier_publisher = pywikibot.Claim(wikidata_site, 'P123')  # property ID for "publisher"
-                qualifier_targetpub = pywikibot.ItemPage(wikidata_site, qpublisher)  # Finnish Heritage Agency (Museovirasto)
+                qualifier_targetpub = pywikibot.ItemPage(wikidata_site, publisherqcode)  # Finnish Heritage Agency (Museovirasto)
                 qualifier_publisher.setTarget(qualifier_targetpub)
                 source_claim.addQualifier(qualifier_publisher, summary='Adding publisher qualifier')
 
