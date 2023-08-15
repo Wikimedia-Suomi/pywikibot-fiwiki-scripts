@@ -945,7 +945,6 @@ for page in pages:
             continue # DEBUG
         else:
             print("publisher " + publisherqcode + " found in commons for: " + finnaid)
-    exit(1)
 
     if "imagesExtended" not in finna_record['records'][0]:
         print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
@@ -1035,7 +1034,7 @@ for page in pages:
             print("changing publisher")
             # need to remove wrong publisher first..
             qualifier_publisher = pywikibot.Claim(wikidata_site, 'P123')  # property ID for "publisher"
-            qualifier_targetpub = pywikibot.ItemPage(wikidata_site, "Q283140")  # Finnish Heritage Agency (Museovirasto)
+            qualifier_targetpub = pywikibot.ItemPage(wikidata_site, "Q283140")  # sotamuseo
             qualifier_publisher.changeTarget(qualifier_targetpub)
             fix_sa_publisher = True
 
@@ -1052,6 +1051,9 @@ for page in pages:
         flag_add_source = True
     else:
         print("no need to add source")
+
+    if (fix_sa_publisher == True):
+        print("publisher changed!")
 
     # is license in statements
     #P275, "CC BY 4.0" is Q20007257
