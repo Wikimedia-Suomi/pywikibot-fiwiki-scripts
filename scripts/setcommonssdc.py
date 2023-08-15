@@ -171,6 +171,11 @@ def stripid(oldsource):
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
+    # some other text after url?
+    indexend = oldsource.find(",")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
     # html tag after url?
     indexend = oldsource.find("<")
     if (indexend > 0):
@@ -755,7 +760,10 @@ for page in pages:
     filepage = pywikibot.FilePage(page)
     if filepage.isRedirectPage():
         continue
+    file_media_identifier='M' + str(filepage.pageid)
+        
     file_info = filepage.latest_file_info
+
 
     oldtext=page.text
 
@@ -771,6 +779,7 @@ for page in pages:
         continue
 
     ## TODO: add something P1163 (mime-type) to force creation of sdc-data
+    #if file_info.mime == 'image/jpeg':
 
     wditem = page.data_item()  # Get the data item associated with the page
     sdcdata = wditem.get() # all the properties in json-format
@@ -937,12 +946,10 @@ for page in pages:
     publisherqcode = getqcodeforfinnapublisher(finna_record)
     if (len(publisherqcode) == 0):
         print("WARN: failed to find a publisher in finna for: " + finnaid)
-        #continue
     else:
         print("found publisher " + publisherqcode + " in finna for: " + finnaid)
         if (ispublisherinstatements(claims, publisherqcode) == False):
             print("publisher " + publisherqcode + " not found in commons for: " + finnaid)
-            continue # DEBUG
         else:
             print("publisher " + publisherqcode + " found in commons for: " + finnaid)
 
@@ -1009,13 +1016,11 @@ for page in pages:
     flag_add_source = False
     flag_add_collection = False
     flag_add_finna = False
-    fix_sa_publisher = False
 
-    claim_sourcep = 'P7482'  # property ID for "source of file"
-    if claim_sourcep not in claims:
+    if "P7482" not in claims:
         # P7482 "source of file" 
         item_internet = pywikibot.ItemPage(wikidata_site, 'Q74228490')  # file available on the internet
-        source_claim = pywikibot.Claim(wikidata_site, claim_sourcep)
+        source_claim = pywikibot.Claim(wikidata_site, "P7482") # property ID for "source of file"
         source_claim.setTarget(item_internet)
 
         # P973 "described at URL"
@@ -1029,16 +1034,7 @@ for page in pages:
         qualifier_operator.setTarget(qualifier_targetop)
         source_claim.addQualifier(qualifier_operator, summary='Adding operator qualifier')
 
-        # fix error with sa-kuvat in sdc-data..
-        if (publisherqcode == "Q283140" and ispublisherinstatements(claims, "Q3029524") == True):
-            print("changing publisher")
-            # need to remove wrong publisher first..
-            qualifier_publisher = pywikibot.Claim(wikidata_site, 'P123')  # property ID for "publisher"
-            qualifier_targetpub = pywikibot.ItemPage(wikidata_site, "Q283140")  # sotamuseo
-            qualifier_publisher.changeTarget(qualifier_targetpub)
-            fix_sa_publisher = True
-
-        if (len(publisherqcode) > 0 and fix_sa_publisher == False):
+        if (len(publisherqcode) > 0):
             if (ispublisherinstatements(claims, publisherqcode) == False):
                 # P123 "publisher"
                 # Q3029524 Finnish Heritage Agency (Museovirasto)
@@ -1051,9 +1047,6 @@ for page in pages:
         flag_add_source = True
     else:
         print("no need to add source")
-
-    if (fix_sa_publisher == True):
-        print("publisher changed!")
 
     # is license in statements
     #P275, "CC BY 4.0" is Q20007257

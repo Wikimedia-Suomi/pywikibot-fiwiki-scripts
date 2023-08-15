@@ -28,6 +28,11 @@ def stripid(oldsource):
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
+    # some other text after url?
+    indexend = oldsource.find(",")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
     # html tag after url?
     indexend = oldsource.find("<")
     if (indexend > 0):
@@ -294,7 +299,9 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
-pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 
 rowcount = 1
 #rowlimit = 10
