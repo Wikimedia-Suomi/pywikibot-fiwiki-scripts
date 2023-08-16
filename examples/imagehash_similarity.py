@@ -1,3 +1,13 @@
+# Detects if two images are same using imagehash
+#
+## Install
+# python3 -m venv ./venc
+# source venv/bin/activate
+# pip install imagehash pillow
+#
+# Running
+# python imagehash_similarity.py
+
 from PIL import Image
 import imagehash
 import requests
