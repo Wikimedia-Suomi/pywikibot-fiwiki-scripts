@@ -18,7 +18,7 @@ def calculate_dhash(im, hash_size=8):
     hash_int = int(str(hash_value), 16)
     return hash_int
     
-# Function to compare two images
+# Function to compare two images. Bigger hash size is more exact.
 def is_same_image(url1, url2, hash_size=8):
     """Compare two images to check if they are the same."""
         
