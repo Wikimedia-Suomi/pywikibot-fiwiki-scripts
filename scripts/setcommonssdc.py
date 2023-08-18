@@ -163,6 +163,79 @@ def downloadimage(url):
 
 # ----- /FinnaData
 
+# ----- CommonsMediaInfo
+def createMediainfoClaim(site, media_identifier, property, value):
+    csrf_token = site.tokens['csrf']
+    # payload documentation
+    # https://www.wikidata.org/w/api.php?action=help&modules=wbcreateclaim
+    payload = {
+        'action' : 'wbcreateclaim',
+        'format' : u'json',
+        'entity' : media_identifier,
+        'property' : property,
+        'snaktype' : 'value',
+        'value' : json.dumps(value),
+        'token' : csrf_token,
+        'bot' : True, # in case you're using a bot account (which you should)
+    }
+    print(payload)
+    request = site.simple_request(**payload)
+    try:
+        ret=request.submit()
+        claim=ret.get("claim")
+        if claim:
+            return claim.get("id")
+        else:
+            print("Claim created but there was an unknown problem")
+            print(ret)
+
+    except pywikibot.data.api.APIError as e:
+        print('Got an error from the API, the following request were made:')
+        print(request)
+        print('Error: {}'.format(e))
+      
+    return False
+
+def wbEditEntity(site, media_identifier, data):
+    csrf_token = site.tokens['csrf']
+    # payload documentation
+    # https://www.wikidata.org/w/api.php?action=help&modules=wbeditentity
+    payload = {
+        'action' : 'wbeditentity',
+        'format' : u'json',
+        'id' : media_identifier,
+        'data' :  json.dumps(data),
+        'token' : csrf_token,
+        'bot' : True, # in case you're using a bot account (which you should)
+    }
+    request = site.simple_request(**payload)
+    try:
+        ret=request.submit()
+        return True
+
+    except pywikibot.data.api.APIError as e:
+        print('Got an error from the API, the following request were made:')
+        print(request)
+        print('Error: {}'.format(e))
+
+    return False
+
+def addSdcCaption(commons_site, media_identifier, lang, caption):
+    captions={}
+    captions[lang] = {u'language' : lang, 'value' : caption }
+    data={ u'labels' : captions}
+    return wbEditEntity(commons_site, media_identifier, data)
+
+def addSdcMimetype(commons_site, media_identifier, mimetype):
+    # 
+    #property='P180' # P180 = Depicts
+    property='P1163' # mime type
+    value={'entity-type':'item','id': mimetype } # Antoinia Toini
+    return createMediainfoClaim(commons_site, media_identifier, property, value)
+
+# ----- /CommonsMediaInfo
+
+
 # strip id from other things that may be after it:
 # there might be part of url or some html in same field..
 def stripid(oldsource):
@@ -738,13 +811,11 @@ commonssite.login()
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
+
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
-
 pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
-
-#pages = getcatpages(pywikibot, commonssite, "Botanists from Finland")
-#pages = getcatpages(pywikibot, commonssite, "Category:Ilmari Kianto", True)
 
 rowcount = 1
 #rowlimit = 10
@@ -764,7 +835,6 @@ for page in pages:
         
     file_info = filepage.latest_file_info
 
-
     oldtext=page.text
 
     print(" ////////", rowcount, ": [ " + page.title() + " ] ////////")
@@ -775,20 +845,29 @@ for page in pages:
     # repo == site == commonssite
     #testitem = pywikibot.ItemPage(commonssite, 'Q1') # test something like this?
     if (doessdcbaseexist(page) == False):
-        print("Wikibase item does not yet exist for: " + page.title() + ", id: " + finnaid)
-        continue
+        print("Wikibase item does not yet exist for: " + page.title() )
+        #file_info.mime == 'image/jpeg'
+        #addSdcCaption(commonssite, file_media_identifier, "fi", "testing")
+        
+        ## TODO: add something like P1163 (mime-type) to force creation of sdc-data ?
+        #print("adding mime-type: " + str(file_info.mime))
+        
+        # error: invalid snak-data -> need something else to force creation
+        #addSdcMimetype(commonssite, file_media_identifier, str(file_info.mime))
 
-    ## TODO: add something P1163 (mime-type) to force creation of sdc-data
-    #if file_info.mime == 'image/jpeg':
+        #if (doessdcbaseexist(page) == False):
+            #print("ERROR: Failed adding Wikibase item for: " + page.title() )
+        continue
 
     wditem = page.data_item()  # Get the data item associated with the page
     sdcdata = wditem.get() # all the properties in json-format
     
     if "statements" not in sdcdata:
-        print("No statements found for claims: " + finnaid)
+        print("No statements found for claims: " + page.title())
         continue
     claims = sdcdata['statements']  # claims are just one step from dataproperties down
 
+    print("Wikibase statements found for: " + page.title() )
 
     #site = pywikibot.Site("wikidata", "wikidata")
     #repo = site.data_repository()
@@ -936,6 +1015,10 @@ for page in pages:
     #if ("Antellin kokoelma" in finna_collections):
         #print("Skipping collection (can't match by hash due similarities): " + finnaid)
         #continue
+
+    # TODO: add caption to sdc?
+    #finna_title = finna_record['records'][0]['title']
+    #addSdcCaption(commonssite, file_media_identifier, "fi", finna_title)
     
     collectionqcodes = list()
     # lookup qcode by label TODO: fetch from wikidata 
