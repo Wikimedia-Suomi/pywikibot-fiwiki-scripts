@@ -113,8 +113,10 @@ def getkuvakokoelmatidfromurl(source):
 
     indexstart = source.find("kuvakokoelmat.fi")
     if (indexstart <= 0):
-        print("something went wrong, unexpected domain in: " + source)
-        return ""
+        indexstart = source.find("europeana.eu")
+        if (indexstart <= 0):
+            print("something went wrong, unexpected domain in: " + source)
+            return ""
     source = source[indexstart:]
     
     indexlast = source.rfind("/", 0, len(source)-1)
@@ -135,6 +137,21 @@ def getkuvakokoelmatidfromurl(source):
             # if it is image type extension -> remove it (not part of ID)
             kkid = kkid[:indexlast]
     return kkid
+
+# just for documentation purposes
+def getidfromeuropeanaurl(source):
+    mid = getkuvakokoelmatidfromurl(source)
+    if (len(mid) > 0):
+        # urls may have session/tracking parameters in some cases -> remove trash from end
+        mid = stripid(mid)
+    
+    # should be like M012_HK10000_944
+    if (len(mid) > 0 and mid.startswith("M012")):
+        mid = mid.replace("_", ":")
+        #musketti = "musketti." + mid[:index] + ":" + mid[index+1:]
+        musketti = "musketti." + mid
+        return musketti
+    return "" # failed parsing
 
 # if there's garbage in id, strip to where it ends
 def leftfrom(string, char):
@@ -210,6 +227,13 @@ def getnewsourcefromoldsource(srcvalue):
         if (len(newfinnaid) > 0):
             return urllib.parse.quote(newfinnaid) # quote for url
             #newsourceurl = "https://www.finna.fi/Record/" + newfinnaid
+        return "" # failed to parse, don't add anything
+
+    if (srcvalue.find("europeana.eu") > 0):
+        mid = getidfromeuropeanaurl(srcvalue)
+        if (len(mid) > 0):
+            print("DEBUG: europeana-link had id: " + mid)
+            return mid
         return "" # failed to parse, don't add anything
         
     if (srcvalue.find("finna.fi") > 0):
@@ -298,10 +322,14 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
-#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Simo Rista", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
+
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 
 rowcount = 1
 #rowlimit = 10
@@ -328,14 +356,16 @@ for page in pages:
     templatelist = wikicode.filter_templates()
 
     for template in wikicode.filter_templates():
-        if template.name.matches("Information") or template.name.matches("Photograph") or template.name.matches("Artwork") or template.name.matches("Art Photo"):
+        if template.name.matches("Information") or template.name.matches("information") or template.name.matches("Photograph") or template.name.matches("photograph") or template.name.matches("Artwork") or template.name.matches("artwork") or template.name.matches("Art Photo") or template.name.matches("art photo"):
             if template.has("Source"):
                 par = template.get("Source")
                 srcvalue = str(par.value)
                 if (srcvalue.find("profium.com") > 0):
                     print("WARN: unusable url (redirector) in: " + page.title() + ", source: " + srcvalue)
                     break
-                if (srcvalue.find("finna.fi") < 0 and srcvalue.find("kuvakokoelmat.fi") < 0):
+                if (srcvalue.find("finna.fi") < 0 
+                    and srcvalue.find("kuvakokoelmat.fi") < 0
+                    and srcvalue.find("europeana.eu") < 0):
                     print("unknown source, skipping")
                     break
                 if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
@@ -360,7 +390,9 @@ for page in pages:
                 if (srcvalue.find("profium.com") > 0):
                     print("WARN: unusable url (redirector) in: " + page.title() + ", source: " + srcvalue)
                     break
-                if (srcvalue.find("finna.fi") < 0 and srcvalue.find("kuvakokoelmat.fi") < 0):
+                if (srcvalue.find("finna.fi") < 0 
+                    and srcvalue.find("kuvakokoelmat.fi") < 0
+                    and srcvalue.find("europeana.eu") < 0):
                     print("unknown source, skipping")
                     break
                 if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
