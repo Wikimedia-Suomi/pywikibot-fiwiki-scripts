@@ -162,6 +162,11 @@ def convert_tiff_to_jpg(tiff_image):
         tiff_image.convert('RGB').save(fp, "JPEG", quality=100)
     return fp.name    
 
+def convert_tiff_to_png(tiff_image):
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as fp:
+        tiff_image.convert('RGB').save(fp, "PNG", quality=100)
+    return fp.name    
+
 # note: commons at least once has thrown error due to client policy?
 # "Client Error: Forbidden. Please comply with the User-Agent policy"
 # keep an eye out for problems..
@@ -267,7 +272,11 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 # check for list of images we are forbidden from changing (403 error)
 def isblockedimage(page):
     pagename = str(page)
-
+    
+    # timeout all the time..
+    if (pagename.find("Sonkajärven kivikirkko") >= 0):
+        return True
+    
     # if there is svg file for some reason -> skip it
     if (pagename.find(".svg") >= 0):
         return True
@@ -280,6 +289,8 @@ def isblockedimage(page):
     if (pagename.find("Dubrovnik Lounge & Lobby") >= 0):
         return True
     if (pagename.find("Tuohipallo eli Rapapalli eli Meätshä.jpg") >= 0):
+        return True
+    if (pagename.find("Fanny Flodin-Gustavson + Ida Flodin.jpg") >= 0):
         return True
         
     if (pagename.find("Aapeli-Liisi-Kivioja-1909.jpg") >= 0 ):
@@ -294,6 +305,12 @@ def isblockedimage(page):
 
     # close but not close enough
     if (pagename.find("Western Finnish student guard.jpg") >= 0):
+        return True
+
+    # just timeout for some reason
+    if (pagename.find("Confiscated bootleggers") >= 0):
+        return True
+    if (pagename.find("Porvoon porvariskaartin lippu") >= 0):
         return True
 
     return False
@@ -320,13 +337,14 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Ilmari Kianto", True)
-
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Simo Rista", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 
 #rowcount = 1
 #rowlimit = 100
@@ -528,6 +546,13 @@ for page in pages:
                 finna_image_url = hires['url']
             local_image = downloadimage(finna_image_url)
             image_file_name = convert_tiff_to_jpg(local_image)
+            local_file=True    
+        elif hires["format"] == "tif" and file_info.mime == 'image/png':
+            print("converting image from tiff to png") # log it
+            if (need_index == False):
+                finna_image_url = hires['url']
+            local_image = downloadimage(finna_image_url)
+            image_file_name = convert_tiff_to_png(local_image)
             local_file=True    
         elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
             if (need_index == False):
