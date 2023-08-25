@@ -146,6 +146,9 @@ def getidfromeuropeanaurl(source):
         mid = stripid(mid)
     
     # should be like M012_HK10000_944
+    # note: in some cases with multiple underscores last on should be changed to dash
+    # such as in HK19321130:115-1877
+    # otherwise underscore to colon works
     if (len(mid) > 0 and mid.startswith("M012")):
         mid = mid.replace("_", ":")
         #musketti = "musketti." + mid[:index] + ":" + mid[index+1:]
