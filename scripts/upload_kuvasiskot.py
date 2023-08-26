@@ -302,6 +302,23 @@ def get_sdctext(out):
     ret=json.loads(template)
     return ret
 
+def parse_timestamp_string(datestr):
+   m = re.match("valmistusaika:? (\d\d)\.(\d\d)\.(\d\d\d\d)$", datestr.strip())
+   if m!=None:
+      year=m.group(3)
+      month=m.group(2)
+      day=m.group(1)
+      timestamp=year +"-" + month +"-" + day 
+      return timestamp
+
+   m = re.match("valmistusaika:? (\d\d\d\d)$", datestr.strip())
+   if m!=None:
+      year=m.group(1)
+      return year
+
+   print(datestr)
+   exit("Parse_timestamp failed")
+
 def parse_timestamp(datestr):
    # str = "valmistusaika: 22.06.2015"
    m = re.match("valmistusaika:? (\d\d)\.(\d\d)\.(\d\d\d\d)", datestr)
@@ -367,6 +384,13 @@ def check_imagehash(url):
     # return False
     return False
 
+def language_template_wrap(lang, text):
+    if text:
+        return '{{' + lang + '|' + text + '}}'
+    else:
+        return ''
+        
+
 def create_photographer_template(r):
     # Create a new WikiCode object
     wikicode = mwparserfromhell.parse("")
@@ -377,14 +401,14 @@ def create_photographer_template(r):
     # Add the parameters to the template
     template.add('photographer', r['creator_template'])
     template.add('title', '\n'.join(r['template_titles']))
-    template.add('description', '\n'.join(r['template_descriptions']))
-    template.add('depicted people', r['subjectActors'])
-    template.add('depicted place', r['subjectPlaces'])
-    template.add('date', r['date'])
+    template.add('description', language_template_wrap('fi', '\n'.join(r['template_descriptions'])))
+    template.add('depicted people', language_template_wrap('fi', r['subjectActors']))
+    template.add('depicted place', language_template_wrap('fi', r['subjectPlaces']))
+    template.add('date', parse_timestamp_string(r['date']))
     template.add('medium', '')
     template.add('dimensions', "\n".join(r['measurements']))
     template.add('institution', r['institution_template'])
-    template.add('department', "; ".join(r['collections']))
+    template.add('department', language_template_wrap('fi', "; ".join(r['collections'])))
     template.add('references', '')
     template.add('object history', '')
     template.add('exhibition history', '')
@@ -393,7 +417,7 @@ def create_photographer_template(r):
     template.add('notes', '')
     template.add('accession number', r['identifierString'])
     template.add('source', r['source'])
-    template.add('permission',  "\n".join([r['copyright'], r['copyright_description']]))
+    template.add('permission',  language_template_wrap('fi', "\n".join([r['copyright'], r['copyright_description']])))
     template.add('other_versions', '')
     template.add('wikidata', '')
     template.add('camera coord', '')
@@ -794,8 +818,7 @@ for page in range(1,101):
        
         print(r['file_name'])
         if choice == 'y':
-            print("Updating code for https://commons.wikimedia.org/wiki/Commons:Bots/Requests/FinnaUploadBot2")
-            #page=upload_file_to_commons(r['image_url'], r['file_name'], wikitext, comment)
-            #wbEditEntity(site, page, structured_data)
+            page=upload_file_to_commons(r['image_url'], r['file_name'], wikitext, comment)
+            wbEditEntity(site, page, structured_data)
             
         exit(1)
