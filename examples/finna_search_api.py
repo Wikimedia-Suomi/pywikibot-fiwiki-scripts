@@ -62,14 +62,26 @@ def get_finna_search():
     finna_params=get_finna_params()
 
     url="https://api.finna.fi/v1/search?"
+
+    # Return only images
     url+= finna_api_parameter('filter[]', '~format_ext_str_mv:"0/Image/"')
+
+    # Return only results with free online image
     url+= finna_api_parameter('filter[]', 'free_online_boolean:"1"')
+
+    # Collection
     url+= finna_api_parameter('filter[]', '~hierarchy_parent_title:"Studio Kuvasiskojen kokoelma"')
+
+    # Return only results with right to use commercially and edit
     url+= finna_api_parameter('filter[]', '~usage_rights_str_mv:"usage_B"')
+
+    # Search keys
     url+= finna_api_parameter('lookfor','"professorit"+"miesten+puvut"')      # Searchkey
+
+    # Where search key matches
     url+= finna_api_parameter('type','Subjects')                              # Search only from subjects
 
-
+    # Add parameters
     for param in finna_params:
         url+=finna_api_parameter('field[]', param)
 
