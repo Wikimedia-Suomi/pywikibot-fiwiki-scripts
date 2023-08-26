@@ -794,7 +794,8 @@ for page in range(1,101):
        
         print(r['file_name'])
         if choice == 'y':
-            page=upload_file_to_commons(r['image_url'], r['file_name'], wikitext, comment)
-            wbEditEntity(site, page, structured_data)
+            print("Updating code for https://commons.wikimedia.org/wiki/Commons:Bots/Requests/FinnaUploadBot2")
+            #page=upload_file_to_commons(r['image_url'], r['file_name'], wikitext, comment)
+            #wbEditEntity(site, page, structured_data)
             
         exit(1)
