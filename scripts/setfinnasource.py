@@ -233,11 +233,28 @@ def getnewsourcefromoldsource(srcvalue):
         return "" # failed to parse, don't add anything
 
     if (srcvalue.find("europeana.eu") > 0):
+        eusource = parsesourcefromeuropeana(srcvalue)
+        if (len(eusource) < 0):
+            print("Failed to retrieve source from europeana")
+            return "" # failed to parse, don't add anything
+
+        # museovirasto.finna.fi or museovirasto.<id>
+        if (eusource.find("museovirasto") > 0 or eusource.find("finna") > 0):
+            # ok, we might use this as-is
+            indexrec = eusource.find("/Record/")
+            if (indexrec >= 0):
+                indexrec = indexrec + len("/Record/")
+                newid = eusource[indexrec:]
+                newid = stripid(newid)
+                print("Found finna id from europeana: " + newid)
+                return newid
+        
+        # if url has musketti-id: europeana.eu/%/M012..
         mid = getidfromeuropeanaurl(srcvalue)
-        if (len(mid) > 0):
-            print("DEBUG: europeana-link had id: " + mid)
-            return mid
-        return "" # failed to parse, don't add anything
+        if (len(mid) <= 0):
+            return "" # failed to parse, don't add anything
+        print("DEBUG: europeana-link had id: " + mid)
+        return mid
         
     if (srcvalue.find("finna.fi") > 0):
         # finna.fi url
@@ -245,51 +262,104 @@ def getnewsourcefromoldsource(srcvalue):
 
     return ""
 
-# fetch metapage from finna and check if we have a valid url
-# since we might have obsolete ID.
-def getfinnapage(finnaurl):
+def requestpage(pageurl):
 
-    finnapage = ""
+    page = ""
 
     try:
-        request = urllib.request.Request(finnaurl)
-        print("request done: " + finnaurl)
+        headers={'User-Agent': 'pywikibot'}
+        #response = requests.get(url, headers=headers, stream=True)
+    
+        request = urllib.request.Request(pageurl, headers=headers)
+        print("request done: " + pageurl)
 
         response = urllib.request.urlopen(request)
         if (response.readable() == False):
             print("response not readable")
+            return ""
 
         htmlbytes = response.read()
-        finnapage = htmlbytes.decode("utf8")
+        page = htmlbytes.decode("utf8")
 
         #print("page: " + finnapage)
-        return True # page found
+        return page # page found
         
     except urllib.error.HTTPError as e:
         print(e.__dict__)
-        return False
+        return ""
     except urllib.error.URLError as e:
         print(e.__dict__)
-        return False
+        return ""
     #except:
-        #print("failed to retrieve finna page")
-        #return False
+        #print("failed to retrieve page")
+        #return ""
 
+    return ""
+
+# fetch metapage from finna and check if we have a valid url
+# since we might have obsolete ID.
+def getfinnapage(finnaurl):
+    finnapage = requestpage(finnaurl)
+    if (len(finnapage) > 0):
+        return True
     return False
+
+
+# input: source reported by commons (url to europeana eu)
+def parsesourcefromeuropeana(commonssource):
+    if (commonssource.find("europeana.eu") < 0):
+        print("Not europeana url: " + commonssource)
+        return ""
+
+    eupage = requestpage(commonssource)
+    if (len(eupage) <= 0):
+        return ""
+
+    attrlen = len('class="data-provider"')
+    indexdp = eupage.find('class="data-provider"')
+    if (indexdp < 0):
+        return ""
+    indexdp = eupage.find('>', indexdp+attrlen)
+    if (indexdp < 0):
+        return ""
+    attrlen = len('href="')
+    indexdp = eupage.find('href="', indexdp+1)
+    if (indexdp < 0):
+        return ""
+    indexend = eupage.find('"', indexdp+attrlen)
+    if (indexend < 0):
+        return ""
+
+    # this should get the actual source of image as it is set in europeana        
+    eusource = eupage[indexdp+attrlen:indexend]
+    if (len(eusource) <= 0):
+        print("Failed to parse source from europeana: " + commonssource)
+        return ""
+
+    # this should be the source reported in europeana    
+    print("europeana page source: " + eusource)
+    return eusource
+
 
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
     pagename = str(page)
 
     # no blocking currently here
-
     return False
 
 # get pages immediately under cat
 # and upto depth of 1 in subcats
 def getcatpages(pywikibot, commonssite, maincat, recurse=False):
+    final_pages = list()
     cat = pywikibot.Category(commonssite, maincat)
     pages = list(commonssite.categorymembers(cat))
+
+    for page in pages:
+        if isblockedimage(page) == False:
+            if page not in final_pages:
+                final_pages.append(page)
+
 
     # no recursion by default, just get into depth of 1
     if (recurse == True):
@@ -298,10 +368,10 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
             subpages = commonssite.categorymembers(subcat)
             for subpage in subpages:
                 if isblockedimage(subpage) == False: 
-                    if subpage not in pages: # avoid duplicates
-                        pages.append(subpage)
+                    if subpage not in final_pages: # avoid duplicates
+                        final_pages.append(subpage)
 
-    return pages
+    return final_pages
 
 def getlinkedpages(pywikibot, commonssite, linkpage):
     listpage = pywikibot.Page(commonssite, linkpage)  # The page you're interested in
@@ -326,13 +396,16 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Simo Rista", True)
-pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
+
+pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s", True)
+
 
 rowcount = 1
 #rowlimit = 10
