@@ -697,7 +697,7 @@ def parsemetaidfromfinnapage(finnaurl):
         return newid
 
     return ""
-    
+
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
 
@@ -759,7 +759,7 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
             subpages = commonssite.categorymembers(subcat)
             for subpage in subpages:
                 if isblockedimage(subpage) == False: 
-                    if subpage not in pages: # avoid duplicates
+                    if subpage not in final_pages: # avoid duplicates
                         final_pages.append(page)
 
     return final_pages
@@ -812,10 +812,13 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 
+pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Charles Riis", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
+
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 
 rowcount = 1
 #rowlimit = 10
