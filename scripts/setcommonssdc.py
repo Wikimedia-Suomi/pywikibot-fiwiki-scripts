@@ -336,6 +336,9 @@ def geturlfromsource(source):
     indexend = source.find("]", indexproto)
     if (indexend > 0):
         source = source[:indexend]
+    indexend = source.find("|", indexproto)
+    if (indexend > 0):
+        source = source[:indexend]
 
     if (index > 0):
         # finally, if there was anything before start of url
@@ -666,25 +669,28 @@ def parsedatarecordidfromfinnapage(finnapage):
 
     return finnapage[indexid:indexend]
 
-# fetch metapage from finna and try to parse current ID from the page
-# since we might have obsolete ID.
-# new ID is needed API query.
-def parsemetaidfromfinnapage(finnaurl):
+# fetch page
+def requestpage(pageurl):
 
-    finnapage = ""
+    page = ""
 
     try:
-        request = urllib.request.Request(finnaurl)
-        print("request done: " + finnaurl)
+        headers={'User-Agent': 'pywikibot'}
+        #response = requests.get(url, headers=headers, stream=True)
+    
+        request = urllib.request.Request(pageurl, headers=headers)
+        print("request done: " + pageurl)
 
         response = urllib.request.urlopen(request)
         if (response.readable() == False):
             print("response not readable")
+            return ""
 
         htmlbytes = response.read()
-        finnapage = htmlbytes.decode("utf8")
+        page = htmlbytes.decode("utf8")
 
         #print("page: " + finnapage)
+        return page # page found
         
     except urllib.error.HTTPError as e:
         print(e.__dict__)
@@ -692,9 +698,28 @@ def parsemetaidfromfinnapage(finnaurl):
     except urllib.error.URLError as e:
         print(e.__dict__)
         return ""
+    except UnicodeDecodeError as e:
+        print(e.__dict__)
+        return ""
+    except UnicodeEncodeError as e:
+        print(e.__dict__)
+        return ""
     #except:
-        #print("failed to retrieve finna page")
+        #print("failed to retrieve page")
         #return ""
+
+    return ""
+
+# fetch metapage from finna and try to parse current ID from the page
+# since we might have obsolete ID.
+# new ID is needed API query.
+def parsemetaidfromfinnapage(finnaurl):
+
+    finnapage = requestpage(finnaurl)
+    if (len(finnapage) <= 0):
+        # failed to retrieve page
+        print("WARN: Failed to retrieve page from Finna")
+        return ""
 
     # try a new method to parse the id..
     newid = parseapiidfromfinnapage(finnapage)
@@ -800,7 +825,7 @@ def doessdcbaseexist(page):
         data = wditem.get() # all the properties in json-format
         return True # no exception -> ok, we can use it
     except:
-        print("failed to retrieve structured data")
+        print("WARN: failed to retrieve structured data")
 
     return False
 
@@ -831,13 +856,14 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
+pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 rowcount = 1
 #rowlimit = 10
@@ -916,9 +942,9 @@ for page in pages:
                     kkid = getkuvakokoelmatidfromurl(srcvalue)
                 if (srcvalue.find("finna.fi") > 0):
                     finnasource = srcvalue
-                    finnaid = getlinksourceid(srcvalue)
+                    finnaid = getrecordid(srcvalue)
                     if (finnaid == ""):
-                        finnaid = getrecordid(srcvalue)
+                        finnaid = getlinksourceid(srcvalue)
                         if (finnaid == ""):
                             print("no id and no record found")
                         break
@@ -931,9 +957,9 @@ for page in pages:
                     kkid = getkuvakokoelmatidfromurl(srcvalue)
                 if (srcvalue.find("finna.fi") > 0):
                     finnasource = srcvalue
-                    finnaid = getlinksourceid(srcvalue)
+                    finnaid = getrecordid(srcvalue)
                     if (finnaid == ""):
-                        finnaid = getrecordid(srcvalue)
+                        finnaid = getlinksourceid(srcvalue)
                         if (finnaid == ""):
                             print("no id and no record found")
                         break

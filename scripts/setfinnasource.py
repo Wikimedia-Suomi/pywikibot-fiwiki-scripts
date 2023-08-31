@@ -80,7 +80,7 @@ def stripid(oldsource):
 def getidfromoldsource(oldsource):
     indexid = oldsource.find("id=")
     if (indexid < 0):
-        return oldsource
+        return ""
 
     oldsource = oldsource[indexid+3:]
     return stripid(oldsource)
@@ -108,6 +108,9 @@ def geturlfromsource(source):
 
     # wiki-markup end of url
     indexend = source.find("]", indexproto)
+    if (indexend > 0):
+        source = source[:indexend]
+    indexend = source.find("|", indexproto)
     if (indexend > 0):
         source = source[:indexend]
 
@@ -308,6 +311,12 @@ def requestpage(pageurl):
     except urllib.error.URLError as e:
         print(e.__dict__)
         return ""
+    except UnicodeDecodeError as e:
+        print(e.__dict__)
+        return ""
+    except UnicodeEncodeError as e:
+        print(e.__dict__)
+        return ""
     #except:
         #print("failed to retrieve page")
         #return ""
@@ -419,7 +428,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Simo Rista", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
+#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
@@ -474,15 +483,16 @@ for page in pages:
                 pageurltemp = geturlfromsource(srcvalue)
                 newsourcetext = ""
                 newsourceid = getnewsourcefromoldsource(pageurltemp)
-                newsourceurl = getnewfinnarecordurl(newsourceid)
-                if (len(newsourceurl) > 0):
-                    newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
-                if (newsourcetext != srcvalue and len(newsourcetext) > 0):
-                    # remove newline from existing before appending
-                    if (srcvalue.endswith("\n")):
-                        srcvalue = srcvalue[:len(srcvalue)-1]
-                    par.value = srcvalue + newsourcetext
-                    changed = True
+                if (len(newsourceid) > 0):
+                    newsourceurl = getnewfinnarecordurl(newsourceid)
+                    if (len(newsourceurl) > 0):
+                        newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
+                    if (newsourcetext != srcvalue and len(newsourcetext) > 0):
+                        # remove newline from existing before appending
+                        if (srcvalue.endswith("\n")):
+                            srcvalue = srcvalue[:len(srcvalue)-1]
+                        par.value = srcvalue + newsourcetext
+                        changed = True
 
             if template.has("source"):
                 par = template.get("source")
@@ -503,15 +513,16 @@ for page in pages:
                 pageurltemp = geturlfromsource(srcvalue)
                 newsourcetext = ""
                 newsourceid = getnewsourcefromoldsource(pageurltemp)
-                newsourceurl = getnewfinnarecordurl(newsourceid)
-                if (len(newsourceurl) > 0):
-                    newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
-                if (newsourcetext != srcvalue and len(newsourcetext) > 0):
-                    # remove newline from existing before appending
-                    if (srcvalue.endswith("\n")):
-                        srcvalue = srcvalue[:len(srcvalue)-1]
-                    par.value = srcvalue + newsourcetext
-                    changed = True
+                if (len(newsourceid) > 0):
+                    newsourceurl = getnewfinnarecordurl(newsourceid)
+                    if (len(newsourceurl) > 0):
+                        newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
+                    if (newsourcetext != srcvalue and len(newsourcetext) > 0):
+                        # remove newline from existing before appending
+                        if (srcvalue.endswith("\n")):
+                            srcvalue = srcvalue[:len(srcvalue)-1]
+                        par.value = srcvalue + newsourcetext
+                        changed = True
  
     if (changed == False):
         print("no change, skipping")
