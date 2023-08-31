@@ -328,6 +328,9 @@ def parsesourcefromeuropeana(commonssource):
     if (commonssource.find("europeana.eu") < 0):
         print("Not europeana url: " + commonssource)
         return ""
+    if (commonssource.find("proxy.europeana.eu") >= 0):
+        print("can't use proxy (might direct to binary image): " + commonssource)
+        return ""
 
     eupage = requestpage(commonssource)
     if (len(eupage) <= 0):
@@ -420,10 +423,10 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
-pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
 rowcount = 1
