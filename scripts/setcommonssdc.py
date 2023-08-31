@@ -339,6 +339,12 @@ def geturlfromsource(source):
     indexend = source.find("|", indexproto)
     if (indexend > 0):
         source = source[:indexend]
+    indexend = source.find("}", indexproto)
+    if (indexend > 0):
+        source = source[:indexend]
+    indexend = source.find("\n", indexproto)
+    if (indexend > 0):
+        source = source[:indexend]
 
     if (index > 0):
         # finally, if there was anything before start of url
@@ -702,6 +708,9 @@ def requestpage(pageurl):
         print(e.__dict__)
         return ""
     except UnicodeEncodeError as e:
+        print(e.__dict__)
+        return ""
+    except http.client.InvalidURL as e:
         print(e.__dict__)
         return ""
     #except:
