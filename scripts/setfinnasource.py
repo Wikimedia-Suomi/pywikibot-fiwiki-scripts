@@ -224,6 +224,9 @@ def convertkuvakokoelmatid(kkid):
     return musketti
 
 def getnewsourcefromoldsource(srcvalue):
+    # if there is human readable stuff in source -> strip to just url
+    srcvalue = geturlfromsource(srcvalue)
+
     if (srcvalue.find("kuvakokoelmat.fi") > 0):
         kkid = getkuvakokoelmatidfromurl(srcvalue)
         newfinnaid = convertkuvakokoelmatid(kkid)
@@ -398,13 +401,14 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Simo Rista", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 
-pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s", True)
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
 rowcount = 1
