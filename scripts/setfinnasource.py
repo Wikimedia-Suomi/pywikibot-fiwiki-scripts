@@ -88,6 +88,8 @@ def getidfromoldsource(oldsource):
 # commons source may have human readable stuff in it
 # parse to plain url
 def geturlfromsource(source):
+    #print("DEBUG: source url is: " + source)
+
     protolen = len("http://")
     index = source.find("http://")
     if (index < 0):
@@ -97,13 +99,26 @@ def geturlfromsource(source):
             # no url in string
             return ""
 
-    # try to find space or something            
-    indexend = source.find(" ", index+protolen)
-    if (indexend < 0):
-        # no space or other clear separator -> just use string length
-        indexend = len(source)-1
-        
-    return source[index:indexend]
+    indexproto = index+protolen
+
+    # try to find space or something
+    indexend = source.find(" ", indexproto)
+    if (indexend > 0):
+        source = source[:indexend]
+
+    # wiki-markup end of url
+    indexend = source.find("]", indexproto)
+    if (indexend > 0):
+        source = source[:indexend]
+
+    if (index > 0):
+        # finally, if there was anything before start of url
+        # -> strip to just url 
+        #indexend = len(source)-1 # just use string length
+        source = source[index:]
+
+    #print("DEBUG: found source url: " + source)
+    return source
 
 # input: kuvakokoelmat.fi url
 # output: old format id
@@ -405,10 +420,10 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
-#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
 rowcount = 1
@@ -440,6 +455,7 @@ for page in pages:
             if template.has("Source"):
                 par = template.get("Source")
                 srcvalue = str(par.value)
+                
                 if (srcvalue.find("profium.com") > 0):
                     print("WARN: unusable url (redirector) in: " + page.title() + ", source: " + srcvalue)
                     break
@@ -452,8 +468,9 @@ for page in pages:
                     # already has metapage
                     print("already has metapage link, skipping")
                     break
+                pageurltemp = geturlfromsource(srcvalue)
                 newsourcetext = ""
-                newsourceid = getnewsourcefromoldsource(srcvalue)
+                newsourceid = getnewsourcefromoldsource(pageurltemp)
                 newsourceurl = getnewfinnarecordurl(newsourceid)
                 if (len(newsourceurl) > 0):
                     newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
@@ -467,6 +484,7 @@ for page in pages:
             if template.has("source"):
                 par = template.get("source")
                 srcvalue = str(par.value)
+                
                 if (srcvalue.find("profium.com") > 0):
                     print("WARN: unusable url (redirector) in: " + page.title() + ", source: " + srcvalue)
                     break
@@ -479,8 +497,9 @@ for page in pages:
                     # already has metapage
                     print("already has metapage link, skipping")
                     break
+                pageurltemp = geturlfromsource(srcvalue)
                 newsourcetext = ""
-                newsourceid = getnewsourcefromoldsource(srcvalue)
+                newsourceid = getnewsourcefromoldsource(pageurltemp)
                 newsourceurl = getnewfinnarecordurl(newsourceid)
                 if (len(newsourceurl) > 0):
                     newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
