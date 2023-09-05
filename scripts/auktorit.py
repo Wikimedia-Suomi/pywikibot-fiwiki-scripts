@@ -219,7 +219,7 @@ site.login()
 # haku auktoriteettitunnisteiden luettelossa olevilla
 
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=24863868"
+url = "https://petscan.wmflabs.org/?psid=25029822"
 url += "&format=json"
 url += "&output_limit=1000"
 response = urlopen(url)
@@ -238,6 +238,11 @@ for row in data_json['*'][0]['a']['*']:
         continue
     if (oldtext.find("{{bots") > 0 or oldtext.find("{{nobots") > 0):
         print("Skipping " + row['title'] + " - bot-restricted.")
+        continue
+        
+    # someone has marked the page as being under editing -> don't modify now
+    if (oldtext.find("{{Työstetään") > 0 or oldtext.find("{{työstetään") > 0):
+        print("Skipping " + row['title'] + " - editing in progress.")
         continue
     
     if (oldtext.find("{{Auktoriteettitunnisteet") > 0 or oldtext.find("{{auktoriteettitunnisteet") > 0):
