@@ -32,6 +32,9 @@ def stripid(oldsource):
     indexend = oldsource.find(",")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
+    indexend = oldsource.find(")")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
 
     # html tag after url?
     indexend = oldsource.find("<")
@@ -158,8 +161,12 @@ def getkuvakokoelmatidfromurl(source):
         # if the part after dot is a number -> leave it
         remainder = kkid[indexlast+1:]
         if (remainder.isnumeric() == False):
-            # if it is image type extension -> remove it (not part of ID)
-            kkid = kkid[:indexlast]
+            # note: in some cases there maybe be a file extension, 
+            # but also there may be a part of the ID in some cases..
+            if (remainder.lower() == "jpg" or remainder.lower() == "jpeg"
+                or remainder.lower() == "png" or remainder.lower() == "tiff" or remainder.lower() == "tif"):
+                # if it is image type extension -> remove it (not part of ID)
+                kkid = kkid[:indexlast]
     return kkid
 
 # just for documentation purposes
@@ -434,17 +441,28 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 
+#pages = getcatpages(pywikibot, commonssite, "Historians from Finland", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin")
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Simo Rista", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by photographer from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:History of Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
+
+
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
+#pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
-#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
-
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
 rowcount = 1

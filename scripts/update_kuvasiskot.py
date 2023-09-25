@@ -191,6 +191,9 @@ def stripid(oldsource):
     indexend = oldsource.find(",")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
+    indexend = oldsource.find(")")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
 
     # html tag after url?
     indexend = oldsource.find("<")
@@ -272,7 +275,7 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 # check for list of images we are forbidden from changing (403 error)
 def isblockedimage(page):
     pagename = str(page)
-    
+
     # timeout all the time..
     if (pagename.find("Sonkajärven kivikirkko") >= 0):
         return True
@@ -283,6 +286,9 @@ def isblockedimage(page):
 
     # commons scales down and size comparison fails -> skip this for now
     if (pagename.find("Bronze age socketed axes from Finland.jpg") >= 0):
+        return True
+    # upload ends up being smaller than original somehow -> skip this
+    if (pagename.find("Suomineito.jpg") >= 0):
         return True
 
     # 403 forbidden when uploading new version
@@ -307,10 +313,14 @@ def isblockedimage(page):
     if (pagename.find("Western Finnish student guard.jpg") >= 0):
         return True
 
-    # just timeout for some reason
-    if (pagename.find("Confiscated bootleggers") >= 0):
+    # uploaded and cropped        
+    if (pagename.find("Ernst-Lindelof.jpg") >= 0):
         return True
-    if (pagename.find("Porvoon porvariskaartin lippu") >= 0):
+    if (pagename.find("Bengt-Schalin.jpg") >= 0):
+        return True
+    if (pagename.find("EAchté c.1890s.jpg") >= 0):
+        return True
+    if (pagename.find("AOjanperä 1895.jpg") >= 0):
         return True
 
     return False
@@ -328,6 +338,8 @@ def getlinkedpages(pywikibot, commonssite, linkpage):
 
     return pages
 
+
+
 # ------- main()
 
 commonssite = pywikibot.Site("commons", "commons")
@@ -335,16 +347,28 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Landscape architects")
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Simo Rista", True)
-pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin")
+#pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:History of Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
+
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
+#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
 
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
-#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 #rowcount = 1
 #rowlimit = 100
@@ -378,7 +402,7 @@ for page in pages:
 
     for finnaid in finna_ids:
 
-        if (finnaid.find("?") > 0 or finnaid.find("&") > 0 or finnaid.find("<") > 0 or finnaid.find(">") > 0 or finnaid.find("#") > 0 or finnaid.find("[") > 0 or finnaid.find("]") > 0 or finnaid.find("{") > 0 or finnaid.find("}") > 0):
+        if (finnaid.find("?") > 0 or finnaid.find("&") > 0 or finnaid.find("<") > 0 or finnaid.find(">") > 0 or finnaid.find("#") > 0 or finnaid.find("[") > 0 or finnaid.find("]") > 0 or finnaid.find("{") > 0 or finnaid.find("}") > 0 or finnaid.find(")") > 0):
             print("WARN: finna id in " + page.title() + " has unexpected characters, bug or garbage in url? ")
             
             # strip pointless parts if any
@@ -593,6 +617,13 @@ for page in pages:
             if (is_same_image(converted_image, commons_image) == False):
                 print("ERROR! Images are NOT same after conversion! " + finnaid)
                 continue
+
+            # after conversion, file in commons is still larger?
+            # conversion routine is borked or other error?
+            if file_info.width >= converted_image.width or file_info.height >= converted_image.height:
+                print("WARN: converted image is not larger than in Commons: " + finnaid)
+                continue
+
 
         comment = "Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
         print(comment)
