@@ -385,7 +385,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
-
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
 
@@ -408,7 +407,7 @@ for page in pages:
 
     # try to catch exceptions and return later
     file_page = getfilepage(pywikibot, page)
-    if (filepage == None):
+    if (file_page == None):
         continue
 
     if file_page.isRedirectPage():
