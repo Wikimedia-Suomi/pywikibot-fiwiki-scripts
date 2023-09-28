@@ -61,9 +61,9 @@ def finna_api_parameter(name, value):
 # * https://api.finna.fi
 # * https://www.kiwi.fi/pages/viewpage.action?pageId=53839221 
 
-def get_finna_record(id):
+def get_finna_record(finnaid):
 
-    url="https://api.finna.fi/v1/record?id=" +  urllib.parse.quote_plus(id)
+    url="https://api.finna.fi/v1/record?id=" +  urllib.parse.quote_plus(finnaid)
     url+= finna_api_parameter('field[]', 'id')
     url+= finna_api_parameter('field[]', 'title')
     url+= finna_api_parameter('field[]', 'subTitle')
@@ -92,7 +92,7 @@ def get_finna_record(id):
         return response.json()
     except:
         print("Finna API query failed: " + url)
-        exit(1)
+        return None
 
 # convert string to base 16 integer for calculating difference
 def converthashtoint(h, base=16):
@@ -136,7 +136,7 @@ def is_same_image(img1, img2, hashlen=8):
         return True
     elif phash_diff < 4 and dhash_diff == 0:
         return True
-    elif (phash_diff + dhash_diff) <= 4:
+    elif (phash_diff + dhash_diff) <= 8:
         return True
     else:
         return False
@@ -322,6 +322,24 @@ def isblockedimage(page):
         return True
     if (pagename.find("AOjanperä 1895.jpg") >= 0):
         return True
+    if (pagename.find("Aino Öljymäki (1901–1963), Finnish teacher and singer.jpg") >= 0):
+        return True
+    if (pagename.find("A. F. Granfelt.jpg") >= 0):
+        return True
+
+    # just timeout for some reason
+    #if (pagename.find("Confiscated bootleggers") >= 0):
+        #return True
+    #if (pagename.find("Porvoon porvariskaartin lippu") >= 0):
+        #return True
+    #if (pagename.find("Hämeen savupirtti Korkanassa") >= 0):
+        #return True
+    #if (pagename.find("Ihmisiä ja poroja Hallassa 1910-luvulla") >= 0):
+        #return True
+    #if (pagename.find("Likorannan aittan seinnustalla on kalaverkkoja kuivumassa") >= 0):
+        #return True
+    #if (pagename.find("Sörnäinen harbour rail") >= 0):
+        #return True
 
     return False
 
@@ -338,6 +356,14 @@ def getlinkedpages(pywikibot, commonssite, linkpage):
 
     return pages
 
+# just catch exceptions
+def getfilepage(pywikibot, page):
+    try:
+        return pywikibot.FilePage(page)
+    except:
+        print("WARN: failed to retrieve filepage: " + page.title())
+
+    return None
 
 
 # ------- main()
@@ -365,8 +391,9 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
-pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
@@ -379,7 +406,11 @@ for page in pages:
     if page.namespace() != 6:  # 6 is the namespace ID for files
         continue
 
-    file_page = pywikibot.FilePage(page)
+    # try to catch exceptions and return later
+    file_page = getfilepage(pywikibot, page)
+    if (filepage == None):
+        continue
+
     if file_page.isRedirectPage():
         continue
         
@@ -411,6 +442,9 @@ for page in pages:
 
         # try to fetch metadata with finna API    
         finna_record = get_finna_record(finnaid)
+        if (finna_record == None):
+            print("WARN: failed to retrieve finna record for: " + finnaid)
+            continue
         if (finna_record['status'] != 'OK'):
             print("Skipping (status not OK): " + finnaid + " status: " + finna_record['status'])
             continue

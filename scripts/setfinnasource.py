@@ -390,7 +390,7 @@ def parsesourcefromeuropeana(commonssource):
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
     pagename = str(page)
-
+    
     # no blocking currently here
     return False
 
@@ -431,6 +431,15 @@ def getlinkedpages(pywikibot, commonssite, linkpage):
 
     return pages
 
+# just catch exceptions
+def getfilepage(pywikibot, page):
+    try:
+        return pywikibot.FilePage(page)
+    except:
+        print("WARN: failed to retrieve filepage: " + page.title())
+
+    return None
+
 # ------ main()
 
 # site = pywikibot.Site("fi", "wikipedia")
@@ -459,8 +468,9 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
-pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
@@ -474,7 +484,10 @@ for page in pages:
     if page.namespace() != 6:  # 6 is the namespace ID for files
         continue
 
-    filepage = pywikibot.FilePage(page)
+    # try to catch exceptions and return later
+    filepage = getfilepage(pywikibot, page)
+    if (filepage == None):
+        continue
     if filepage.isRedirectPage():
         continue    
 
