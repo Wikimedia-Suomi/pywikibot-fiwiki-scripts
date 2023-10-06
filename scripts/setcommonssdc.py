@@ -197,7 +197,7 @@ class CachedImageData:
         self.conn.commit()
 
     def findfromcache(self, url):
-        sqlq = "SELECT * FROM imagecache WHERE url = '" + url + "'"
+        sqlq = "SELECT url, phashlen, phashval, dhashlen, dhashval, timestamp FROM imagecache WHERE url = '" + url + "'"
         
         cur = self.conn.cursor()
         res = cur.execute(sqlq)
@@ -209,7 +209,7 @@ class CachedImageData:
             # too many found
             return None
         for row in rset:
-            return tuple((row[0], row[1], row[2], row[3], row[4], datetime.fromisoformat(row[5])))
+            return tuple((row[0], int(row[1]), row[2], int(row[3]), row[4], datetime.fromisoformat(row[5])))
 
         return None
 
