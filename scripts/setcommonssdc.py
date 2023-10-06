@@ -182,7 +182,7 @@ class CachedImageData:
 
     def addtocache(self, url, plen, pval, dlen, dval, ts):
 
-        sqlq = "INSERT INTO imagecache VALUES ('"+ url + "', "+ plen + ", '"+ pval + "', "+ dlen + ", '"+ dval + "', '" + ts.isoformat() + "')"
+        sqlq = "INSERT INTO imagecache VALUES ('"+ url + "', "+ str(plen) + ", '"+ str(pval) + "', "+ str(dlen) + ", '"+ str(dval) + "', '" + ts.isoformat() + "')"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
@@ -190,7 +190,7 @@ class CachedImageData:
 
     def updatecache(self, url, plen, pval, dlen, dval, ts):
 
-        sqlq = "UPDATE imagecache SET phashlen "+ plen + ", phashval = '"+ pval + "', dhashlen = "+ dlen + ", dhashval '"+ dval + "', timestamp = '" + ts.isoformat() + "' WHERE url = '"+ url + "'"
+        sqlq = "UPDATE imagecache SET phashlen "+ str(plen) + ", phashval = '"+ str(pval) + "', dhashlen = "+ str(dlen) + ", dhashval '"+ str(dval) + "', timestamp = '" + ts.isoformat() + "' WHERE url = '"+ url + "'"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
@@ -209,16 +209,16 @@ class CachedImageData:
             # too many found
             return None
         for row in rset:
-            return tuple((row[0], row[1], row[2], row[3], row[4], row[5], datetime.fromisoformat(row[6])))
+            return tuple((row[0], row[1], row[2], row[3], row[4], datetime.fromisoformat(row[5])))
 
         return None
 
     def addorupdate(self, url, plen, pval, dlen, dval, ts):
-        tp = findfromcache(url)
+        tp = self.findfromcache(url)
         if (tp == None):
-            addtocache(url, plen, pval, dlen, dval, ts)
+            self.addtocache(url, plen, pval, dlen, dval, ts)
         else:
-            updatecache(url, plen, pval, dlen, dval, ts)
+            self.updatecache(url, plen, pval, dlen, dval, ts)
 
 # ----- /CachedImageData
 
