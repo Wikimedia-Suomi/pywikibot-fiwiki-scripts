@@ -107,42 +107,47 @@ def get_finna_record(finnaid):
 
 # ----- /FinnaData
 
-# convert string to base 16 integer for calculating difference
-def converthashtoint(h, base=16):
-    return int(str(h), base)
-
-def getimagehash(img, hashlen=8):
-    phash = imagehash.phash(img, hash_size=hashlen)
-    dhash = imagehash.dhash(img, hash_size=hashlen)
-    phash_int = converthashtoint(phash)
-    dhash_int = converthashtoint(dhash)
-    return tuple((phash, dhash, phash_int, dhash_int))
-    
-
-# Compares if the image is same using similarity hashing
-# method is to convert images to 64bit integers and then
-# calculate hamming distance. 
-#
 # Perceptual hashing 
 # http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
 # difference hashing
 # http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
 #
-def is_same_image(img1, img2, hashlen=8):
+def getimagehash(img, hashlen=8):
+    phash = imagehash.phash(img, hash_size=hashlen)
+    dhash = imagehash.dhash(img, hash_size=hashlen)
+    return tuple((hashlen, phash, dhash))
+    
+# convert string to base 16 integer for calculating difference
+def converthashtoint(h, base=16):
+    return int(str(h), base)
 
-    imghash1 = getimagehash(img1, hashlen)
-    imghash2 = getimagehash(img2, hashlen)
+# Compares if the image is same using similarity hashing
+# method is to convert images to 64bit integers and then
+# calculate hamming distance. 
+#
+def is_same_image(imghash1, imghash2, hashlen=8):
+    
+    # check that hash lengths are same
+    if (imghash1[1] != imghash2[1] or imghash1[3] != imghash2[3]):
+        print("Hash length mismatch")
+        return False
 
-    # Hamming distance difference
-    phash_diff = bin(imghash1[2] ^ imghash2[2]).count('1')
-    dhash_diff = bin(imghash1[3] ^ imghash2[3]).count('1') 
+    phash_int1 = converthashtoint(imghash1[2])
+    dhash_int1 = converthashtoint(imghash1[4])
+
+    phash_int2 = converthashtoint(imghash2[2])
+    dhash_int2 = converthashtoint(imghash2[4])
+
+    # Hamming distance difference (from integers)
+    phash_diff = bin(phash_int1 ^ phash_int2).count('1')
+    dhash_diff = bin(dhash_int2 ^ dhash_int2).count('1') 
 
     # print hamming distance
     if (phash_diff == 0 and dhash_diff == 0):
         print("Both hashes are equal")
     else:
-        print("Phash diff: " + str(phash_diff) + ", image1: " + str(imghash1[0]) + ", image2: " + str(imghash2[0]))
-        print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(imghash1[1]) + ", image2: " + str(imghash2[1]))
+        print("Phash diff: " + str(phash_diff) + ", image1: " + str(imghash1[2]) + ", image2: " + str(imghash2[2]))
+        print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(imghash1[4]) + ", image2: " + str(imghash2[4]))
 
     # max distance for same is that least one is 0 and second is max 3
 
@@ -207,6 +212,13 @@ class CachedImageData:
             return tuple((row[0], row[1], row[2], row[3], row[4], row[5], datetime.fromisoformat(row[6])))
 
         return None
+
+    def addorupdate(self, url, plen, pval, dlen, dval, ts):
+        tp = findfromcache(url)
+        if (tp == None):
+            addtocache(url, plen, pval, dlen, dval, ts)
+        else:
+            updatecache(url, plen, pval, dlen, dval, ts)
 
 # ----- /CachedImageData
 
@@ -1200,48 +1212,66 @@ for page in pages:
     # and compare with the image in commons
     imageList = finna_record['records'][0]['images']
 
-    match_found = False
-    if (len(imageList) == 1):
-        commons_image_url = filepage.get_file_url()
-
-        # try to find from cache first
-        tp = cachedb.findfromcache(commons_image_url)
-        #if (tp != None):
-            # compare timestamp: if too old recheck the hash
-        
+    # try to find from cache first
+    commons_image_url = filepage.get_file_url()
+    tpcom = cachedb.findfromcache(commons_image_url)
+    if (tpcom == None):
         # get image from commons for comparison:
         # try to use same size
         commons_image = downloadimage(commons_image_url)
+        commonshash = getimagehash(commons_image)
+        # same lengths for p and d hash
+        cachedb.addorupdate(commons_image_url, commonshash[0], commonshash[1], commonshash[0], commonshash[2], datetime.now())
+        tpcom = cachedb.findfromcache(commons_image_url)
+    #else:
+        # compare timestamp: if too old recheck the hash
+
+
+    match_found = False
+    if (len(imageList) == 1):
     
         finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
-        finna_image = downloadimage(finna_image_url)
+
+        tpfinna = cachedb.findfromcache(finna_image_url)
+        if (tpfinna == None):
+            # get image from finnafor comparison:
+            # try to use same size
+            finna_image = downloadimage(finna_image_url)
+            finnahash = getimagehash(finna_image)
+            # same lengths for p and d hash
+            cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now())
+            tpfinna = cachedb.findfromcache(finna_image_url)
+        #else:
+            # compare timestamp: if too old recheck the hash
         
         # Test if image is same using similarity hashing
-        if (is_same_image(finna_image, commons_image) == True):
+        if (is_same_image(tpfinna, tpcom) == True):
             match_found = True
 
     if (len(imageList) > 1):
         # multiple images in finna related to same item -> 
         # need to pick the one that is closest match
         print("Multiple images for same item: " + str(len(imageList)))
-        commons_image_url = filepage.get_file_url()
 
-        # try to find from cache first
-        tp = cachedb.findfromcache(commons_image_url)
-        #if (tp != None):
-            # compare timestamp: if too old recheck the hash
-
-        # get image from commons for comparison:
-        # try to use same size
-        commons_image = downloadimage(commons_image_url)
-        
         f_imgindex = 0
         for img in imageList:
             finna_image_url = "https://finna.fi" + img
-            finna_image = downloadimage(finna_image_url)
+
+            tpfinna = cachedb.findfromcache(finna_image_url)
+            if (tpfinna == None):
+                # get image from finnafor comparison:
+                # try to use same size
+                finna_image = downloadimage(finna_image_url)
+                finnahash = getimagehash(finna_image)
+                # same lengths for p and d hash
+                cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now())
+                tpfinna = cachedb.findfromcache(finna_image_url)
+            #else:
+                # compare timestamp: if too old recheck the hash
+
 
             # Test if image is same using similarity hashing
-            if (is_same_image(finna_image, commons_image) == True):
+            if (is_same_image(tpfinna, tpcom) == True):
                 match_found = True
                 need_index = True
                 print("Matching image index: " + str(f_imgindex))
