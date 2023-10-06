@@ -18,8 +18,11 @@ import os
 import tempfile
 from PIL import Image
 
-import urllib3
+from datetime import datetime
+from datetime import timedelta
 
+import urllib3
+import sqlite3
 
 # ----- FinnaData
 
@@ -102,9 +105,19 @@ def get_finna_record(finnaid):
         print("Finna API query failed: " + url)
         return None
 
+# ----- /FinnaData
+
 # convert string to base 16 integer for calculating difference
 def converthashtoint(h, base=16):
     return int(str(h), base)
+
+def getimagehash(img, hashlen=8):
+    phash = imagehash.phash(img, hash_size=hashlen)
+    dhash = imagehash.dhash(img, hash_size=hashlen)
+    phash_int = converthashtoint(phash)
+    dhash_int = converthashtoint(dhash)
+    return tuple((phash, dhash, phash_int, dhash_int))
+    
 
 # Compares if the image is same using similarity hashing
 # method is to convert images to 64bit integers and then
@@ -117,26 +130,19 @@ def converthashtoint(h, base=16):
 #
 def is_same_image(img1, img2, hashlen=8):
 
-    phash1 = imagehash.phash(img1, hash_size=hashlen)
-    dhash1 = imagehash.dhash(img1, hash_size=hashlen)
-    phash1_int = converthashtoint(phash1)
-    dhash1_int = converthashtoint(dhash1)
-
-    phash2 = imagehash.phash(img2, hash_size=hashlen)
-    dhash2 = imagehash.dhash(img2, hash_size=hashlen)
-    phash2_int = converthashtoint(phash2)
-    dhash2_int = converthashtoint(dhash2)
+    imghash1 = getimagehash(img1, hashlen)
+    imghash2 = getimagehash(img2, hashlen)
 
     # Hamming distance difference
-    phash_diff = bin(phash1_int ^ phash2_int).count('1')
-    dhash_diff = bin(dhash1_int ^ dhash2_int).count('1') 
+    phash_diff = bin(imghash1[2] ^ imghash2[2]).count('1')
+    dhash_diff = bin(imghash1[3] ^ imghash2[3]).count('1') 
 
     # print hamming distance
     if (phash_diff == 0 and dhash_diff == 0):
         print("Both hashes are equal")
     else:
-        print("Phash diff: " + str(phash_diff) + ", image1: " + str(phash1) + ", image2: " + str(phash2))
-        print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(dhash1) + ", image2: " + str(dhash2))
+        print("Phash diff: " + str(phash_diff) + ", image1: " + str(imghash1[0]) + ", image2: " + str(imghash2[0]))
+        print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(imghash1[1]) + ", image2: " + str(imghash2[1]))
 
     # max distance for same is that least one is 0 and second is max 3
 
@@ -144,7 +150,7 @@ def is_same_image(img1, img2, hashlen=8):
         return True
     elif phash_diff < 4 and dhash_diff == 0:
         return True
-    elif (phash_diff + dhash_diff) <= 4:
+    elif (phash_diff + dhash_diff) <= 8:
         return True
     else:
         return False
@@ -161,7 +167,49 @@ def downloadimage(url):
                             
     return Image.open(io.BytesIO(response.content))
 
-# ----- /FinnaData
+# ----- CachedImageData
+class CachedImageData:
+    def opencachedb(self):
+        # created if it doesn't yet exist
+        self.conn = sqlite3.connect("pwbimagedatacache.db")
+        cur = self.conn.cursor()
+        cur.execute("CREATE TABLE IF NOT EXISTS imagecache(url, phashlen, phashval, dhashlen, dhashval, timestamp)")
+
+    def addtocache(self, url, plen, pval, dlen, dval, ts):
+
+        sqlq = "INSERT INTO imagecache VALUES ('"+ url + "', "+ plen + ", '"+ pval + "', "+ dlen + ", '"+ dval + "', '" + ts.isoformat() + "')"
+
+        cur = self.conn.cursor()
+        cur.execute(sqlq)
+        self.conn.commit()
+
+    def updatecache(self, url, plen, pval, dlen, dval, ts):
+
+        sqlq = "UPDATE imagecache SET phashlen "+ plen + ", phashval = '"+ pval + "', dhashlen = "+ dlen + ", dhashval '"+ dval + "', timestamp = '" + ts.isoformat() + "' WHERE url = '"+ url + "'"
+
+        cur = self.conn.cursor()
+        cur.execute(sqlq)
+        self.conn.commit()
+
+    def findfromcache(self, url):
+        sqlq = "SELECT * FROM imagecache WHERE url = '" + url + "'"
+        
+        cur = self.conn.cursor()
+        res = cur.execute(sqlq)
+        rset = res.fetchall()
+        
+        #if (len(rset) == 0):
+            #return None
+        if (len(rset) > 1):
+            # too many found
+            return None
+        for row in rset:
+            return tuple((row[0], row[1], row[2], row[3], row[4], row[5], datetime.fromisoformat(row[6])))
+
+        return None
+
+# ----- /CachedImageData
+
 
 # ----- CommonsMediaInfo
 def createMediainfoClaim(site, media_identifier, property, value):
@@ -876,8 +924,10 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Archaeologists from Finland", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Charles Riis", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin")
+pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin")
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Archaeology in Finland")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by photographer from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
@@ -886,11 +936,13 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
-pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot")
+#pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
@@ -898,6 +950,9 @@ pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot")
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
+
+cachedb = CachedImageData() 
+cachedb.opencachedb()
 
 rowcount = 1
 #rowlimit = 10
@@ -1020,7 +1075,8 @@ for page in pages:
         continue
  
     # kuvasiskot has "musketti" as part of identier, alternatively "museovirasto" may be used in some cases
-    if (finnaid.find("musketti") < 0 and finnaid.find("museovirasto") < 0):
+    # various other images in finna have "hkm"
+    if (finnaid.find("musketti") < 0 and finnaid.find("museovirasto") < 0 and finnaid.find("hkm") < 0):
         print("WARN: unexpected id in: " + page.title() + ", id: " + finnaid)
         #continue
     if (finnaid.find("profium.com") > 0):
@@ -1146,9 +1202,15 @@ for page in pages:
 
     match_found = False
     if (len(imageList) == 1):
+        commons_image_url = filepage.get_file_url()
+
+        # try to find from cache first
+        tp = cachedb.findfromcache(commons_image_url)
+        #if (tp != None):
+            # compare timestamp: if too old recheck the hash
+        
         # get image from commons for comparison:
         # try to use same size
-        commons_image_url = filepage.get_file_url()
         commons_image = downloadimage(commons_image_url)
     
         finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
@@ -1162,10 +1224,15 @@ for page in pages:
         # multiple images in finna related to same item -> 
         # need to pick the one that is closest match
         print("Multiple images for same item: " + str(len(imageList)))
+        commons_image_url = filepage.get_file_url()
+
+        # try to find from cache first
+        tp = cachedb.findfromcache(commons_image_url)
+        #if (tp != None):
+            # compare timestamp: if too old recheck the hash
 
         # get image from commons for comparison:
         # try to use same size
-        commons_image_url = filepage.get_file_url()
         commons_image = downloadimage(commons_image_url)
         
         f_imgindex = 0
@@ -1185,6 +1252,8 @@ for page in pages:
     if (match_found == False):
         print("No matching image found, skipping: " + finnaid)
         continue
+    
+    #continue # TESTING
 
     flag_add_source = False
     flag_add_collection = False
