@@ -115,11 +115,11 @@ def get_finna_record(finnaid):
 def getimagehash(img, hashlen=8):
     phash = imagehash.phash(img, hash_size=hashlen)
     dhash = imagehash.dhash(img, hash_size=hashlen)
-    return tuple((hashlen, phash, dhash))
-    
+    return tuple((hashlen, str(phash), str(dhash)))
+
 # convert string to base 16 integer for calculating difference
 def converthashtoint(h, base=16):
-    return int(str(h), base)
+    return int(h, base)
 
 # Compares if the image is same using similarity hashing
 # method is to convert images to 64bit integers and then
@@ -128,15 +128,15 @@ def converthashtoint(h, base=16):
 def is_same_image(imghash1, imghash2, hashlen=8):
     
     # check that hash lengths are same
-    if (imghash1[1] != imghash2[1] or imghash1[3] != imghash2[3]):
+    if (imghash1['phashlen'] != imghash2['phashlen'] or imghash1['dhashlen'] != imghash2['dhashlen']):
         print("Hash length mismatch")
         return False
 
-    phash_int1 = converthashtoint(imghash1[2])
-    dhash_int1 = converthashtoint(imghash1[4])
+    phash_int1 = converthashtoint(imghash1['phashval'])
+    dhash_int1 = converthashtoint(imghash1['dhashval'])
 
-    phash_int2 = converthashtoint(imghash2[2])
-    dhash_int2 = converthashtoint(imghash2[4])
+    phash_int2 = converthashtoint(imghash2['phashval'])
+    dhash_int2 = converthashtoint(imghash2['dhashval'])
 
     # Hamming distance difference (from integers)
     phash_diff = bin(phash_int1 ^ phash_int2).count('1')
@@ -146,8 +146,8 @@ def is_same_image(imghash1, imghash2, hashlen=8):
     if (phash_diff == 0 and dhash_diff == 0):
         print("Both hashes are equal")
     else:
-        print("Phash diff: " + str(phash_diff) + ", image1: " + str(imghash1[2]) + ", image2: " + str(imghash2[2]))
-        print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(imghash1[4]) + ", image2: " + str(imghash2[4]))
+        print("Phash diff: " + str(phash_diff) + ", image1: " + imghash1['phashval'] + ", image2: " + imghash2['phashval'])
+        print("Dhash diff: " + str(dhash_diff) + ", image1: " + imghash1['dhashval'] + ", image2: " + imghash2['dhashval'])
 
     # max distance for same is that least one is 0 and second is max 3
 
@@ -182,7 +182,7 @@ class CachedImageData:
 
     def addtocache(self, url, plen, pval, dlen, dval, ts):
 
-        sqlq = "INSERT INTO imagecache VALUES ('"+ url + "', "+ str(plen) + ", '"+ str(pval) + "', "+ str(dlen) + ", '"+ str(dval) + "', '" + ts.isoformat() + "')"
+        sqlq = "INSERT INTO imagecache(url, phashlen, phashval, dhashlen, dhashval, timestamp) VALUES ('"+ url + "', "+ str(plen) + ", '"+ pval + "', "+ str(dlen) + ", '"+ dval + "', '" + ts.isoformat() + "')"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
@@ -190,7 +190,7 @@ class CachedImageData:
 
     def updatecache(self, url, plen, pval, dlen, dval, ts):
 
-        sqlq = "UPDATE imagecache SET phashlen "+ str(plen) + ", phashval = '"+ str(pval) + "', dhashlen = "+ str(dlen) + ", dhashval '"+ str(dval) + "', timestamp = '" + ts.isoformat() + "' WHERE url = '"+ url + "'"
+        sqlq = "UPDATE imagecache SET phashlen "+ str(plen) + ", phashval = '"+ pval + "', dhashlen = "+ str(dlen) + ", dhashval '"+ dval + "', timestamp = '" + ts.isoformat() + "' WHERE url = '"+ url + "'"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
@@ -209,7 +209,14 @@ class CachedImageData:
             # too many found
             return None
         for row in rset:
-            return tuple((row[0], int(row[1]), row[2], int(row[3]), row[4], datetime.fromisoformat(row[5])))
+            dt = dict()
+            dt['url'] = row[0]
+            dt['phashlen'] = int(row[1])
+            dt['phashval'] = row[2]
+            dt['dhashlen'] = int(row[3])
+            dt['dhashval'] = row[4]
+            dt['timestamp'] = datetime.fromisoformat(row[5])
+            return dt
 
         return None
 
