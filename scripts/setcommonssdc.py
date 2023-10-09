@@ -121,6 +121,10 @@ def getimagehash(img, hashlen=8):
 def converthashtoint(h, base=16):
     return int(h, base)
 
+# distance of hashes (count of bits that are different)
+def gethashdiff(hint1, hint2):
+    return bin(hint1 ^ hint2).count('1')
+
 # Compares if the image is same using similarity hashing
 # method is to convert images to 64bit integers and then
 # calculate hamming distance. 
@@ -139,8 +143,8 @@ def is_same_image(imghash1, imghash2, hashlen=8):
     dhash_int2 = converthashtoint(imghash2['dhashval'])
 
     # Hamming distance difference (from integers)
-    phash_diff = bin(phash_int1 ^ phash_int2).count('1')
-    dhash_diff = bin(dhash_int2 ^ dhash_int2).count('1') 
+    phash_diff = gethashdiff(phash_int1, phash_int2)
+    dhash_diff = gethashdiff(dhash_int1, dhash_int2)
 
     # print hamming distance
     if (phash_diff == 0 and dhash_diff == 0):
@@ -209,6 +213,7 @@ class CachedImageData:
             # too many found
             return None
         for row in rset:
+            #print(row)
             dt = dict()
             dt['url'] = row[0]
             dt['phashlen'] = int(row[1])
@@ -216,6 +221,7 @@ class CachedImageData:
             dt['dhashlen'] = int(row[3])
             dt['dhashval'] = row[4]
             dt['timestamp'] = datetime.fromisoformat(row[5])
+            #print(dt)
             return dt
 
         return None
