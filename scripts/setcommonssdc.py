@@ -129,7 +129,7 @@ def gethashdiff(hint1, hint2):
 # method is to convert images to 64bit integers and then
 # calculate hamming distance. 
 #
-def is_same_image(imghash1, imghash2, hashlen=8):
+def is_same_image(imghash1, imghash2):
     
     # check that hash lengths are same
     if (imghash1['phashlen'] != imghash2['phashlen'] or imghash1['dhashlen'] != imghash2['dhashlen']):
@@ -148,7 +148,7 @@ def is_same_image(imghash1, imghash2, hashlen=8):
 
     # print hamming distance
     if (phash_diff == 0 and dhash_diff == 0):
-        print("Both hashes are equal")
+        print("Both images have equal hashes, phash: " + imghash1['phashval'] + ", dhash: " + imghash1['dhashval'])
     else:
         print("Phash diff: " + str(phash_diff) + ", image1: " + imghash1['phashval'] + ", image2: " + imghash2['phashval'])
         print("Dhash diff: " + str(dhash_diff) + ", image1: " + imghash1['dhashval'] + ", image2: " + imghash2['dhashval'])
@@ -949,10 +949,14 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Archaeologists from Finland", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Charles Riis", True)
-pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin")
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin")
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Daniel Nyblin", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Generals of Finland")
 #pages = getcatpages(pywikibot, commonssite, "Category:Archaeology in Finland")
+#pages = getcatpages(pywikibot, commonssite, "Category:Painters from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by photographer from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
@@ -961,6 +965,9 @@ pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nybl
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
@@ -969,7 +976,7 @@ pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nybl
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
@@ -1235,10 +1242,16 @@ for page in pages:
         commonshash = getimagehash(commons_image)
         # same lengths for p and d hash
         cachedb.addorupdate(commons_image_url, commonshash[0], commonshash[1], commonshash[0], commonshash[2], datetime.now())
-        tpcom = cachedb.findfromcache(commons_image_url)
-    #else:
-        # compare timestamp: if too old recheck the hash
 
+        print("Commons-image data added to cache for: " + page.title() )
+        tpcom = cachedb.findfromcache(commons_image_url)
+    else:
+        # compare timestamp: if too old recheck the hash
+        print("Commons-image cached data found for: " + page.title() )
+
+    if (tpcom['url'] != commons_image_url):
+        print("ERROR: commons url mismatch for: " + page.title() )
+        exit(1)
 
     match_found = False
     if (len(imageList) == 1):
@@ -1256,6 +1269,10 @@ for page in pages:
             tpfinna = cachedb.findfromcache(finna_image_url)
         #else:
             # compare timestamp: if too old recheck the hash
+
+        if (tpfinna['url'] != finna_image_url):
+            print("ERROR: finna url mismatch for: " + page.title() )
+            exit(1)
         
         # Test if image is same using similarity hashing
         if (is_same_image(tpfinna, tpcom) == True):
@@ -1282,6 +1299,9 @@ for page in pages:
             #else:
                 # compare timestamp: if too old recheck the hash
 
+            if (tpfinna['url'] != finna_image_url):
+                print("ERROR: finna url mismatch for: " + page.title() )
+                exit(1)
 
             # Test if image is same using similarity hashing
             if (is_same_image(tpfinna, tpcom) == True):
