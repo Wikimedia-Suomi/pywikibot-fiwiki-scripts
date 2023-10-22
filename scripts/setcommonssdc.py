@@ -195,7 +195,7 @@ class CachedImageData:
 
     def updatecache(self, url, plen, pval, dlen, dval, ts):
 
-        sqlq = "UPDATE imagecache SET phashlen "+ str(plen) + ", phashval = '"+ pval + "', dhashlen = "+ str(dlen) + ", dhashval '"+ dval + "', timestamp = '" + ts.isoformat() + "' WHERE url = '"+ url + "'"
+        sqlq = "UPDATE imagecache SET phashlen = "+ str(plen) + ", phashval = '"+ pval + "', dhashlen = "+ str(dlen) + ", dhashval = '"+ dval + "', timestamp = '" + ts.isoformat() + "' WHERE url = '" + url + "'"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
@@ -982,7 +982,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
 pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland")
 
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
