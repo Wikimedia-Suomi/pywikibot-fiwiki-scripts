@@ -862,6 +862,10 @@ def getqcodeforfinnapublisher(finna_record):
 def isblockedimage(page):
     pagename = str(page)
 
+    # if there is svg file for some reason -> skip it
+    if (pagename.find(".svg") >= 0):
+        return True
+        
     # no blocking currently here
     return False
 
@@ -944,7 +948,7 @@ commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 
 # get list of pages upto depth of 1 
-#pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getcatpages(pywikibot, commonssite, "Archaeologists from Finland", True)
 
@@ -966,7 +970,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
-
 #pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot")
 
@@ -975,8 +978,9 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
@@ -1003,13 +1007,13 @@ for page in pages:
         continue
     if filepage.isRedirectPage():
         continue
-    file_media_identifier='M' + str(filepage.pageid)
         
+    file_media_identifier='M' + str(filepage.pageid)
     file_info = filepage.latest_file_info
-
     oldtext=page.text
 
     print(" ////////", rowcount, ": [ " + page.title() + " ] ////////")
+    print("latest change in commons: " + filepage.latest_file_info.timestamp.isoformat())
     rowcount += 1
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
@@ -1240,8 +1244,11 @@ for page in pages:
         # try to use same size
         commons_image = downloadimage(commons_image_url)
         commonshash = getimagehash(commons_image)
-        # same lengths for p and d hash
-        cachedb.addorupdate(commons_image_url, commonshash[0], commonshash[1], commonshash[0], commonshash[2], datetime.now())
+        
+        # same lengths for p and d hash, keep change time from commons
+        cachedb.addorupdate(commons_image_url, 
+                            commonshash[0], commonshash[1], commonshash[0], commonshash[2], 
+                            filepage.latest_file_info.timestamp)
 
         print("Commons-image data added to cache for: " + page.title() )
         tpcom = cachedb.findfromcache(commons_image_url)
@@ -1265,7 +1272,7 @@ for page in pages:
             finna_image = downloadimage(finna_image_url)
             finnahash = getimagehash(finna_image)
             # same lengths for p and d hash
-            cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now())
+            cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now(timezone.utc))
             tpfinna = cachedb.findfromcache(finna_image_url)
         #else:
             # compare timestamp: if too old recheck the hash
@@ -1294,7 +1301,7 @@ for page in pages:
                 finna_image = downloadimage(finna_image_url)
                 finnahash = getimagehash(finna_image)
                 # same lengths for p and d hash
-                cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now())
+                cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now(timezone.utc))
                 tpfinna = cachedb.findfromcache(finna_image_url)
             #else:
                 # compare timestamp: if too old recheck the hash
