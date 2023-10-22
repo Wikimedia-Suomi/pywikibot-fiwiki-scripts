@@ -949,7 +949,7 @@ commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 
 # get list of pages upto depth of 1 
-pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getcatpages(pywikibot, commonssite, "Archaeologists from Finland", True)
 
@@ -980,6 +980,10 @@ pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
+
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
@@ -1255,8 +1259,22 @@ for page in pages:
         tpcom = cachedb.findfromcache(commons_image_url)
     else:
         # compare timestamp: if too old recheck the hash
-        print("Commons-image cached data found for: " + page.title() )
+        print("Commons-image cached data found for: " + page.title() + " timestamp: " + tpcom['timestamp'].isoformat())
+        
+        # NOTE! force timezone since python is garbage in handling UTC-times:
+        # python loses timezone when original string from database includes it
+        # so we need to force both into same even if they already are in the same timezone, 
+        # only difference is that other is marked zulu-time and other is marked +0.
+        if (tpcom['timestamp'].replace(tzinfo=timezone.utc) < filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc)):
+            print("Updating cached data for Commons-image: " + page.title() )
+            commons_image = downloadimage(commons_image_url)
+            commonshash = getimagehash(commons_image)
+            cachedb.addorupdate(commons_image_url, 
+                                commonshash[0], commonshash[1], commonshash[0], commonshash[2], 
+                                filepage.latest_file_info.timestamp)
+            tpcom = cachedb.findfromcache(commons_image_url)
 
+    # just sanity check: if cache is cutting url we might get wrong entry as result
     if (tpcom['url'] != commons_image_url):
         print("ERROR: commons url mismatch for: " + page.title() )
         exit(1)
