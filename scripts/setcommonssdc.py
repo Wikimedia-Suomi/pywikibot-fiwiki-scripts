@@ -1262,7 +1262,7 @@ for page in pages:
         print("Commons-image cached data found for: " + page.title() + " timestamp: " + tpcom['timestamp'].isoformat())
         
         # NOTE! force timezone since python is garbage in handling UTC-times:
-        # python loses timezone when original string from database includes it
+        # python loses timezone even when the original string from database includes it
         # so we need to force both into same even if they already are in the same timezone, 
         # only difference is that other is marked zulu-time and other is marked +0.
         if (tpcom['timestamp'].replace(tzinfo=timezone.utc) < filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc)):
