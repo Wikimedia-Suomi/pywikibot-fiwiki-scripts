@@ -125,7 +125,7 @@ def is_same_image(img1, img2, hashlen=8):
 
     # print hamming distance
     if (phash_diff == 0 and dhash_diff == 0):
-        print("Both hashes are equal")
+        print("Both images have equal hashes, phash: " + str(phash1) + ", dhash: " + str(dhash1))
     else:
         print("Phash diff: " + str(phash_diff) + ", image1: " + str(phash1) + ", image2: " + str(phash2))
         print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(dhash1) + ", image2: " + str(dhash2))
@@ -279,6 +279,11 @@ def isblockedimage(page):
     # timeout all the time..
     if (pagename.find("Sonkajärven kivikirkko") >= 0):
         return True
+
+    # Python throws error due to large size of the image.
+    # We can only skip it for now..
+    if (pagename.find("Sotavirkailija Kari Suomalainen.jpg") >= 0:
+        return True 
     
     # if there is svg file for some reason -> skip it
     if (pagename.find(".svg") >= 0):
@@ -377,20 +382,32 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Simo Rista", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin")
+#pages = getcatpages(pywikibot, commonssite, "Category:Daniel Nyblin", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Archaeology in Finland")
+#pages = getcatpages(pywikibot, commonssite, "Category:Generals of Finland")
+#pages = getcatpages(pywikibot, commonssite, "Category:Painters from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:History of Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
+
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
@@ -472,6 +489,10 @@ for page in pages:
         if "imagesExtended" not in finna_record['records'][0]:
             print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
             continue
+
+        # TODO! Python throws error if image is larger than 178956970 pixels
+        # so we can't handle really large images. Check for those and skip them..
+
 
         imagesExtended = finna_record['records'][0]['imagesExtended'][0]
 

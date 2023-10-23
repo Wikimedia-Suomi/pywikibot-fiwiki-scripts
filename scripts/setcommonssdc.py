@@ -866,7 +866,12 @@ def isblockedimage(page):
     # if there is svg file for some reason -> skip it
     if (pagename.find(".svg") >= 0):
         return True
-        
+
+    # Python throws error due to large size of the image.
+    # We can only skip it for now..
+    if (pagename.find("Sotavirkailija Kari Suomalainen.jpg") >= 0:
+        return True 
+
     # no blocking currently here
     return False
 
@@ -979,11 +984,10 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
-pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland")
-
+#pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
@@ -1235,6 +1239,9 @@ for page in pages:
     if (copyrightlicense != "CC BY 4.0" and copyrightlicense != "PDM"):
         print("Incorrect copyright: " + copyrightlicense)
         continue
+
+    # TODO! Python throws error if image is larger than 178956970 pixels
+    # so we can't handle really large images. Check for those and skip them..
 
     # 'images' can have array of multiple images, need to select correct one
     # -> loop through them (they should have just different &index= in them)
