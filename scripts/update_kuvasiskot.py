@@ -282,7 +282,7 @@ def isblockedimage(page):
 
     # Python throws error due to large size of the image.
     # We can only skip it for now..
-    if (pagename.find("Sotavirkailija Kari Suomalainen.jpg") >= 0:
+    if (pagename.find("Sotavirkailija Kari Suomalainen.jpg") >= 0):
         return True 
     
     # if there is svg file for some reason -> skip it
