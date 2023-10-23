@@ -705,6 +705,14 @@ def addcollectiontostatements(pywikibot, wikidata_site, collection):
     coll_claim.setTarget(qualifier_targetcoll)
     return coll_claim
 
+# add mime-type to sdc data
+def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
+    claim_mimep = 'P1163'  # property ID for "mime type"
+    mime_claim = pywikibot.Claim(wikidata_site, claim_mimep)
+    #qualifier_targetmime = pywikibot.ItemPage(wikidata_site, mimetype)
+    mime_claim.setTarget(mimetype)
+    return mime_claim
+
 # https&#x3A;&#x2F;&#x2F;api.finna.fi&#x2F;v1&#x2F;record&#x3F;id&#x3D;
 def parseapiidfromfinnapage(finnapage):
     index = finnapage.find(';api.finna.fi&')
@@ -983,11 +991,14 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
+
+
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
-pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland")
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
@@ -1031,19 +1042,26 @@ for page in pages:
     #testitem = pywikibot.ItemPage(commonssite, 'Q1') # test something like this?
     if (doessdcbaseexist(page) == False):
         print("Wikibase item does not yet exist for: " + page.title() )
+        
+        wditem = page.data_item()  # Get the data item associated with the page
+        sdcdata = wditem.get_data_for_new_entity() # get new sdc item
+        
+        ## add something like P1163 (mime-type) to force creation of sdc-data
+        print("adding mime-type: " + str(file_info.mime))
+        mime_claim = addmimetypetosdc(pywikibot, wikidata_site, file_info.mime)
+        commonssite.addClaim(wditem, mime_claim)
+
         #file_info.mime == 'image/jpeg'
         #addSdcCaption(commonssite, file_media_identifier, "fi", "testing")
         
-        ## TODO: add something like P1163 (mime-type) to force creation of sdc-data ?
-        #print("adding mime-type: " + str(file_info.mime))
-        
-        # error: invalid snak-data -> need something else to force creation
+        # alternate method
         #addSdcMimetype(commonssite, file_media_identifier, str(file_info.mime))
 
-        #if (doessdcbaseexist(page) == False):
-            #print("ERROR: Failed adding Wikibase item for: " + page.title() )
-        continue
-
+        if (doessdcbaseexist(page) == False):
+            print("ERROR: Failed adding Wikibase item for: " + page.title() )
+            exit(1)
+        #continue
+        
     wditem = page.data_item()  # Get the data item associated with the page
     sdcdata = wditem.get() # all the properties in json-format
     
