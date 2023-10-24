@@ -134,7 +134,7 @@ def is_same_image(imghash1, imghash2):
     
     # check that hash lengths are same
     if (imghash1['phashlen'] != imghash2['phashlen'] or imghash1['dhashlen'] != imghash2['dhashlen']):
-        print("Hash length mismatch")
+        print("WARN: Hash length mismatch")
         return False
 
     phash_int1 = converthashtoint(imghash1['phashval'])
@@ -142,6 +142,10 @@ def is_same_image(imghash1, imghash2):
 
     phash_int2 = converthashtoint(imghash2['phashval'])
     dhash_int2 = converthashtoint(imghash2['dhashval'])
+
+    if (phash_int1 == 0 or dhash_int1 == 0 or phash_int2 == 0 or dhash_int2 == 0):
+        print("WARN: zero hash detected, file was not read correctly?")
+        return False
 
     # Hamming distance difference (from integers)
     phash_diff = gethashdiff(phash_int1, phash_int2)
@@ -174,8 +178,17 @@ def downloadimage(url):
 
     response = requests.get(url, headers=headers, stream=True)
     response.raise_for_status()
-                            
-    return Image.open(io.BytesIO(response.content))
+
+    if (len(response.content) < 50):
+        print("ERROR: less than 50 bytes for image")
+        return None
+
+    f = io.BytesIO(response.content)
+    if (f.readable() == False or f.closed() == True):
+        print("ERROR: can't read image from stream")
+        return None
+    
+    return Image.open(f)
 
 # ----- CachedImageData
 class CachedImageData:
@@ -878,7 +891,7 @@ def isblockedimage(page):
     # Python throws error due to large size of the image.
     # We can only skip it for now..
     if (pagename.find("Sotavirkailija Kari Suomalainen.jpg") >= 0):
-        return True 
+        return True
 
     # no blocking currently here
     return False
@@ -964,6 +977,7 @@ commonssite.login()
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Landscape architects")
 #pages = getcatpages(pywikibot, commonssite, "Archaeologists from Finland", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Charles Riis", True)
@@ -975,6 +989,11 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Archaeology in Finland")
 #pages = getcatpages(pywikibot, commonssite, "Category:Painters from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Continuation War", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Constantin Grünberg", True)
+
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by photographer from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
@@ -985,7 +1004,9 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
-#pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot")
+#pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Finland in the 1890s", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
@@ -998,7 +1019,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
-pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland")
+#pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
@@ -1273,6 +1294,10 @@ for page in pages:
         # get image from commons for comparison:
         # try to use same size
         commons_image = downloadimage(commons_image_url)
+        if (commons_image == None):
+            print("WARN: Failed to download commons-image: " + page.title() )
+            continue
+        
         commonshash = getimagehash(commons_image)
         
         # same lengths for p and d hash, keep change time from commons
@@ -1293,6 +1318,10 @@ for page in pages:
         if (tpcom['timestamp'].replace(tzinfo=timezone.utc) < filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc)):
             print("Updating cached data for Commons-image: " + page.title() )
             commons_image = downloadimage(commons_image_url)
+            if (commons_image == None):
+                print("WARN: Failed to download commons-image: " + page.title() )
+                continue
+            
             commonshash = getimagehash(commons_image)
             cachedb.addorupdate(commons_image_url, 
                                 commonshash[0], commonshash[1], commonshash[0], commonshash[2], 
@@ -1314,6 +1343,10 @@ for page in pages:
             # get image from finnafor comparison:
             # try to use same size
             finna_image = downloadimage(finna_image_url)
+            if (finna_image == None):
+                print("WARN: Failed to download finna-image: " + page.title() )
+                continue
+            
             finnahash = getimagehash(finna_image)
             # same lengths for p and d hash
             cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now(timezone.utc))
@@ -1343,6 +1376,10 @@ for page in pages:
                 # get image from finnafor comparison:
                 # try to use same size
                 finna_image = downloadimage(finna_image_url)
+                if (finna_image == None):
+                    print("WARN: Failed to download finna-image: " + page.title() )
+                    continue
+                    
                 finnahash = getimagehash(finna_image)
                 # same lengths for p and d hash
                 cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now(timezone.utc))

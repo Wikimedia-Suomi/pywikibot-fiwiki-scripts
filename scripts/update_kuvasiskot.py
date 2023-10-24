@@ -94,6 +94,24 @@ def get_finna_record(finnaid):
         print("Finna API query failed: " + url)
         return None
 
+# Perceptual hashing 
+# http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
+# difference hashing
+# http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
+#
+def getimagehash(img, hashlen=8):
+    phash = imagehash.phash(img, hash_size=hashlen)
+    dhash = imagehash.dhash(img, hash_size=hashlen)
+    return tuple((hashlen, str(phash), str(dhash)))
+
+# convert string to base 16 integer for calculating difference
+#def converthashtoint(h, base=16):
+#    return int(h, base)
+
+# distance of hashes (count of bits that are different)
+def gethashdiff(hint1, hint2):
+    return bin(hint1 ^ hint2).count('1')
+
 # convert string to base 16 integer for calculating difference
 def converthashtoint(h, base=16):
     return int(str(h), base)
@@ -119,9 +137,13 @@ def is_same_image(img1, img2, hashlen=8):
     phash2_int = converthashtoint(phash2)
     dhash2_int = converthashtoint(dhash2)
 
+    if (phash_int1 == 0 or dhash_int1 == 0 or phash_int2 == 0 or dhash_int2 == 0):
+        print("WARN: zero hash detected, file was not read correctly?")
+        return False
+
     # Hamming distance difference
-    phash_diff = bin(phash1_int ^ phash2_int).count('1')
-    dhash_diff = bin(dhash1_int ^ dhash2_int).count('1') 
+    phash_diff = gethashdiff(phash_int1, phash_int2)
+    dhash_diff = gethashdiff(dhash_int1, dhash_int2)
 
     # print hamming distance
     if (phash_diff == 0 and dhash_diff == 0):
@@ -177,7 +199,16 @@ def downloadimage(url):
     response = requests.get(url, headers=headers, stream=True)
     response.raise_for_status()
                             
-    return Image.open(io.BytesIO(response.content))
+    if (len(response.content) < 50):
+        print("ERROR: less than 50 bytes for image")
+        return None
+
+    f = io.BytesIO(response.content)
+    if (f.readable() == False or f.closed() == True):
+        print("ERROR: can't read image from stream")
+        return None
+
+    return Image.open(f)
 
 # strip id from other things that may be after it:
 # there might be part of url or some html in same field..
@@ -378,11 +409,16 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+#pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki")
 #pages = getcatpages(pywikibot, commonssite, "Category:Landscape architects")
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Simo Rista", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Daniel Nyblin", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg", True)
+
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
 
@@ -399,9 +435,12 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
+
+
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
-pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
 
