@@ -920,6 +920,17 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 
     return final_pages
 
+# recurse upto given depth:
+# 0 for no recursion (only those directly in category)
+# 1 is for one level on subcats
+# 2 is for two levels and so on
+def getpagesrecurse(pywikibot, commonssite, maincat, depth=1):
+    #final_pages = list()
+    cat = pywikibot.Category(commonssite, maincat)
+    pages = list(cat.articles(recurse=depth))
+    return pages
+
+# list of pages with links listed in a page 
 def getlinkedpages(pywikibot, commonssite, linkpage):
     listpage = pywikibot.Page(commonssite, linkpage)  # The page you're interested in
 
@@ -1006,7 +1017,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", True)
 
-pages = getcatpages(pywikibot, commonssite, "Category:Finland in the 1890s", True)
+pages = getpagesrecurse(pywikibot, commonssite, "Category:1910s photographs of Finland", 3)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
