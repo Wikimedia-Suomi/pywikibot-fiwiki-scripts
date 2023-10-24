@@ -204,7 +204,7 @@ def downloadimage(url):
         return None
 
     f = io.BytesIO(response.content)
-    if (f.readable() == False or f.closed() == True):
+    if (f.readable() == False or f.closed == True):
         print("ERROR: can't read image from stream")
         return None
 

@@ -184,7 +184,7 @@ def downloadimage(url):
         return None
 
     f = io.BytesIO(response.content)
-    if (f.readable() == False or f.closed() == True):
+    if (f.readable() == False or f.closed == True):
         print("ERROR: can't read image from stream")
         return None
     
@@ -992,7 +992,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Continuation War", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg", True)
-pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Constantin Grünberg", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Constantin Grünberg", True)
 
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by photographer from Finland", True)
@@ -1006,7 +1006,7 @@ pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Constantin 
 #pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Finland in the 1890s", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Finland in the 1890s", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
