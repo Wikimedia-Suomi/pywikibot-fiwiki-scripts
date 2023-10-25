@@ -137,13 +137,13 @@ def is_same_image(img1, img2, hashlen=8):
     phash2_int = converthashtoint(phash2)
     dhash2_int = converthashtoint(dhash2)
 
-    if (phash_int1 == 0 or dhash_int1 == 0 or phash_int2 == 0 or dhash_int2 == 0):
+    if (phash1_int == 0 or dhash1_int == 0 or phash2_int == 0 or dhash2_int == 0):
         print("WARN: zero hash detected, file was not read correctly?")
         return False
 
     # Hamming distance difference
-    phash_diff = gethashdiff(phash_int1, phash_int2)
-    dhash_diff = gethashdiff(dhash_int1, dhash_int2)
+    phash_diff = gethashdiff(phash1_int, phash2_int)
+    dhash_diff = gethashdiff(dhash1_int, dhash2_int)
 
     # print hamming distance
     if (phash_diff == 0 and dhash_diff == 0):
@@ -379,6 +379,17 @@ def isblockedimage(page):
 
     return False
 
+# recurse upto given depth:
+# 0 for no recursion (only those directly in category)
+# 1 is for one level on subcats
+# 2 is for two levels and so on
+def getpagesrecurse(pywikibot, commonssite, maincat, depth=1):
+    #final_pages = list()
+    cat = pywikibot.Category(commonssite, maincat)
+    pages = list(cat.articles(recurse=depth))
+    return pages
+
+# list of pages with links listed in a page 
 def getlinkedpages(pywikibot, commonssite, linkpage):
     listpage = pywikibot.Page(commonssite, linkpage)  # The page you're interested in
 
@@ -417,7 +428,11 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Daniel Nyblin", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin", True)
+
+
 pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg", True)
+
+
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
