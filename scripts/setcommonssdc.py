@@ -726,6 +726,17 @@ def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
     mime_claim.setTarget(mimetype)
     return mime_claim
 
+# add inception date to sdc data
+def addinceptiontosdc(pywikibot, wikidata_site, incdate):
+    claim_incp = 'P571'  # property ID for "inception"
+    inc_claim = pywikibot.Claim(wikidata_site, claim_incp)
+    #qualifier_targetmime = pywikibot.ItemPage(wikidata_site, mimetype)
+    #inc_claim.setTarget(incdate.isoformat())
+    
+    # TODO: format into "WbTime"
+    inc_claim.setTarget(incdate)
+    return inc_claim
+
 # https&#x3A;&#x2F;&#x2F;api.finna.fi&#x2F;v1&#x2F;record&#x3F;id&#x3D;
 def parseapiidfromfinnapage(finnapage):
     index = finnapage.find(';api.finna.fi&')
@@ -844,6 +855,33 @@ def parsemetaidfromfinnapage(finnaurl):
         return newid
 
     return ""
+
+# parse timestamp of picture from finna data
+def parseinceptionfromfinna(finnarecord):
+    if "records" not in finnarecord:
+        print("ERROR: no records in finna record")
+        return None
+
+    records = finnarecord['records'][0]
+    if "subjects" not in records:
+        print("no subjects in finna record")
+        return None
+    try:
+        subjects = finna_record['records'][0]['subjects']
+        for subject in subjects:
+            for sbstr in subject:
+                index = sbstr.find("kuvausaika ")
+                if (index < 0):
+                    continue
+                index = index+len("kuvausaika ")
+                timestamp = sbstr[index:]
+                #print("DEBUG: timestamp string in subjects: " + timestamp)
+                #dt = datetime.strptime(timestamp, '%d.%m.%Y')    
+                return timestamp
+    except:
+        print("failed to parse timestamp")
+        return None
+    return None
 
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
@@ -1005,7 +1043,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Constantin Grünberg", True)
 
-
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by photographer from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
 
@@ -1017,7 +1054,8 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", True)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Category:1910s photographs of Finland", 3)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:2010s photographs of Finland", 6)
+
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
@@ -1025,6 +1063,8 @@ pages = getpagesrecurse(pywikibot, commonssite, "Category:1910s photographs of F
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
 
+
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Artists from Finland", 3)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
@@ -1050,7 +1090,11 @@ print("Pages found: " + str(len(pages)))
 for page in pages:
     # 14 is category -> recurse into subcategories
     #
-    if page.namespace() != 6:  # 6 is the namespace ID for files
+    if (page.namespace() != 6):  # 6 is the namespace ID for files
+        continue
+
+    # alternative listing method is not filtered before this
+    if (isblockedimage(page) == True): 
         continue
 
     # try to catch exceptions and return later
@@ -1064,7 +1108,7 @@ for page in pages:
     file_info = filepage.latest_file_info
     oldtext=page.text
 
-    print(" ////////", rowcount, ": [ " + page.title() + " ] ////////")
+    print(" ////////", rowcount, "/", len(pages), ": [ " + page.title() + " ] ////////")
     print("latest change in commons: " + filepage.latest_file_info.timestamp.isoformat())
     rowcount += 1
 
@@ -1416,6 +1460,9 @@ for page in pages:
         continue
     
     #continue # TESTING
+    
+    # TODO: subjects / "kuvausaika 08.01.2016" -> inception
+    #inceptiondt = parseinceptionfromfinna(finna_record)
 
     flag_add_source = False
     flag_add_collection = False
@@ -1466,6 +1513,17 @@ for page in pages:
             #print("license source not found in statements")
         #else:
             #print("license source found in statements, OK")
+
+    # TODO: subjects / "kuvausaika 08.01.2016" -> inception
+    #inceptiondt = parseinceptionfromfinna(finna_record)
+    #if (inceptiondt == None):
+        #print("DEBUG: could not parse inception date for: " + finnaid)
+    #else:
+        #print("DEBUG: found inception date for: " + finnaid + " " + inceptiondt.isoformat())
+        #print("DEBUG: found inception date for: " + finnaid + " " + inceptiondt)
+        #inc_claim = addinceptiontosdc(pywikibot, wikidata_site, inceptiondt)
+        #commonssite.addClaim(wditem, inc_claim)
+
 
     # check SDC and try match with finna list collectionqcodes
     collectionstoadd = getcollectiontargetqcode(claims, collectionqcodes)
