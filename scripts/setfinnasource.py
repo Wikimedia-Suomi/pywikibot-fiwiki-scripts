@@ -386,6 +386,21 @@ def parsesourcefromeuropeana(commonssource):
     print("europeana page source: " + eusource)
     return eusource
 
+# few checks on what the source value has
+def checkcommonsparsource(srcvalue, title):
+    if (srcvalue.find("profium.com") > 0):
+        print("WARN: unusable url (redirector) in: " + title + ", source: " + srcvalue)
+        return False
+    if (srcvalue.find("finna.fi") < 0 
+        and srcvalue.find("kuvakokoelmat.fi") < 0
+        and srcvalue.find("europeana.eu") < 0):
+        print("unknown source, skipping")
+        return False
+    if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
+        # already has metapage
+        print("already has metapage link, skipping")
+        return False
+    return True
 
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
@@ -419,6 +434,17 @@ def getcatpages(pywikibot, commonssite, maincat, recurse=False):
 
     return final_pages
 
+# recurse upto given depth:
+# 0 for no recursion (only those directly in category)
+# 1 is for one level on subcats
+# 2 is for two levels and so on
+def getpagesrecurse(pywikibot, commonssite, maincat, depth=1):
+    #final_pages = list()
+    cat = pywikibot.Category(commonssite, maincat)
+    pages = list(cat.articles(recurse=depth))
+    return pages
+
+# list of pages with links listed in a page 
 def getlinkedpages(pywikibot, commonssite, linkpage):
     listpage = pywikibot.Page(commonssite, linkpage)  # The page you're interested in
 
@@ -458,17 +484,32 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by photographer from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Painters from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:History of Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
+#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
+
+pages = getcatpages(pywikibot, commonssite, "Category:Toini Muona")
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 4)
+
+
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
@@ -507,19 +548,9 @@ for page in pages:
             if template.has("Source"):
                 par = template.get("Source")
                 srcvalue = str(par.value)
+                if (checkcommonsparsource(srcvalue, page.title()) == False):
+                    break
                 
-                if (srcvalue.find("profium.com") > 0):
-                    print("WARN: unusable url (redirector) in: " + page.title() + ", source: " + srcvalue)
-                    break
-                if (srcvalue.find("finna.fi") < 0 
-                    and srcvalue.find("kuvakokoelmat.fi") < 0
-                    and srcvalue.find("europeana.eu") < 0):
-                    print("unknown source, skipping")
-                    break
-                if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
-                    # already has metapage
-                    print("already has metapage link, skipping")
-                    break
                 pageurltemp = geturlfromsource(srcvalue)
                 newsourcetext = ""
                 newsourceid = getnewsourcefromoldsource(pageurltemp)
@@ -537,19 +568,9 @@ for page in pages:
             if template.has("source"):
                 par = template.get("source")
                 srcvalue = str(par.value)
+                if (checkcommonsparsource(srcvalue, page.title()) == False):
+                    break
                 
-                if (srcvalue.find("profium.com") > 0):
-                    print("WARN: unusable url (redirector) in: " + page.title() + ", source: " + srcvalue)
-                    break
-                if (srcvalue.find("finna.fi") < 0 
-                    and srcvalue.find("kuvakokoelmat.fi") < 0
-                    and srcvalue.find("europeana.eu") < 0):
-                    print("unknown source, skipping")
-                    break
-                if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
-                    # already has metapage
-                    print("already has metapage link, skipping")
-                    break
                 pageurltemp = geturlfromsource(srcvalue)
                 newsourcetext = ""
                 newsourceid = getnewsourcefromoldsource(pageurltemp)

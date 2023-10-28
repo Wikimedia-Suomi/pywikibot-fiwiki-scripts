@@ -426,13 +426,14 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Simo Rista", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Daniel Nyblin", True)
-
+#pages = getcatpages(pywikibot, commonssite, "Category:Alli Nissinen")
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin", True)
 
 
-pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Historical pictures of Vyborg Castle")
 
-
+#pages = getcatpages(pywikibot, commonssite, "Category:Drummers from Finland", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
@@ -447,10 +448,15 @@ pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob 
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Vyborg by decade", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Hildur Larsson")
+#pages = getcatpages(pywikibot, commonssite, "Category:Toini Muona")
+
+pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Karl Emil Ståhlberg")
 
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)

@@ -728,14 +728,23 @@ def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
 
 # add inception date to sdc data
 def addinceptiontosdc(pywikibot, wikidata_site, incdate):
+    #wbdate = pywikibot.WbTime.fromTimestr(incdate.isoformat())
+
+    # note: need "WbTime" which is not a standard datetime
+    wbdate = pywikibot.WbTime(incdate.year, incdate.month, incdate.day)
+
     claim_incp = 'P571'  # property ID for "inception"
     inc_claim = pywikibot.Claim(wikidata_site, claim_incp)
     #qualifier_targetmime = pywikibot.ItemPage(wikidata_site, mimetype)
-    #inc_claim.setTarget(incdate.isoformat())
     
-    # TODO: format into "WbTime"
-    inc_claim.setTarget(incdate)
+    # note: must format into "WbTime"
+    inc_claim.setTarget(wbdate)
     return inc_claim
+
+def isinceptioninstatements(statements, incdt):
+    if "P571" in statements:
+        return True
+    return False
 
 # https&#x3A;&#x2F;&#x2F;api.finna.fi&#x2F;v1&#x2F;record&#x3F;id&#x3D;
 def parseapiidfromfinnapage(finnapage):
@@ -876,8 +885,10 @@ def parseinceptionfromfinna(finnarecord):
                 index = index+len("kuvausaika ")
                 timestamp = sbstr[index:]
                 #print("DEBUG: timestamp string in subjects: " + timestamp)
-                #dt = datetime.strptime(timestamp, '%d.%m.%Y')    
-                return timestamp
+                return datetime.strptime(timestamp, '%d.%m.%Y')
+                #return timestamp
+                
+                # TODO: alternate: might have just timestamp like "1943-06-24"
     except:
         print("failed to parse timestamp")
         return None
@@ -918,6 +929,18 @@ def getqcodeforfinnapublisher(finna_record):
         print("found qcode for publisher: " + qpublisher)
     return qpublisher
 
+def getImagesExtended(finnarecord):
+    if "imagesExtended" not in finnarecord['records'][0]:
+        return None
+
+    # some records are broken?
+    imagesExtended = finnarecord['records'][0]['imagesExtended']
+    if (len(imagesExtended) == 0):
+        return None
+
+    # at least one entry exists
+    return imagesExtended[0]
+
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
     pagename = str(page)
@@ -930,7 +953,7 @@ def isblockedimage(page):
     # We can only skip it for now..
     if (pagename.find("Sotavirkailija Kari Suomalainen.jpg") >= 0):
         return True
-
+        
     # no blocking currently here
     return False
 
@@ -1046,7 +1069,10 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by photographer from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by year", 3)
+
 #pages = getcatpages(pywikibot, commonssite, "Category:History of Finland", True)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:History of Karelia", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
@@ -1054,17 +1080,22 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", True)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:2010s photographs of Finland", 6)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Fortresses in Finland", 4)
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in World War II", 3)
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
 
+pages = getcatpages(pywikibot, commonssite, "Category:Events in Helsinki", True)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Artists from Finland", 3)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Musicians from Finland", 3)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Artists from Finland", 3)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
@@ -1290,26 +1321,27 @@ for page in pages:
     if (len(finna_record['records']) == 0):
         print("WARN: empty array of 'records' for finna record, skipping: " + finnaid)
         continue
+
+    # note: if there are no collections, don't remove from commons as they may have manual additions
+    collectionqcodes = list()
     if "collections" not in finna_record['records'][0]:
-        print("WARN: 'collections' not found in finna record, skipping: " + finnaid)
-        continue
+        print("WARN: 'collections' not found in finna record: " + finnaid)
+    else:
+        # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
+        finna_collections = finna_record['records'][0]['collections']
 
-    # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
-    finna_collections = finna_record['records'][0]['collections']
+        #if ("Antellin kokoelma" in finna_collections):
+            #print("Skipping collection (can't match by hash due similarities): " + finnaid)
+            #continue
 
-    #if ("Antellin kokoelma" in finna_collections):
-        #print("Skipping collection (can't match by hash due similarities): " + finnaid)
-        #continue
+        # lookup qcode by label TODO: fetch from wikidata 
+        for coll in finna_collections:
+            if coll in d_labeltoqcode:
+                collectionqcodes.append(d_labeltoqcode[coll])
 
     # TODO: add caption to sdc?
     #finna_title = finna_record['records'][0]['title']
     #addSdcCaption(commonssite, file_media_identifier, "fi", finna_title)
-    
-    collectionqcodes = list()
-    # lookup qcode by label TODO: fetch from wikidata 
-    for coll in finna_collections:
-        if coll in d_labeltoqcode:
-            collectionqcodes.append(d_labeltoqcode[coll])
 
     publisherqcode = getqcodeforfinnapublisher(finna_record)
     if (len(publisherqcode) == 0):
@@ -1321,13 +1353,15 @@ for page in pages:
         else:
             print("publisher " + publisherqcode + " found in commons for: " + finnaid)
 
-    if "imagesExtended" not in finna_record['records'][0]:
+    # use helper to check that it is correctly formed
+    imagesExtended = getImagesExtended(finna_record)
+    if (imagesExtended == None):
         print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
         continue
 
     # Test copyright (old field: rights, but request has imageRights?)
     # imageRights = finna_record['records'][0]['imageRights']
-    imagesExtended = finna_record['records'][0]['imagesExtended'][0]
+    
     # should be CC BY 4.0 or Public domain
     copyrightlicense = imagesExtended['rights']['copyright']
     if (copyrightlicense != "CC BY 4.0" and copyrightlicense != "PDM"):
@@ -1461,9 +1495,6 @@ for page in pages:
     
     #continue # TESTING
     
-    # TODO: subjects / "kuvausaika 08.01.2016" -> inception
-    #inceptiondt = parseinceptionfromfinna(finna_record)
-
     flag_add_source = False
     flag_add_collection = False
     flag_add_finna = False
@@ -1515,14 +1546,16 @@ for page in pages:
             #print("license source found in statements, OK")
 
     # TODO: subjects / "kuvausaika 08.01.2016" -> inception
-    #inceptiondt = parseinceptionfromfinna(finna_record)
-    #if (inceptiondt == None):
-        #print("DEBUG: could not parse inception date for: " + finnaid)
-    #else:
-        #print("DEBUG: found inception date for: " + finnaid + " " + inceptiondt.isoformat())
-        #print("DEBUG: found inception date for: " + finnaid + " " + inceptiondt)
-        #inc_claim = addinceptiontosdc(pywikibot, wikidata_site, inceptiondt)
-        #commonssite.addClaim(wditem, inc_claim)
+    inceptiondt = parseinceptionfromfinna(finna_record)
+    if (inceptiondt != None):
+        print("DEBUG: found inception date for: " + finnaid + " " + inceptiondt.isoformat())
+        if (isinceptioninstatements(claims, inceptiondt) == False):
+            inc_claim = addinceptiontosdc(pywikibot, wikidata_site, inceptiondt)
+            commonssite.addClaim(wditem, inc_claim)
+        else:
+            print("DEBUG: sdc already has inception date for: " + finnaid)
+    else:
+        print("DEBUG: could not parse inception date for: " + finnaid)
 
 
     # check SDC and try match with finna list collectionqcodes
@@ -1540,7 +1573,7 @@ for page in pages:
             
         flag_add_collection = True
     else:
-        print("no need to add collections")
+        print("no collections to add")
 
     # if the stored ID is not same (new ID) -> add new
     if (isidinstatements(claims, finnaid) == False):
@@ -1552,9 +1585,9 @@ for page in pages:
     else:
         print("id found, not adding again")
 
-    if (flag_add_source == False and flag_add_collection == False and flag_add_finna == False):
-        print("Nothing to add, skipping.")
-        continue
+    #if (flag_add_source == False and flag_add_collection == False and flag_add_finna == False):
+        #print("Nothing to add, skipping.")
+        #continue
 
     #pywikibot.info('----')
     #pywikibot.showDiff(oldtext, newtext,2)
