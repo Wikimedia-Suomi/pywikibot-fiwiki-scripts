@@ -88,56 +88,109 @@ def getidfromoldsource(oldsource):
     oldsource = oldsource[indexid+3:]
     return stripid(oldsource)
 
-# commons source may have human readable stuff in it
-# parse to plain url
-def geturlfromsource(source):
-    #print("DEBUG: source url is: " + source)
 
-    protolen = len("http://")
-    index = source.find("http://")
-    if (index < 0):
-        protolen = len("https://")
-        index = source.find("https://")
+def findurlbeginfromsource(source, begin):
+    # just skip it
+    if (len(source) == 0):
+        return -1
+    
+    indexend = len(source)-1
+    indexbegin = begin
+    while (indexbegin < indexend):
+        # may have http or https,
+        # also there may be encoded url given to 
+        # redirecting services as parameters
+        # 
+        index = source.find("http", indexbegin)
         if (index < 0):
-            # no url in string
-            return ""
+            # no url proto in string
+            return -1
 
-    indexproto = index+protolen
+        if ((indexend - index) < 8):
+            # nothing usable remaining in string, partial url left unfinished?
+            return -1
 
-    # try to find space or something
-    indexend = source.find(" ", indexproto)
-    if (indexend > 0):
-        source = source[:indexend]
+        # should have http:// or https:// to be valid:
+        # check that we have :// since url may given as encoded parameter to another
+        if (source[index:index+7].lower() == "http://" 
+            or source[index:index+8].lower() == "https://"):
+            # should be usable url?
+            return index
+            
+        # otherwise look for another
+        indexbegin = index + 7
 
-    # wiki-markup end of url
-    indexend = source.find("]", indexproto)
-    if (indexend > 0):
-        source = source[:indexend]
-    indexend = source.find("|", indexproto)
-    if (indexend > 0):
-        source = source[:indexend]
-    indexend = source.find("}", indexproto)
-    if (indexend > 0):
-        source = source[:indexend]
-    indexend = source.find("\n", indexproto)
-    if (indexend > 0):
-        source = source[:indexend]
+    # not found
+    return -1
 
-    if (index > 0):
-        # finally, if there was anything before start of url
-        # -> strip to just url 
-        #indexend = len(source)-1 # just use string length
-        source = source[index:]
+# commons source may have human readable stuff in it,
+# it may be mixed with wiki-markup and html as well:
+# try to locate where url ends from that soup
+def findurlendfromsource(source, indexbegin=0):
+    indexend = len(source)-1
 
-    #print("DEBUG: found source url: " + source)
-    return source
+    i = indexbegin
+    while i < indexend:
+        # space after url or between url and description
+        if (source[i] == " " and i < indexend):
+            indexend = i
+            
+        # wikimarkup after url?
+        # end of url markup?
+        if (source[i] == "]" and i < indexend):
+            indexend = i
+        # template parameter after url?
+        if (source[i] == "|" and i < indexend):
+            indexend = i
+        # end of template with url in it?
+        if (source[i] == "}" and i < indexend):
+            indexend = i
+        # start of template after url?
+        if (source[i] == "{" and i < indexend):
+            indexend = i
+
+        # html after url?
+        if (source[i] == "<" and i < indexend):
+            indexend = i
+
+        # some human-readable text after url?
+        if (source[i] == "," and i < indexend):
+            indexend = i
+        if (source[i] == ")" and i < indexend):
+            indexend = i
+
+        # just newline after url
+        if (source[i] == "\n" and i < indexend):
+            indexend = i
+        i += 1
+
+    return indexend
+
+# commons source may have human readable stuff in it,
+# also may have multiple urls (old and new),
+# parse to plain urls
+def geturlsfromsource(source):
+    #print("DEBUG: source is: " + source)
+    
+    urllist = list()
+    index = 0
+    while (index >= 0 and index < len(source)):
+        index = findurlbeginfromsource(source, index)
+        if (index < 0):
+            break
+            
+        indexend = findurlendfromsource(source, index)
+        url = source[index:indexend]
+        #print("DEBUG: source has url: " + url)
+        urllist.append(url)
+        index = indexend
+
+    #print("DEBUG: urllist: ", urllist)
+    return urllist
 
 # input: kuvakokoelmat.fi url
 # output: old format id
 def getkuvakokoelmatidfromurl(source):
-    # if there is human readable stuff in source -> strip to just url
-    source = geturlfromsource(source)
-
     indexstart = source.find("kuvakokoelmat.fi")
     if (indexstart <= 0):
         indexstart = source.find("europeana.eu")
@@ -171,6 +224,10 @@ def getkuvakokoelmatidfromurl(source):
 
 # just for documentation purposes
 def getidfromeuropeanaurl(source):
+    if (source.find("europeana.eu") < 0):
+        # not found?
+        return ""
+
     mid = getkuvakokoelmatidfromurl(source)
     if (len(mid) > 0):
         # urls may have session/tracking parameters in some cases -> remove trash from end
@@ -255,10 +312,7 @@ def convertkuvakokoelmatid(kkid):
     return musketti
 
 def getnewsourcefromoldsource(srcvalue):
-    # if there is human readable stuff in source -> strip to just url
-    srcvalue = geturlfromsource(srcvalue)
-
-    if (srcvalue.find("kuvakokoelmat.fi") > 0):
+    if "kuvakokoelmat.fi" in srcvalue:
         kkid = getkuvakokoelmatidfromurl(srcvalue)
         newfinnaid = convertkuvakokoelmatid(kkid)
         if (len(newfinnaid) > 0):
@@ -266,7 +320,7 @@ def getnewsourcefromoldsource(srcvalue):
             #newsourceurl = "https://www.finna.fi/Record/" + newfinnaid
         return "" # failed to parse, don't add anything
 
-    if (srcvalue.find("europeana.eu") > 0):
+    if "europeana.eu" in srcvalue:
         eusource = parsesourcefromeuropeana(srcvalue)
         if (len(eusource) < 0):
             print("Failed to retrieve source from europeana")
@@ -290,7 +344,7 @@ def getnewsourcefromoldsource(srcvalue):
         print("DEBUG: europeana-link had id: " + mid)
         return mid
         
-    if (srcvalue.find("finna.fi") > 0):
+    if "finna.fi" in srcvalue:
         # finna.fi url
         return getidfromoldsource(srcvalue)
 
@@ -504,8 +558,12 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
 
-pages = getcatpages(pywikibot, commonssite, "Category:Toini Muona")
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 4)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
+
+pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg")
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Rock music groups from Finland", True)
 
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
@@ -548,42 +606,51 @@ for page in pages:
             if template.has("Source"):
                 par = template.get("Source")
                 srcvalue = str(par.value)
-                if (checkcommonsparsource(srcvalue, page.title()) == False):
-                    break
-                
-                pageurltemp = geturlfromsource(srcvalue)
-                newsourcetext = ""
-                newsourceid = getnewsourcefromoldsource(pageurltemp)
-                if (len(newsourceid) > 0):
-                    newsourceurl = getnewfinnarecordurl(newsourceid)
-                    if (len(newsourceurl) > 0):
-                        newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
-                    if (newsourcetext != srcvalue and len(newsourcetext) > 0):
-                        # remove newline from existing before appending
-                        if (srcvalue.endswith("\n")):
-                            srcvalue = srcvalue[:len(srcvalue)-1]
-                        par.value = srcvalue + newsourcetext
-                        changed = True
+
+                urllist = geturlsfromsource(srcvalue)
+                for pageurltemp in urllist:
+                    print("DEBUG: url in source: ", pageurltemp)
+                    if (checkcommonsparsource(pageurltemp, page.title()) == False):
+                        continue # skip, see if there's another usable url in source
+                    
+                    newsourcetext = ""
+                    newsourceid = getnewsourcefromoldsource(pageurltemp)
+                    if (len(newsourceid) > 0):
+                        newsourceurl = getnewfinnarecordurl(newsourceid)
+                        if (len(newsourceurl) > 0):
+                            newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
+                        if (newsourcetext != srcvalue and len(newsourcetext) > 0):
+                            # remove newline from existing before appending
+                            if (srcvalue.endswith("\n")):
+                                srcvalue = srcvalue[:len(srcvalue)-1]
+                            par.value = srcvalue + newsourcetext
+                            changed = True
 
             if template.has("source"):
                 par = template.get("source")
                 srcvalue = str(par.value)
-                if (checkcommonsparsource(srcvalue, page.title()) == False):
-                    break
                 
-                pageurltemp = geturlfromsource(srcvalue)
-                newsourcetext = ""
-                newsourceid = getnewsourcefromoldsource(pageurltemp)
-                if (len(newsourceid) > 0):
-                    newsourceurl = getnewfinnarecordurl(newsourceid)
-                    if (len(newsourceurl) > 0):
-                        newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
-                    if (newsourcetext != srcvalue and len(newsourcetext) > 0):
-                        # remove newline from existing before appending
-                        if (srcvalue.endswith("\n")):
-                            srcvalue = srcvalue[:len(srcvalue)-1]
-                        par.value = srcvalue + newsourcetext
-                        changed = True
+                urllist = geturlsfromsource(srcvalue)
+                for pageurltemp in urllist:
+                    print("DEBUG: url in source: ", pageurltemp)
+                    if (checkcommonsparsource(pageurltemp, page.title()) == False):
+                        continue # skip, see if there's another usable url in source
+                    
+                    newsourcetext = ""
+                    newsourceid = getnewsourcefromoldsource(pageurltemp)
+                    if (len(newsourceid) > 0):
+                        newsourceurl = getnewfinnarecordurl(newsourceid)
+                        if (len(newsourceurl) > 0):
+                            newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
+                        if (newsourcetext != srcvalue and len(newsourcetext) > 0):
+                            # remove newline from existing before appending
+                            if (srcvalue.endswith("\n")):
+                                srcvalue = srcvalue[:len(srcvalue)-1]
+                            par.value = srcvalue + newsourcetext
+                            changed = True
+ 
+    ## TESTING
+    continue
  
     if (changed == False):
         print("no change, skipping")
