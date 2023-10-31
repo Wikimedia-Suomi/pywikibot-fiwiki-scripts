@@ -450,10 +450,6 @@ def checkcommonsparsource(srcvalue, title):
         and srcvalue.find("europeana.eu") < 0):
         print("unknown source, skipping")
         return False
-    if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
-        # already has metapage
-        print("already has metapage link, skipping")
-        return False
     return True
 
 # filter blocked images that can't be updated for some reason
@@ -561,9 +557,9 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 4)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
-pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg")
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Rock music groups from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg")
+pages = getcatpages(pywikibot, commonssite, "Category:Rock music groups from Finland", True)
 
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
@@ -607,12 +603,17 @@ for page in pages:
                 par = template.get("Source")
                 srcvalue = str(par.value)
 
+                if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
+                    # already has metapage
+                    print("already has metapage link, skipping")
+                    break
+
                 urllist = geturlsfromsource(srcvalue)
                 for pageurltemp in urllist:
                     print("DEBUG: url in source: ", pageurltemp)
                     if (checkcommonsparsource(pageurltemp, page.title()) == False):
                         continue # skip, see if there's another usable url in source
-                    
+
                     newsourcetext = ""
                     newsourceid = getnewsourcefromoldsource(pageurltemp)
                     if (len(newsourceid) > 0):
@@ -629,13 +630,19 @@ for page in pages:
             if template.has("source"):
                 par = template.get("source")
                 srcvalue = str(par.value)
+
+                #if (srcvalue.find("finna.fi/Record/") > 0):
+                if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
+                    # already has metapage
+                    print("already has metapage link, skipping")
+                    break
                 
                 urllist = geturlsfromsource(srcvalue)
                 for pageurltemp in urllist:
                     print("DEBUG: url in source: ", pageurltemp)
                     if (checkcommonsparsource(pageurltemp, page.title()) == False):
                         continue # skip, see if there's another usable url in source
-                    
+
                     newsourcetext = ""
                     newsourceid = getnewsourcefromoldsource(pageurltemp)
                     if (len(newsourceid) > 0):
@@ -648,9 +655,6 @@ for page in pages:
                                 srcvalue = srcvalue[:len(srcvalue)-1]
                             par.value = srcvalue + newsourcetext
                             changed = True
- 
-    ## TESTING
-    continue
  
     if (changed == False):
         print("no change, skipping")
