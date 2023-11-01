@@ -1035,9 +1035,14 @@ def getfilepage(pywikibot, page):
 d_qcodetolabel = dict()
 d_qcodetolabel["Q118976025"] = "Studio Kuvasiskojen kokoelma"
 d_qcodetolabel["Q107388072"] = "Historian kuvakokoelma" # /Museovirasto/Historian kuvakokoelma/
+d_qcodetolabel["Q123272000"] = "Valokuvaamo Pietisen kokoelma" 
+d_qcodetolabel["Q123272489"] = "Suomen merimuseon kuvakokoelma" 
 d_labeltoqcode = dict()
 d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
 d_labeltoqcode["Historian kuvakokoelma"] = "Q107388072" # /Museovirasto/Historian kuvakokoelma/
+d_labeltoqcode["Valokuvaamo Pietisen kokoelma"] = "Q123272000" 
+d_labeltoqcode["Suomen merimuseon kuvakokoelma"] = "Q123272489" 
+
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1049,12 +1054,19 @@ commonssite.login()
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Landscape architects")
+#pages = getcatpages(pywikibot, commonssite, "Category:Landscape architects", True)
 #pages = getcatpages(pywikibot, commonssite, "Archaeologists from Finland", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Architects from Finland", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Charles Riis", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin")
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", 3)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
+
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Daniel Nyblin", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Generals of Finland")
@@ -1091,12 +1103,27 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
 
-pages = getcatpages(pywikibot, commonssite, "Category:Events in Helsinki", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Events in Helsinki", True)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Events in Finland by year", 3)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Culture of Finland", 4)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Aarne Pietinen Oy", 4)
+
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Ships of Finland", 5)
 
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Musicians from Finland", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Artists from Finland", 3)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographers from Finland", 3)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Economy of Finland", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Politics of Finland", 2)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Writers from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
