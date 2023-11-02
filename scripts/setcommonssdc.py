@@ -400,50 +400,106 @@ def getrecordid(oldsource):
         return ""
     oldsource = oldsource[indexid+strlen:]
     return stripid(oldsource)
+
+# commons source information
+def findurlbeginfromsource(source, begin):
+    # just skip it
+    if (len(source) == 0):
+        return -1
     
-# commons source may have human readable stuff in it
-# parse to plain url
-def geturlfromsource(source):
-    #print("DEBUG: source url is: " + source)
-
-    protolen = len("http://")
-    index = source.find("http://")
-    if (index < 0):
-        protolen = len("https://")
-        index = source.find("https://")
+    indexend = len(source)-1
+    indexbegin = begin
+    while (indexbegin < indexend):
+        # may have http or https,
+        # also there may be encoded url given to 
+        # redirecting services as parameters
+        # 
+        index = source.find("http", indexbegin)
         if (index < 0):
-            # no url in string
-            return ""
+            # no url proto in string
+            return -1
 
-    indexproto = index+protolen
+        if ((indexend - index) < 8):
+            # nothing usable remaining in string, partial url left unfinished?
+            return -1
 
-    # try to find space or something
-    indexend = source.find(" ", indexproto)
-    if (indexend > 0):
-        source = source[:indexend]
+        # should have http:// or https:// to be valid:
+        # check that we have :// since url may given as encoded parameter to another
+        if (source[index:index+7].lower() == "http://" 
+            or source[index:index+8].lower() == "https://"):
+            # should be usable url?
+            return index
+            
+        # otherwise look for another
+        indexbegin = index + 7
 
-    # wiki-markup end of url
-    indexend = source.find("]", indexproto)
-    if (indexend > 0):
-        source = source[:indexend]
-    indexend = source.find("|", indexproto)
-    if (indexend > 0):
-        source = source[:indexend]
-    indexend = source.find("}", indexproto)
-    if (indexend > 0):
-        source = source[:indexend]
-    indexend = source.find("\n", indexproto)
-    if (indexend > 0):
-        source = source[:indexend]
+    # not found
+    return -1
 
-    if (index > 0):
-        # finally, if there was anything before start of url
-        # -> strip to just url 
-        #indexend = len(source)-1 # just use string length
-        source = source[index:]
+# commons source may have human readable stuff in it,
+# it may be mixed with wiki-markup and html as well:
+# try to locate where url ends from that soup
+def findurlendfromsource(source, indexbegin=0):
+    indexend = len(source)-1
 
-    #print("DEBUG: found source url: " + source)
-    return source
+    i = indexbegin
+    while i < indexend:
+        # space after url or between url and description
+        if (source[i] == " " and i < indexend):
+            indexend = i
+            
+        # wikimarkup after url?
+        # end of url markup?
+        if (source[i] == "]" and i < indexend):
+            indexend = i
+        # template parameter after url?
+        if (source[i] == "|" and i < indexend):
+            indexend = i
+        # end of template with url in it?
+        if (source[i] == "}" and i < indexend):
+            indexend = i
+        # start of template after url?
+        if (source[i] == "{" and i < indexend):
+            indexend = i
+
+        # html after url?
+        if (source[i] == "<" and i < indexend):
+            indexend = i
+
+        # some human-readable text after url?
+        if (source[i] == "," and i < indexend):
+            indexend = i
+        if (source[i] == ")" and i < indexend):
+            indexend = i
+
+        # just newline after url
+        if (source[i] == "\n" and i < indexend):
+            indexend = i
+        i += 1
+
+    return indexend
+
+# commons source may have human readable stuff in it,
+# also may have multiple urls (old and new),
+# parse to plain urls
+def geturlsfromsource(source):
+    #print("DEBUG: source is: " + source)
+    
+    urllist = list()
+    index = 0
+    while (index >= 0 and index < len(source)):
+        index = findurlbeginfromsource(source, index)
+        if (index < 0):
+            break
+            
+        indexend = findurlendfromsource(source, index)
+        url = source[index:indexend]
+        #print("DEBUG: source has url: " + url)
+        urllist.append(url)
+        index = indexend
+
+    #print("DEBUG: urllist: ", urllist)
+    return urllist
 
 # input: kuvakokoelmat.fi url
 # output: old format id
@@ -929,6 +985,22 @@ def getqcodeforfinnapublisher(finna_record):
         print("found qcode for publisher: " + qpublisher)
     return qpublisher
 
+# simple checks if received record could be usable
+def isFinnaRecordOk(finnarecord, finnaid):
+    if (finnarecord == None):
+        print("WARN: failed to retrieve finna record for: " + finnaid)
+        return False
+
+    if (finnarecord['status'] != 'OK'):
+        print("Skipping (status not OK): " + finnaid + " status: " + finnarecord['status'])
+        return False
+
+    if (finnarecord['resultCount'] != 1):
+        print("Skipping (result not 1): " + finnaid + " count: " + str(finnarecord['resultCount']))
+        return False
+
+    return True
+
 def getImagesExtended(finnarecord):
     if "imagesExtended" not in finnarecord['records'][0]:
         return None
@@ -940,6 +1012,36 @@ def getImagesExtended(finnarecord):
 
     # at least one entry exists
     return imagesExtended[0]
+
+# find source urls from template(s) in commons-page
+def getsourceurlfrompagetemplate(page_text):
+    wikicode = mwparserfromhell.parse(page_text)
+    templatelist = wikicode.filter_templates()
+
+    for template in wikicode.filter_templates():
+        # at least three different templates have been used..
+        if (template.name.matches("Information") 
+            or template.name.matches("Photograph") 
+            or template.name.matches("Artwork") 
+            or template.name.matches("Art Photo")):
+            if template.has("Source"):
+                par = template.get("Source")
+                srcvalue = str(par.value)
+
+                srcurls = geturlsfromsource(srcvalue)
+                if (len(srcurls) > 0):
+                    return srcurls
+
+            if template.has("source"):
+                par = template.get("source")
+                srcvalue = str(par.value)
+
+                srcurls = geturlsfromsource(srcvalue)
+                if (len(srcurls) > 0):
+                    return srcurls
+
+    #print("DEBUG: no urls found in template")
+    return None
 
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
@@ -1037,11 +1139,13 @@ d_qcodetolabel["Q118976025"] = "Studio Kuvasiskojen kokoelma"
 d_qcodetolabel["Q107388072"] = "Historian kuvakokoelma" # /Museovirasto/Historian kuvakokoelma/
 d_qcodetolabel["Q123272000"] = "Valokuvaamo Pietisen kokoelma" 
 d_qcodetolabel["Q123272489"] = "Suomen merimuseon kuvakokoelma" 
+d_qcodetolabel["Q113292201"] = "JOKA Journalistinen kuva-arkisto" 
 d_labeltoqcode = dict()
 d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
 d_labeltoqcode["Historian kuvakokoelma"] = "Q107388072" # /Museovirasto/Historian kuvakokoelma/
 d_labeltoqcode["Valokuvaamo Pietisen kokoelma"] = "Q123272000" 
 d_labeltoqcode["Suomen merimuseon kuvakokoelma"] = "Q123272489" 
+d_labeltoqcode["JOKA Journalistinen kuva-arkisto"] = "Q113292201"
 
 
 # Accessing wikidata properties and items
@@ -1054,22 +1158,16 @@ commonssite.login()
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Landscape architects", True)
 #pages = getcatpages(pywikibot, commonssite, "Archaeologists from Finland", True)
-
 #pages = getcatpages(pywikibot, commonssite, "Architects from Finland", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Charles Riis", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin")
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", 3)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
 
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Daniel Nyblin", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Generals of Finland")
+pages = getcatpages(pywikibot, commonssite, "Category:Generals of Finland")
 #pages = getcatpages(pywikibot, commonssite, "Category:Archaeology in Finland")
 #pages = getcatpages(pywikibot, commonssite, "Category:Painters from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
@@ -1103,15 +1201,9 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Events in Helsinki", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Events in Finland by year", 3)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Culture of Finland", 4)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Aarne Pietinen Oy", 4)
-
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Ships of Finland", 5)
-
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Musicians from Finland", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Artists from Finland", 3)
@@ -1210,48 +1302,32 @@ for page in pages:
     #repo = site.data_repository()
     #item = pywikibot.ItemPage(repo, "Q2225")    
     
-    wikicode = mwparserfromhell.parse(page.text)
-    templatelist = wikicode.filter_templates()
-
     # should store new format id to picture source
     # -> use setfinnasource.py for these for now
     #addFinnaIdForKuvakokoelmatSource = False
+    
+    # find source urls in template(s) in commons-page
+    srcurls = getsourceurlfrompagetemplate(page.text)
+    if (srcurls == None):
+        print("DEBUG: no urls found in templates of " + page.title())
+        continue
+    if (len(srcurls) == 0):
+        print("DEBUG: no urls found in templates of " + page.title())
+        continue
 
     kkid = ""
     finnaid = ""
-    finnasource = ""
-    for template in wikicode.filter_templates():
-        # at least three different templates have been used..
-        if template.name.matches("Information") or template.name.matches("Photograph") or template.name.matches("Artwork") or template.name.matches("Art Photo"):
-            if template.has("Source"):
-                par = template.get("Source")
-                srcvalue = str(par.value)
-                
-                if (srcvalue.find("kuvakokoelmat.fi") > 0):
-                    kkid = getkuvakokoelmatidfromurl(srcvalue)
-                if (srcvalue.find("finna.fi") > 0):
-                    finnasource = srcvalue
-                    finnaid = getrecordid(srcvalue)
-                    if (finnaid == ""):
-                        finnaid = getlinksourceid(srcvalue)
-                        if (finnaid == ""):
-                            print("no id and no record found")
-                        break
+    for srcvalue in srcurls:
+        if (srcvalue.find("kuvakokoelmat.fi") > 0):
+            kkid = getkuvakokoelmatidfromurl(srcvalue)
+        if (srcvalue.find("finna.fi") > 0):
+            finnaid = getrecordid(srcvalue)
+            if (finnaid == ""):
+                finnaid = getlinksourceid(srcvalue)
+                if (finnaid == ""):
+                    print("no id and no record found")
+                break # found something
 
-            if template.has("source"):
-                par = template.get("source")
-                srcvalue = str(par.value)
-                
-                if (srcvalue.find("kuvakokoelmat.fi") > 0):
-                    kkid = getkuvakokoelmatidfromurl(srcvalue)
-                if (srcvalue.find("finna.fi") > 0):
-                    finnasource = srcvalue
-                    finnaid = getrecordid(srcvalue)
-                    if (finnaid == ""):
-                        finnaid = getlinksourceid(srcvalue)
-                        if (finnaid == ""):
-                            print("no id and no record found")
-                        break
 
     if (len(finnaid) == 0 and len(kkid) > 0):
         finnaid = convertkuvakokoelmatid(kkid)
@@ -1304,13 +1380,6 @@ for page in pages:
     sourceurl = "https://www.finna.fi/Record/" + finnaid
 
     if (finnaid.find("musketti") >= 0 or finnaid.find("hkm.HKM") >= 0):
-        # check if the source has something other than url in it as well..
-        # if it has some human-readable things try to parse real url
-        if (len(finnasource) > 0):
-            finnaurl = geturlfromsource(finnasource)
-            if (finnaurl == ""):
-                print("WARN: could not parse finna url from source in " + page.title() + ", source: " + finnasource)
-                #continue
     
         # obsolete id -> try to fetch page and locate current ID
         finnaid = parsemetaidfromfinnapage(sourceurl)
@@ -1329,15 +1398,7 @@ for page in pages:
             #continue
 
     finna_record = get_finna_record(finnaid)
-    if (finna_record == None):
-        print("WARN: failed to retrieve finna record for: " + finnaid)
-        continue
-    if (finna_record['status'] != 'OK'):
-        print("Skipping (status not OK): " + finnaid + " status: " + finna_record['status'])
-        continue
-
-    if (finna_record['resultCount'] != 1):
-        print("Skipping (result not 1): " + finnaid + " count: " + str(finna_record['resultCount']))
+    if (isFinnaRecordOk(finna_record, finnaid) == False):
         continue
 
     print("finna record ok: " + finnaid)
