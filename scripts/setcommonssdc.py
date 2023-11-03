@@ -921,6 +921,14 @@ def parsemetaidfromfinnapage(finnaurl):
 
     return ""
 
+# note alternate: might have timestamp like "1943-06-24" or "01.06.1930"
+def timestringtodatetime(timestring):
+    if (timestring.find('.') > 0): 
+        return datetime.strptime(timestring, '%d.%m.%Y')
+    if (timestring.find('-') > 0): 
+        return datetime.strptime(timestring, '%Y-%m-%d')
+    return None
+
 # parse timestamp of picture from finna data
 def parseinceptionfromfinna(finnarecord):
     if "records" not in finnarecord:
@@ -936,15 +944,41 @@ def parseinceptionfromfinna(finnarecord):
         for subject in subjects:
             for sbstr in subject:
                 index = sbstr.find("kuvausaika ")
-                if (index < 0):
-                    continue
-                index = index+len("kuvausaika ")
-                timestamp = sbstr[index:]
-                #print("DEBUG: timestamp string in subjects: " + timestamp)
-                return datetime.strptime(timestamp, '%d.%m.%Y')
-                #return timestamp
+                if (index >= 0):
+                    index = index+len("kuvausaika ")
+                    timestamp = sbstr[index:]
+                    print("DEBUG: kuvausaika in subjects: " + timestamp)
+                    return timestringtodatetime(timestamp)
+                index = sbstr.find("valmistusaika ")
+                if (index >= 0):
+                    index = index+len("valmistusaika ")
+                    timestamp = sbstr[index:]
+                    print("DEBUG: valmistusaika in subjects: " + timestamp)
+                    return timestringtodatetime(timestamp)
                 
-                # TODO: alternate: might have just timestamp like "1943-06-24"
+                # note: in some cases there is just timestamp without a string before it
+                #dt = timestringtodatetime(timestamp)
+                #if (dt != None):
+                    #return dt
+    except:
+        print("failed to parse timestamp")
+        return None
+    return None
+
+# some records have only a year in them?
+def parseinceptionyearfromfinna(finnarecord):
+    if "records" not in finnarecord:
+        print("ERROR: no records in finna record")
+        return None
+
+    records = finnarecord['records'][0]
+    if "year" not in records:
+        print("no year in finna record")
+        return None
+    try:
+        year = finna_record['records'][0]['year']
+        print("DEBUG: year in record: " + year)
+        return date(year, 0, 0)
     except:
         print("failed to parse timestamp")
         return None
@@ -1055,7 +1089,7 @@ def isblockedimage(page):
     # We can only skip it for now..
     if (pagename.find("Sotavirkailija Kari Suomalainen.jpg") >= 0):
         return True
-        
+
     # no blocking currently here
     return False
 
@@ -1167,14 +1201,11 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
 
-pages = getcatpages(pywikibot, commonssite, "Category:Generals of Finland")
+#pages = getcatpages(pywikibot, commonssite, "Category:Generals of Finland")
 #pages = getcatpages(pywikibot, commonssite, "Category:Archaeology in Finland")
 #pages = getcatpages(pywikibot, commonssite, "Category:Painters from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Continuation War", True)
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Constantin Grünberg", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by photographer from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
@@ -1211,9 +1242,16 @@ pages = getcatpages(pywikibot, commonssite, "Category:Generals of Finland")
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographers from Finland", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Water transport in Finland", 0)
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Vetehinen-class submarine", 0)
+
+
+
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Economy of Finland", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Politics of Finland", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Shipyards in Finland", 2)
+
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Writers from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
@@ -1402,7 +1440,7 @@ for page in pages:
         continue
 
     print("finna record ok: " + finnaid)
-
+    
     if "records" not in finna_record:
         print("WARN: 'records' not found in finna record, skipping: " + finnaid)
         continue
