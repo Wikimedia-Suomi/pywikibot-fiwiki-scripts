@@ -949,6 +949,8 @@ def parseinceptionfromfinna(finnarecord):
                     timestamp = sbstr[index:]
                     print("DEBUG: kuvausaika in subjects: " + timestamp)
                     return timestringtodatetime(timestamp)
+                
+                # "valmistus" may have time, place, materials..
                 index = sbstr.find("valmistusaika ")
                 if (index >= 0):
                     index = index+len("valmistusaika ")
