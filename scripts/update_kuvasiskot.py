@@ -453,11 +453,20 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Hildur Larsson")
-#pages = getcatpages(pywikibot, commonssite, "Category:Toini Muona")
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Karl Emil Ståhlberg")
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographers from Finland", True)
 
-pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Karl Emil Ståhlberg")
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Industrialists from Finland")
+#pages = getcatpages(pywikibot, commonssite, "Category:Firefighting in Helsinki")
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Choirs from Finland")
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Jazz ensembles from Finland")
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Shipbuilders from Finland", 5)
+
+pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Pekka Kyytinen")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
@@ -473,7 +482,7 @@ pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Karl Emil S
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
-#rowcount = 1
+rowcount = 1
 #rowlimit = 100
 
 print("Pages found: " + str(len(pages)))
@@ -491,13 +500,15 @@ for page in pages:
         continue
         
     file_info = file_page.latest_file_info
+    
+    rowcount = rowcount +1
 
     # Check only low resolution images
     if file_info.width > 2000 or file_info.height > 2000:
         print("Skipping " + page.title() + ", width or height over 2000")
         continue
 
-    print(" -- [ " + page.title() + " ] --")
+    print(" -- ", rowcount, "/", len(pages), " [ " + page.title() + " ] --")
 
     # Find ids used in Finna
     finna_ids=get_finna_ids(page)
@@ -573,6 +584,11 @@ for page in pages:
         if "original" not in imagesExtended['highResolution']:
             print("WARN: 'original' not found in hires image, skipping: " + finnaid)
             continue
+
+        # get image from commons for comparison:
+        # try to use same size
+        commons_image_url = file_page.get_file_url()
+        commons_image = downloadimage(commons_image_url)
         
         # 'images' can have array of multiple images, need to select correct one
         # -> loop through them (they should have just different &index= in them)
@@ -582,10 +598,6 @@ for page in pages:
             print("no images for item")
 
         if (len(imageList) == 1):
-            # get image from commons for comparison:
-            # try to use same size
-            commons_image_url = file_page.get_file_url()
-            commons_image = downloadimage(commons_image_url)
         
             finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
             finna_image = downloadimage(finna_image_url)
@@ -599,11 +611,6 @@ for page in pages:
             # need to pick the one that is closest match
             print("Multiple images for same item: " + str(len(imageList)))
 
-            # get image from commons for comparison:
-            # try to use same size
-            commons_image_url = file_page.get_file_url()
-            commons_image = downloadimage(commons_image_url)
-            
             f_imgindex = 0
             for img in imageList:
                 finna_image_url = "https://finna.fi" + img
@@ -722,6 +729,13 @@ for page in pages:
             if (is_same_image(local_image, finna_image) == False):
                 print("WARN: Images are NOT same in the API! " + finnaid)
                 continue
+            
+            # verify if file in commons is still larger?
+            # metadata in finna is wrong or server sending wrong image?
+            if commons_image.width >= local_image.width or commons_image.height >= local_image.height:
+                print("WARN: image in Finna is not larger than in Commons: " + finnaid)
+                continue
+
         else:
             converted_image = Image.open(image_file_name)
             if (isidentical(converted_image, commons_image) == True):
