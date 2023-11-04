@@ -1186,6 +1186,9 @@ d_qcodetolabel["Q113292201"] = "JOKA Journalistinen kuva-arkisto"
 d_qcodetolabel["Q123308670"] = "Pekka Kyytisen kokoelma" 
 d_qcodetolabel["Q123308681"] = "Kansatieteen kuvakokoelma" 
 d_qcodetolabel["Q123308774"] = "Rakennushistorian kuvakokoelma"
+d_qcodetolabel["Q123311165"] = "Lentokuva Hannu Vallaksen kokoelma"
+d_qcodetolabel["Q123313922"] = "Antellin kokoelmat"
+
 d_labeltoqcode = dict()
 d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
 d_labeltoqcode["Historian kuvakokoelma"] = "Q107388072" # /Museovirasto/Historian kuvakokoelma/
@@ -1195,6 +1198,8 @@ d_labeltoqcode["JOKA Journalistinen kuva-arkisto"] = "Q113292201"
 d_labeltoqcode["Pekka Kyytisen kokoelma"] = "Q123308670"
 d_labeltoqcode["Kansatieteen kuvakokoelma"] = "Q123308681"
 d_labeltoqcode["Rakennushistorian kuvakokoelma"] = "Q123308774"
+d_labeltoqcode["Lentokuva Hannu Vallaksen kokoelma"] = "Q123311165"
+d_labeltoqcode["Antellin kokoelmat"] = "Q123313922"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1256,9 +1261,6 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographers from Finland", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Water transport in Finland", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Vetehinen-class submarine", 0)
-
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Economy of Finland", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 2)
@@ -1272,15 +1274,11 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Lawyers from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Pekka Kyytinen")
-
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Architecture of Finland", 2)
+#pages = getcatpages(pywikibot, commonssite, "Category:Journalists from Finland", True)
 
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
