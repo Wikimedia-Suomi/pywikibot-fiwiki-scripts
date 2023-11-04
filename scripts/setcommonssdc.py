@@ -949,6 +949,13 @@ def parseinceptionfromfinna(finnarecord):
                     timestamp = sbstr[index:]
                     print("DEBUG: kuvausaika in subjects: " + timestamp)
                     return timestringtodatetime(timestamp)
+
+                index = sbstr.find("ajankohta: ")
+                if (index >= 0):
+                    index = index+len("ajankohta: ")
+                    timestamp = sbstr[index:]
+                    print("DEBUG: ajankohta in subjects: " + timestamp)
+                    return timestringtodatetime(timestamp)
                 
                 # "valmistus" may have time, place, materials..
                 index = sbstr.find("valmistusaika ")
@@ -1176,13 +1183,18 @@ d_qcodetolabel["Q107388072"] = "Historian kuvakokoelma" # /Museovirasto/Historia
 d_qcodetolabel["Q123272000"] = "Valokuvaamo Pietisen kokoelma" 
 d_qcodetolabel["Q123272489"] = "Suomen merimuseon kuvakokoelma" 
 d_qcodetolabel["Q113292201"] = "JOKA Journalistinen kuva-arkisto" 
+d_qcodetolabel["Q123308670"] = "Pekka Kyytisen kokoelma" 
+d_qcodetolabel["Q123308681"] = "Kansatieteen kuvakokoelma" 
+d_qcodetolabel["Q123308774"] = "Rakennushistorian kuvakokoelma"
 d_labeltoqcode = dict()
 d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
 d_labeltoqcode["Historian kuvakokoelma"] = "Q107388072" # /Museovirasto/Historian kuvakokoelma/
 d_labeltoqcode["Valokuvaamo Pietisen kokoelma"] = "Q123272000" 
 d_labeltoqcode["Suomen merimuseon kuvakokoelma"] = "Q123272489" 
 d_labeltoqcode["JOKA Journalistinen kuva-arkisto"] = "Q113292201"
-
+d_labeltoqcode["Pekka Kyytisen kokoelma"] = "Q123308670"
+d_labeltoqcode["Kansatieteen kuvakokoelma"] = "Q123308681"
+d_labeltoqcode["Rakennushistorian kuvakokoelma"] = "Q123308774"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1245,8 +1257,7 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Water transport in Finland", 0)
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Vetehinen-class submarine", 0)
-
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Vetehinen-class submarine", 0)
 
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Economy of Finland", 2)
@@ -1261,6 +1272,12 @@ pages = getpagesrecurse(pywikibot, commonssite, "Category:Vetehinen-class submar
 #pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Lawyers from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Pekka Kyytinen")
+
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Architecture of Finland", 2)
+
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
