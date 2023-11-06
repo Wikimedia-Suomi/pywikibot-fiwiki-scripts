@@ -1200,6 +1200,7 @@ d_labeltoqcode["Kansatieteen kuvakokoelma"] = "Q123308681"
 d_labeltoqcode["Rakennushistorian kuvakokoelma"] = "Q123308774"
 d_labeltoqcode["Lentokuva Hannu Vallaksen kokoelma"] = "Q123311165"
 d_labeltoqcode["Antellin kokoelmat"] = "Q123313922"
+d_labeltoqcode["Antellin kokoelma"] = "Q123313922"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1212,7 +1213,8 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getcatpages(pywikibot, commonssite, "Archaeologists from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Architects from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Kantele players", True)
+#pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
 
@@ -1261,12 +1263,18 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographers from Finland", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
+#Category:Cities in Finland by decade
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Economy of Finland", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Politics of Finland", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Shipyards in Finland", 2)
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Politicians of Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Educators from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:", True)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Designers from Finland", 2)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Writers from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
@@ -1277,24 +1285,31 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Journalists from Finland", True)
 
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
+
+
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
+
+
 cachedb = CachedImageData() 
 cachedb.opencachedb()
 
-rowcount = 1
+rowcount = 0
 #rowlimit = 10
 
 print("Pages found: " + str(len(pages)))
 
 for page in pages:
+    rowcount += 1
+    
     # 14 is category -> recurse into subcategories
-    #
     if (page.namespace() != 6):  # 6 is the namespace ID for files
         continue
 
@@ -1312,10 +1327,17 @@ for page in pages:
     file_media_identifier='M' + str(filepage.pageid)
     file_info = filepage.latest_file_info
     oldtext=page.text
+    
+    strmime = str(file_info.mime)
+    if (strmime.find("audio") >= 0 
+        or strmime.find("ogg") >= 0 
+        or strmime.find("/svg") >= 0 
+        or strmime.find("video") >= 0):
+        print("unsupported mime-type: ", strmime)
+        continue
 
     print(" ////////", rowcount, "/", len(pages), ": [ " + page.title() + " ] ////////")
     print("latest change in commons: " + filepage.latest_file_info.timestamp.isoformat())
-    rowcount += 1
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative

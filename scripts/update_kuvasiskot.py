@@ -344,6 +344,8 @@ def isblockedimage(page):
         return True
     if (pagename.find("Vilho Penttilä, Kansallis-Osake-Pankin talo, Kauppakatu 4, Tampere.jpg") >= 0):
         return True
+    # another image where conversion fails, we detect it before upload though
+    ##if (pagename.find("Itäinen Viertotie 24. (Hämeentie) jossa toimi Alli Trygg-Heleniuksen Kansankoti") >= 0):
 
     # close but not close enough
     if (pagename.find("Western Finnish student guard.jpg") >= 0):
@@ -428,7 +430,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Daniel Nyblin", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Alli Nissinen")
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Daniel Nyblin", True)
-
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Pekka Kyytinen")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical pictures of Vyborg Castle")
@@ -439,13 +441,14 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Archaeology in Finland")
-#pages = getcatpages(pywikibot, commonssite, "Category:Generals of Finland")
 #pages = getcatpages(pywikibot, commonssite, "Category:Painters from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:History of Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
+
+#pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Vyborg by decade", 2)
@@ -459,15 +462,6 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Industrialists from Finland")
-#pages = getcatpages(pywikibot, commonssite, "Category:Firefighting in Helsinki")
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Choirs from Finland")
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Jazz ensembles from Finland")
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Shipbuilders from Finland", 5)
-
-pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Pekka Kyytinen")
-
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
@@ -482,12 +476,18 @@ pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Pekka Kyyti
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
-rowcount = 1
+
+pages = getcatpages(pywikibot, commonssite, "Category:Shops in Helsinki")
+#pages = getcatpages(pywikibot, commonssite, "Category:Alli Trygg-Helenius")
+
+rowcount = 0
 #rowlimit = 100
 
 print("Pages found: " + str(len(pages)))
 
 for page in pages:
+    rowcount = rowcount +1
+    
     if page.namespace() != 6:  # 6 is the namespace ID for files
         continue
 
@@ -501,7 +501,13 @@ for page in pages:
         
     file_info = file_page.latest_file_info
     
-    rowcount = rowcount +1
+    strmime = str(file_info.mime)
+    if (strmime.find("audio") >= 0 
+        or strmime.find("ogg") >= 0 
+        or strmime.find("/svg") >= 0 
+        or strmime.find("video") >= 0):
+        print("unsupported mime-type: ", strmime)
+        continue
 
     # Check only low resolution images
     if file_info.width > 2000 or file_info.height > 2000:
@@ -751,7 +757,6 @@ for page in pages:
             if file_info.width >= converted_image.width or file_info.height >= converted_image.height:
                 print("WARN: converted image is not larger than in Commons: " + finnaid)
                 continue
-
 
         comment = "Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
         print(comment)
