@@ -88,7 +88,7 @@ def getidfromoldsource(oldsource):
     oldsource = oldsource[indexid+3:]
     return stripid(oldsource)
 
-
+# commons source information
 def findurlbeginfromsource(source, begin):
     # just skip it
     if (len(source) == 0):
@@ -555,11 +555,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 4)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
-
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg")
-pages = getcatpages(pywikibot, commonssite, "Category:Rock music groups from Finland", True)
+pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
@@ -570,12 +566,14 @@ pages = getcatpages(pywikibot, commonssite, "Category:Rock music groups from Fin
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
-rowcount = 1
+rowcount = 0
 #rowlimit = 10
 
 print("Pages found: " + str(len(pages)))
 
 for page in pages:
+    rowcount += 1
+
     if page.namespace() != 6:  # 6 is the namespace ID for files
         continue
 
@@ -591,7 +589,6 @@ for page in pages:
     oldtext=page.text
 
     print(" ////////", rowcount, ": [ " + page.title() + " ] ////////")
-    rowcount += 1
 
     wikicode = mwparserfromhell.parse(page.text)
     

@@ -476,8 +476,18 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Buildings in Ypäjä")
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Läskelä", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Jean Sibelius", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Arvid Järnefelt", 2)
+#pages = getcatpages(pywikibot, commonssite, "Category:Jean Sibelius in the 1930s")
 
-pages = getcatpages(pywikibot, commonssite, "Category:Shops in Helsinki")
+
+#pages = getcatpages(pywikibot, commonssite, "Category:1952 Summer Olympics sportspeople")
+#pages = getcatpages(pywikibot, commonssite, "Category:History of Salo")
+pages = getcatpages(pywikibot, commonssite, "Category:Impeller washing machines")
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Shops in Helsinki")
 #pages = getcatpages(pywikibot, commonssite, "Category:Alli Trygg-Helenius")
 
 rowcount = 0
@@ -505,6 +515,7 @@ for page in pages:
     if (strmime.find("audio") >= 0 
         or strmime.find("ogg") >= 0 
         or strmime.find("/svg") >= 0 
+        or strmime.find("image/vnd.djvu") >= 0
         or strmime.find("video") >= 0):
         print("unsupported mime-type: ", strmime)
         continue

@@ -1189,6 +1189,16 @@ d_qcodetolabel["Q123308774"] = "Rakennushistorian kuvakokoelma"
 d_qcodetolabel["Q123311165"] = "Lentokuva Hannu Vallaksen kokoelma"
 d_qcodetolabel["Q123313922"] = "Antellin kokoelmat"
 
+d_qcodetolabel["Q123357635"] = "Börje Sandbergin kokoelma"
+d_qcodetolabel["Q123357692"] = "Enckellin kokoelma"
+d_qcodetolabel["Q123357711"] = "Karjalaisen osakunnan kokoelma"
+d_qcodetolabel["Q123357725"] = "V. K. Hietasen kokoelma"
+d_qcodetolabel["Q123357749"] = "Samuli Paulaharjun kokoelma"
+d_qcodetolabel["Q123357911"] = "F. E. Fremlingin kokoelma"
+d_qcodetolabel["Q123358422"] = "Markku Lepolan kokoelma"
+
+d_qcodetolabel["Q123358672"] = "Suomalais-ugrilainen kuvakokoelma"
+
 d_labeltoqcode = dict()
 d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
 d_labeltoqcode["Historian kuvakokoelma"] = "Q107388072" # /Museovirasto/Historian kuvakokoelma/
@@ -1201,6 +1211,17 @@ d_labeltoqcode["Rakennushistorian kuvakokoelma"] = "Q123308774"
 d_labeltoqcode["Lentokuva Hannu Vallaksen kokoelma"] = "Q123311165"
 d_labeltoqcode["Antellin kokoelmat"] = "Q123313922"
 d_labeltoqcode["Antellin kokoelma"] = "Q123313922"
+
+d_labeltoqcode["Börje Sandbergin kokoelma"] = "Q123357635"
+d_labeltoqcode["Enckellin kokoelma"] = "Q123357692"
+d_labeltoqcode["Karjalaisen osakunnan kokoelma"] = "Q123357711"
+d_labeltoqcode["V. K. Hietasen kokoelma"] = "Q123357725"
+d_labeltoqcode["Samuli Paulaharjun kokoelma"] = "Q123357749"
+d_labeltoqcode["F. E. Fremlingin kokoelma"] = "Q123357911"
+d_labeltoqcode["Markku Lepolan kokoelma"] = "Q123358422"
+
+d_labeltoqcode["Suomalais-ugrilainen kuvakokoelma"] = "Q123358672"
+
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1244,7 +1265,7 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Fortresses in Finland", 4)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
+#pages = getcatpages(pywikibot, commonssite, "Category:Battle of Raate Road", True)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in World War II", 3)
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
@@ -1284,9 +1305,11 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Journalists from Finland", True)
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
+
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
 
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
@@ -1296,6 +1319,11 @@ pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Lit
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
+
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
 
 cachedb = CachedImageData() 
@@ -1332,6 +1360,7 @@ for page in pages:
     if (strmime.find("audio") >= 0 
         or strmime.find("ogg") >= 0 
         or strmime.find("/svg") >= 0 
+        or strmime.find("image/vnd.djvu") >= 0
         or strmime.find("video") >= 0):
         print("unsupported mime-type: ", strmime)
         continue
