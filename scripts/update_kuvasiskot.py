@@ -319,6 +319,8 @@ def isblockedimage(page):
     # if there is svg file for some reason -> skip it
     if (pagename.find(".svg") >= 0):
         return True
+    if (pagename.find(".pdf") >= 0):
+        return True
 
     # commons scales down and size comparison fails -> skip this for now
     if (pagename.find("Bronze age socketed axes from Finland.jpg") >= 0):
@@ -483,7 +485,7 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Läskelä", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Jean Sibelius", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Arvid Järnefelt", 2)
-pages = getcatpages(pywikibot, commonssite, "Category:Jean Sibelius")
+#pages = getcatpages(pywikibot, commonssite, "Category:Jean Sibelius")
 
 
 #pages = getcatpages(pywikibot, commonssite, "Category:1952 Summer Olympics sportspeople")
@@ -492,6 +494,12 @@ pages = getcatpages(pywikibot, commonssite, "Category:Jean Sibelius")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Shops in Helsinki")
 #pages = getcatpages(pywikibot, commonssite, "Category:Alli Trygg-Helenius")
+
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
+
 
 rowcount = 0
 #rowlimit = 100
@@ -518,6 +526,7 @@ for page in pages:
     if (strmime.find("audio") >= 0 
         or strmime.find("ogg") >= 0 
         or strmime.find("/svg") >= 0 
+        or strmime.find("/pdf") >= 0 
         or strmime.find("image/vnd.djvu") >= 0
         or strmime.find("video") >= 0):
         print("unsupported mime-type: ", strmime)
@@ -546,6 +555,11 @@ for page in pages:
             # strip pointless parts if any
             finnaid = stripid(finnaid)
             print("note: finna id in " + page.title() + " is " + finnaid)
+
+        # if redirector -> skip it: some other host that won't have same API to ask data from..
+        if (finnaid.find("profium.com") > 0):
+            print("WARN: unusable url (redirector) in: " + page.title() + ", id: " + finnaid)
+            continue
 
         # try to fetch metadata with finna API    
         finna_record = get_finna_record(finnaid)

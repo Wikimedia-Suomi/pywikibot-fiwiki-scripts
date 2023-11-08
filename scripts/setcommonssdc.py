@@ -1124,6 +1124,8 @@ def isblockedimage(page):
     # if there is svg file for some reason -> skip it
     if (pagename.find(".svg") >= 0):
         return True
+    if (pagename.find(".pdf") >= 0):
+        return True
 
     # Python throws error due to large size of the image.
     # We can only skip it for now..
@@ -1393,6 +1395,7 @@ for page in pages:
     if (strmime.find("audio") >= 0 
         or strmime.find("ogg") >= 0 
         or strmime.find("/svg") >= 0 
+        or strmime.find("/pdf") >= 0 
         or strmime.find("image/vnd.djvu") >= 0
         or strmime.find("video") >= 0):
         print("unsupported mime-type: ", strmime)
