@@ -64,9 +64,20 @@ def finna_api_parameter(name, value):
 # * https://api.finna.fi
 # * https://www.kiwi.fi/pages/viewpage.action?pageId=53839221 
 
-def get_finna_record(finnaid):
+def get_finna_record(finnaid, quoteid=True):
+    if (finnaid.startswith("fmp.") == True and finnaid.find("%2F") > 0):
+        quoteid = False
 
-    url="https://api.finna.fi/v1/record?id=" +  urllib.parse.quote_plus(finnaid)
+    if (finnaid.find("/") > 0):
+        quoteid = True
+    
+    if (quoteid == True):
+        quotedfinnaid = urllib.parse.quote_plus(finnaid)
+    else:
+        quotedfinnaid = finnaid
+    #print("DEBUG: using quoted id ", quotedfinnaid, " for id ", finnaid)
+
+    url="https://api.finna.fi/v1/record?id=" +  quotedfinnaid
     url+= finna_api_parameter('field[]', 'id')
     url+= finna_api_parameter('field[]', 'title')
     url+= finna_api_parameter('field[]', 'subTitle')
@@ -383,8 +394,9 @@ def stripid(oldsource):
 
     return oldsource
 
-# link might have "show?id=<id>" which we handle here
-# if it has "Record/<id>" handle it separately
+# link might have "?id=<id>" which we handle here, might have:
+# - "/Cover/Show?id="
+# - "/Record/DownloadFile?id="
 def getlinksourceid(oldsource):
     strlen = len("id=")
     indexid = oldsource.find("id=")
@@ -393,7 +405,13 @@ def getlinksourceid(oldsource):
     oldsource = oldsource[indexid+strlen:]
     return stripid(oldsource)
 
+# for: "Record/<id>" 
 def getrecordid(oldsource):
+    # not suitable here, use getlinksourceid()
+    indexid = oldsource.find("/Record/DownloadFile")
+    if (indexid > 0):
+        return ""
+    
     strlen = len("/Record/")
     indexid = oldsource.find("/Record/")
     if (indexid < 0):
@@ -710,6 +728,8 @@ def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
         # bug? we only support one license currently
         return False
 
+    # TODO: at least PDM and CC0 could be supported
+
     licqcode = "Q20007257"
     lic_claim = pywikibot.Claim(wikidata_site, "P275") # property ID for "license"
     qualifier_targetlic = pywikibot.ItemPage(wikidata_site, licqcode)
@@ -996,6 +1016,19 @@ def parseinceptionyearfromfinna(finnarecord):
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
 
+def getqcodeforpublisherfrominstitution(finnainstitution):
+    if (finnainstitution == "Museovirasto"):
+        return "Q3029524"
+    if (finnainstitution == "Sotamuseo"):
+        return "Q283140"
+    if (finnainstitution == "Sibelius-museon arkisto"):
+        return "Q4306382"
+    if (finnainstitution == "Sibelius-museo"):
+        return "Q4306382"
+    if (finnainstitution == "Suomen valokuvataiteen museo"):
+        return "Q11895148"
+    return ""
+
 def getqcodeforfinnapublisher(finna_record):
     if "records" not in finna_record:
         print("ERROR: no records in finna record")
@@ -1018,11 +1051,9 @@ def getqcodeforfinnapublisher(finna_record):
     qpublisher = ""
     for key, val in finnainstitutions.items():
         #print("val is: " + val)
-        if (val == "Museovirasto"):
-            qpublisher = "Q3029524"
-            break
-        if (val == "Sotamuseo"):
-            qpublisher = "Q283140"
+        qpublisher = getqcodeforpublisherfrominstitution(val)
+        if (qpublisher != ""):
+            #print("qcode is: " + qpublisher)
             break
     if (len(qpublisher) > 0):
         print("found qcode for publisher: " + qpublisher)
@@ -1196,6 +1227,7 @@ d_qcodetolabel["Q123357725"] = "V. K. Hietasen kokoelma"
 d_qcodetolabel["Q123357749"] = "Samuli Paulaharjun kokoelma"
 d_qcodetolabel["Q123357911"] = "F. E. Fremlingin kokoelma"
 d_qcodetolabel["Q123358422"] = "Markku Lepolan kokoelma"
+d_qcodetolabel["Q123365328"] = "Eero Saurin kokoelma"
 
 d_qcodetolabel["Q123358672"] = "Suomalais-ugrilainen kuvakokoelma"
 
@@ -1219,9 +1251,9 @@ d_labeltoqcode["V. K. Hietasen kokoelma"] = "Q123357725"
 d_labeltoqcode["Samuli Paulaharjun kokoelma"] = "Q123357749"
 d_labeltoqcode["F. E. Fremlingin kokoelma"] = "Q123357911"
 d_labeltoqcode["Markku Lepolan kokoelma"] = "Q123358422"
+d_labeltoqcode["Eero Saurin kokoelma"] = "Q123365328"
 
 d_labeltoqcode["Suomalais-ugrilainen kuvakokoelma"] = "Q123358672"
-
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1305,8 +1337,9 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Journalists from Finland", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
-
+pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
+#pages = getcatpages(pywikibot, commonssite, "Category:José Eibenschütz")
+#pages = getcatpages(pywikibot, commonssite, "Category:Jean Sibelius")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
@@ -1323,7 +1356,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
 
 cachedb = CachedImageData() 
@@ -1423,18 +1456,25 @@ for page in pages:
 
     kkid = ""
     finnaid = ""
+    finnarecordid = ""
     for srcvalue in srcurls:
         if (srcvalue.find("kuvakokoelmat.fi") > 0):
             kkid = getkuvakokoelmatidfromurl(srcvalue)
         if (srcvalue.find("finna.fi") > 0):
-            finnaid = getrecordid(srcvalue)
-            if (finnaid == ""):
+            # try metapage-id first
+            finnarecordid = getrecordid(srcvalue)
+            # try old-style/download id
+            if (finnarecordid == ""):
                 finnaid = getlinksourceid(srcvalue)
-                if (finnaid == ""):
-                    print("no id and no record found")
-                break # found something
 
+    if (len(finnaid) == 0 and len(finnarecordid) == 0):
+        print("no finna id and no finna record found")
 
+    # use newer record id if there was, ignore old style id
+    if (len(finnarecordid) > 0):
+        finnaid = finnarecordid
+
+    # old kuvakokoelmat id -> try conversion
     if (len(finnaid) == 0 and len(kkid) > 0):
         finnaid = convertkuvakokoelmatid(kkid)
         finnaid = urllib.parse.quote(finnaid) # quote for url
@@ -1455,8 +1495,9 @@ for page in pages:
  
     # kuvasiskot has "musketti" as part of identier, alternatively "museovirasto" may be used in some cases
     # various other images in finna have "hkm"
-    if (finnaid.find("musketti") < 0 and finnaid.find("museovirasto") < 0 and finnaid.find("hkm") < 0):
-        print("WARN: unexpected id in: " + page.title() + ", id: " + finnaid)
+    # there are lots more like "fpm" (finnish photography museum) and so on -> don't warn
+    #if (finnaid.find("musketti") < 0 and finnaid.find("museovirasto") < 0 and finnaid.find("hkm") < 0):
+        #print("WARN: unexpected id in: " + page.title() + ", id: " + finnaid)
         #continue
     if (finnaid.find("profium.com") > 0):
         print("WARN: unusable url (redirector) in: " + page.title() + ", id: " + finnaid)
@@ -1506,7 +1547,7 @@ for page in pages:
     finna_record = get_finna_record(finnaid)
     if (isFinnaRecordOk(finna_record, finnaid) == False):
         continue
-
+    
     print("finna record ok: " + finnaid)
     
     if "records" not in finna_record:
@@ -1558,7 +1599,7 @@ for page in pages:
     
     # should be CC BY 4.0 or Public domain
     copyrightlicense = imagesExtended['rights']['copyright']
-    if (copyrightlicense != "CC BY 4.0" and copyrightlicense != "PDM"):
+    if (copyrightlicense != "CC BY 4.0" and copyrightlicense != "PDM" and copyrightlicense != "CC0"):
         print("Incorrect copyright: " + copyrightlicense)
         continue
 
