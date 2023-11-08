@@ -378,6 +378,9 @@ def isblockedimage(page):
         #return True
     #if (pagename.find("Sörnäinen harbour rail") >= 0):
         #return True
+    # timeout
+    if (pagename.find("Choi Myeong-suk in 1952.jpg") >= 0):
+        return True
 
     return False
 
@@ -476,16 +479,16 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Buildings in Ypäjä")
+#pages = getcatpages(pywikibot, commonssite, "Category:History of Uusikaupunki")
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Läskelä", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Jean Sibelius", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Arvid Järnefelt", 2)
-#pages = getcatpages(pywikibot, commonssite, "Category:Jean Sibelius in the 1930s")
+pages = getcatpages(pywikibot, commonssite, "Category:Jean Sibelius")
 
 
 #pages = getcatpages(pywikibot, commonssite, "Category:1952 Summer Olympics sportspeople")
 #pages = getcatpages(pywikibot, commonssite, "Category:History of Salo")
-pages = getcatpages(pywikibot, commonssite, "Category:Impeller washing machines")
+#pages = getcatpages(pywikibot, commonssite, "Category:Rilax gård")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Shops in Helsinki")
 #pages = getcatpages(pywikibot, commonssite, "Category:Alli Trygg-Helenius")
@@ -588,7 +591,7 @@ for page in pages:
         # imageRights = finna_record['records'][0]['imageRights']
         # should be CC BY 4.0 or Public domain
         copyrightlicense = imagesExtended['rights']['copyright']
-        if (copyrightlicense != "CC BY 4.0" and copyrightlicense != "PDM"):
+        if (copyrightlicense != "CC BY 4.0" and copyrightlicense != "PDM" and copyrightlicense != "CC0"):
             print("Incorrect copyright: " + copyrightlicense)
             continue
 
