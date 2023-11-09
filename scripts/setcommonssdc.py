@@ -1036,6 +1036,12 @@ def getqcodeforpublisherfrominstitution(finnainstitution):
         return "Q4306382"
     if (finnainstitution == "Suomen valokuvataiteen museo"):
         return "Q11895148"
+    if (finnainstitution == "Suomen Ilmailumuseo"):
+        return "Q1418126"
+    
+    # or Kansallisgalleria / Ateneumin taidemuseo
+    if (finnainstitution == "Kansallisgalleria"):
+        return "Q2983474"
     return ""
 
 def getqcodeforfinnapublisher(finna_record):
@@ -1084,6 +1090,7 @@ def isFinnaRecordOk(finnarecord, finnaid):
 
     return True
 
+# helper to check in case of malformed json
 def getImagesExtended(finnarecord):
     if "imagesExtended" not in finnarecord['records'][0]:
         return None
@@ -1239,8 +1246,10 @@ d_qcodetolabel["Q123357749"] = "Samuli Paulaharjun kokoelma"
 d_qcodetolabel["Q123357911"] = "F. E. Fremlingin kokoelma"
 d_qcodetolabel["Q123358422"] = "Markku Lepolan kokoelma"
 d_qcodetolabel["Q123365328"] = "Eero Saurin kokoelma"
+d_qcodetolabel["Q123378273"] = "Uuno Peltoniemen kokoelma"
 
 d_qcodetolabel["Q123358672"] = "Suomalais-ugrilainen kuvakokoelma"
+d_qcodetolabel["Q123378084"] = "Fazerin konserttitoimiston kokoelma"
 
 d_labeltoqcode = dict()
 d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
@@ -1263,8 +1272,11 @@ d_labeltoqcode["Samuli Paulaharjun kokoelma"] = "Q123357749"
 d_labeltoqcode["F. E. Fremlingin kokoelma"] = "Q123357911"
 d_labeltoqcode["Markku Lepolan kokoelma"] = "Q123358422"
 d_labeltoqcode["Eero Saurin kokoelma"] = "Q123365328"
+d_labeltoqcode["Uuno Peltoniemen kokoelma"] = "Q123378273"
 
 d_labeltoqcode["Suomalais-ugrilainen kuvakokoelma"] = "Q123358672"
+d_labeltoqcode["Fazerin konserttitoimiston kokoelma"] = "Q123378084"
+
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1353,8 +1365,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Eva Kuhlefelt-Ekelund", True)
 
 
-pages = getcatpages(pywikibot, commonssite, "Category:Armas Järnefelt")
-
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
 
@@ -1367,7 +1377,7 @@ pages = getcatpages(pywikibot, commonssite, "Category:Armas Järnefelt")
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
