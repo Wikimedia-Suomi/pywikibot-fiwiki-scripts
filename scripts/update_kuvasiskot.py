@@ -119,6 +119,19 @@ def isFinnaRecordOk(finnarecord, finnaid):
 
     return True
 
+# helper to check in case of malformed json
+def getImagesExtended(finnarecord):
+    if "imagesExtended" not in finnarecord['records'][0]:
+        return None
+
+    # some records are broken?
+    imagesExtended = finnarecord['records'][0]['imagesExtended']
+    if (len(imagesExtended) == 0):
+        return None
+
+    # at least one entry exists
+    return imagesExtended[0]
+
 # Perceptual hashing 
 # http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
 # difference hashing
@@ -408,6 +421,10 @@ def isblockedimage(page):
     # timeout
     if (pagename.find("Choi Myeong-suk in 1952.jpg") >= 0):
         return True
+    if (pagename.find("Hämeen savupirtti Korkanassa.png") >= 0):
+        return True
+    if (pagename.find("Lauluyhtye Seidat 1971.jpg") >= 0):
+        return True
 
     return False
 
@@ -520,9 +537,9 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Alli Trygg-Helenius")
 #pages = getcatpages(pywikibot, commonssite, "Category:Eva Kuhlefelt-Ekelund", True)
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
 
@@ -608,15 +625,15 @@ for page in pages:
             print("Skipping collection (can't match by hash due similarities): " + finnaid)
             continue
 
-        if "imagesExtended" not in finna_record['records'][0]:
-            print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
-            continue
-
         # TODO! Python throws error if image is larger than 178956970 pixels
         # so we can't handle really large images. Check for those and skip them..
 
 
-        imagesExtended = finna_record['records'][0]['imagesExtended'][0]
+        # use helper to check that it is correctly formed
+        imagesExtended = getImagesExtended(finna_record)
+        if (imagesExtended == None):
+            print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
+            continue
 
         # Test copyright (old field: rights, but request has imageRights?)
         # imageRights = finna_record['records'][0]['imageRights']
