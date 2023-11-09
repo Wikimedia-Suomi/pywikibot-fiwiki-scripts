@@ -473,6 +473,7 @@ def isNormalFinnaRecord(srcvalue):
     if (index < 0):
         return False
     
+    index += len("finna.fi/Record/")
     tmplen = len("DownloadFile")
     tmpstr = srcvalue[index:index+tmplen]
     if (tmpstr == "DownloadFile"):
@@ -597,7 +598,6 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 4)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
-
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
