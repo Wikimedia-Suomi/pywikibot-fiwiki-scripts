@@ -426,6 +426,10 @@ def isblockedimage(page):
     if (pagename.find("Lauluyhtye Seidat 1971.jpg") >= 0):
         return True
 
+    # copy upload not allowed
+    if (pagename.find("Putsaaren piilokirkko") >= 0):
+        return True
+
     return False
 
 # recurse upto given depth:
@@ -538,8 +542,8 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Eva Kuhlefelt-Ekelund", True)
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
 
@@ -657,6 +661,9 @@ for page in pages:
         # try to use same size
         commons_image_url = file_page.get_file_url()
         commons_image = downloadimage(commons_image_url)
+        if (commons_image == None):
+            print("WARN: Failed to download commons-image: " + page.title() )
+            continue
         
         # 'images' can have array of multiple images, need to select correct one
         # -> loop through them (they should have just different &index= in them)
@@ -669,6 +676,9 @@ for page in pages:
         
             finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
             finna_image = downloadimage(finna_image_url)
+            if (finna_image == None):
+                print("WARN: Failed to download finna-image: " + page.title() )
+                continue
             
             # Test if image is same using similarity hashing
             if (is_same_image(finna_image, commons_image) == True):
@@ -683,6 +693,9 @@ for page in pages:
             for img in imageList:
                 finna_image_url = "https://finna.fi" + img
                 finna_image = downloadimage(finna_image_url)
+                if (finna_image == None):
+                    print("WARN: Failed to download finna-image: " + page.title() )
+                    continue
 
                 # Test if image is same using similarity hashing
                 if (is_same_image(finna_image, commons_image) == True):
@@ -758,6 +771,9 @@ for page in pages:
             if (need_index == False):
                 finna_image_url = hires['url']
             local_image = downloadimage(finna_image_url)
+            if (local_image == None):
+                print("WARN: Failed to download finna-image: " + page.title() )
+                continue
             image_file_name = convert_tiff_to_jpg(local_image)
             local_file=True    
         elif hires["format"] == "tif" and file_info.mime == 'image/png':
@@ -765,6 +781,9 @@ for page in pages:
             if (need_index == False):
                 finna_image_url = hires['url']
             local_image = downloadimage(finna_image_url)
+            if (local_image == None):
+                print("WARN: Failed to download finna-image: " + page.title() )
+                continue
             image_file_name = convert_tiff_to_png(local_image)
             local_file=True    
         elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
@@ -788,6 +807,9 @@ for page in pages:
             # code above might have switched to another
             # from multiple different images
             local_image = downloadimage(finna_image_url)
+            if (local_image == None):
+                print("WARN: Failed to download finna-image: " + page.title() )
+                continue
             if (isidentical(local_image, commons_image) == True):
                 print("Images are identical files, skipping: " + finnaid)
                 continue
