@@ -94,6 +94,31 @@ def get_finna_record(finnaid):
         print("Finna API query failed: " + url)
         return None
 
+# check if license from Finna is something
+# that is also supported in Commons
+def isSupportedFinnaLicense(copyrightlicense):
+    if (copyrightlicense == "CC BY 4.0" 
+        or copyrightlicense == "PDM" 
+        or copyrightlicense == "CC0"):
+        return True
+    return False
+
+# simple checks if received record could be usable
+def isFinnaRecordOk(finnarecord, finnaid):
+    if (finnarecord == None):
+        print("WARN: failed to retrieve finna record for: " + finnaid)
+        return False
+
+    if (finnarecord['status'] != 'OK'):
+        print("Skipping (status not OK): " + finnaid + " status: " + finnarecord['status'])
+        return False
+
+    if (finnarecord['resultCount'] != 1):
+        print("Skipping (result not 1): " + finnaid + " count: " + str(finnarecord['resultCount']))
+        return False
+
+    return True
+
 # Perceptual hashing 
 # http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
 # difference hashing
@@ -485,15 +510,15 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Läskelä", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Jean Sibelius", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Arvid Järnefelt", 2)
-#pages = getcatpages(pywikibot, commonssite, "Category:Jean Sibelius")
+#pages = getcatpages(pywikibot, commonssite, "Category:Yläne")
 
 
 #pages = getcatpages(pywikibot, commonssite, "Category:1952 Summer Olympics sportspeople")
 #pages = getcatpages(pywikibot, commonssite, "Category:History of Salo")
 #pages = getcatpages(pywikibot, commonssite, "Category:Rilax gård")
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Shops in Helsinki")
 #pages = getcatpages(pywikibot, commonssite, "Category:Alli Trygg-Helenius")
+#pages = getcatpages(pywikibot, commonssite, "Category:Eva Kuhlefelt-Ekelund", True)
 
 pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
@@ -563,15 +588,7 @@ for page in pages:
 
         # try to fetch metadata with finna API    
         finna_record = get_finna_record(finnaid)
-        if (finna_record == None):
-            print("WARN: failed to retrieve finna record for: " + finnaid)
-            continue
-        if (finna_record['status'] != 'OK'):
-            print("Skipping (status not OK): " + finnaid + " status: " + finna_record['status'])
-            continue
-
-        if (finna_record['resultCount'] != 1):
-            print("Skipping (result not 1): " + finnaid + " count: " + str(finna_record['resultCount']))
+        if (isFinnaRecordOk(finna_record, finnaid) == False):
             continue
 
         if "records" not in finna_record:
@@ -605,7 +622,7 @@ for page in pages:
         # imageRights = finna_record['records'][0]['imageRights']
         # should be CC BY 4.0 or Public domain
         copyrightlicense = imagesExtended['rights']['copyright']
-        if (copyrightlicense != "CC BY 4.0" and copyrightlicense != "PDM" and copyrightlicense != "CC0"):
+        if (isSupportedFinnaLicense(copyrightlicense) == False):
             print("Incorrect copyright: " + copyrightlicense)
             continue
 

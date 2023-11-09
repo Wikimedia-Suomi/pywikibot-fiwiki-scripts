@@ -672,6 +672,15 @@ def ispublisherinstatements(statements, publisherqcode):
     #print("did not find publisherqcode: " + str(publisherqcode))
     return False
 
+# check if license from Finna is something
+# that is also supported in Commons
+def isSupportedFinnaLicense(copyrightlicense):
+    if (copyrightlicense == "CC BY 4.0" 
+        or copyrightlicense == "PDM" 
+        or copyrightlicense == "CC0"):
+        return True
+    return False
+
 # is license in statements
 #P275, "CC BY 4.0" is Q20007257
 def islicenseinstatements(statements, license):
@@ -1339,9 +1348,12 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Journalists from Finland", True)
 
-pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
+#pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
 #pages = getcatpages(pywikibot, commonssite, "Category:José Eibenschütz")
-#pages = getcatpages(pywikibot, commonssite, "Category:Jean Sibelius")
+#pages = getcatpages(pywikibot, commonssite, "Category:Eva Kuhlefelt-Ekelund", True)
+
+
+pages = getcatpages(pywikibot, commonssite, "Category:Armas Järnefelt")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
@@ -1600,9 +1612,9 @@ for page in pages:
     # Test copyright (old field: rights, but request has imageRights?)
     # imageRights = finna_record['records'][0]['imageRights']
     
-    # should be CC BY 4.0 or Public domain
+    # should be CC BY 4.0 or Public domain/CC0
     copyrightlicense = imagesExtended['rights']['copyright']
-    if (copyrightlicense != "CC BY 4.0" and copyrightlicense != "PDM" and copyrightlicense != "CC0"):
+    if (isSupportedFinnaLicense(copyrightlicense) == False):
         print("Incorrect copyright: " + copyrightlicense)
         continue
 
