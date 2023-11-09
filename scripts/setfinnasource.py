@@ -80,6 +80,9 @@ def stripid(oldsource):
 
     return oldsource
 
+# link might have "?id=<id>" which we handle here, might have:
+# - "/Cover/Show?id="
+# - "/Record/DownloadFile?id="
 def getidfromoldsource(oldsource):
     indexid = oldsource.find("id=")
     if (indexid < 0):
@@ -452,6 +455,43 @@ def checkcommonsparsource(srcvalue, title):
         return False
     return True
 
+# if there is /Record/ but not /Record/DownloadFile
+# -> ok
+# otherwise, add normal viewing link to metapage
+def checkcommonsforfinnadownload(srcvalue):
+    index = srcvalue.find("finna.fi/Record/DownloadFile")
+    if (index >= 0):
+        print("DEBUG: has a Finna download-link")
+        return True
+    return False
+
+# normal record has /Record/<id>
+# but downloads have Record/DownloadFile/?id=<id>
+# so they need different handling
+def isNormalFinnaRecord(srcvalue):
+    index = srcvalue.find("finna.fi/Record/")
+    if (index < 0):
+        return False
+    
+    tmplen = len("DownloadFile")
+    tmpstr = srcvalue[index:index+tmplen]
+    if (tmpstr == "DownloadFile"):
+        # record with download link instead of id -> different parsing
+        return False
+    return True
+
+def hasMetapageInUrls(urllist, title):
+    for pageurltemp in urllist:
+        # check for normal finna record, unless there's download-link handle that
+        if (isNormalFinnaRecord(pageurltemp) == True):
+            # no need to do anything here
+            print("already has metapage link, skipping: " + title)
+            return True
+        # download-url handling
+        #if (checkcommonsforfinnadownload(pageurltemp) == True):
+    return False
+
+
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
     pagename = str(page)
@@ -546,7 +586,8 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Jutta Zilliacus")
+
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
@@ -555,7 +596,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 4)
-pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
@@ -564,6 +605,11 @@ pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by o
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
+
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
 
 rowcount = 0
@@ -600,12 +646,11 @@ for page in pages:
                 par = template.get("Source")
                 srcvalue = str(par.value)
 
-                if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
-                    # already has metapage
-                    print("already has metapage link, skipping")
-                    break
-
                 urllist = geturlsfromsource(srcvalue)
+                if (hasMetapageInUrls(urllist, page.title()) == True):
+                    # already has metapage -> skip
+                    break
+                
                 for pageurltemp in urllist:
                     print("DEBUG: url in source: ", pageurltemp)
                     if (checkcommonsparsource(pageurltemp, page.title()) == False):
@@ -628,13 +673,11 @@ for page in pages:
                 par = template.get("source")
                 srcvalue = str(par.value)
 
-                #if (srcvalue.find("finna.fi/Record/") > 0):
-                if (srcvalue.find("finna.fi") > 0 and srcvalue.find("/Record/") > 0):
-                    # already has metapage
-                    print("already has metapage link, skipping")
-                    break
-                
                 urllist = geturlsfromsource(srcvalue)
+                if (hasMetapageInUrls(urllist, page.title()) == True):
+                    # already has metapage -> skip
+                    break
+
                 for pageurltemp in urllist:
                     print("DEBUG: url in source: ", pageurltemp)
                     if (checkcommonsparsource(pageurltemp, page.title()) == False):
