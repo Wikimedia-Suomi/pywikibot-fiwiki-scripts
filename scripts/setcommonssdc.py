@@ -1376,8 +1376,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Journalists from Finland", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
-#pages = getcatpages(pywikibot, commonssite, "Category:Eva Kuhlefelt-Ekelund", True)
-
+pages = getcatpages(pywikibot, commonssite, "Category:Kantele players")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
@@ -1393,7 +1392,7 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
 
@@ -1563,6 +1562,13 @@ for page in pages:
         finnaid = finnaid[:len(finnaid)-1]
 
     print("finna ID found: " + finnaid)
+    
+    # note: in some cases, there is quoted ID which will not work
+    # since quoting again mangles characters -> try unquoting
+    if (finnaid.find("%25") >= 0):
+        finnaid = urllib.parse.unquote(finnaid)
+        print("using unquoted finna ID: " + finnaid)
+
     sourceurl = "https://www.finna.fi/Record/" + finnaid
 
     if (finnaid.find("musketti") >= 0 or finnaid.find("hkm.HKM") >= 0):
