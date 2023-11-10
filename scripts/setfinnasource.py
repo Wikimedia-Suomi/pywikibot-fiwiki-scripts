@@ -589,7 +589,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Jutta Zilliacus")
 
-
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)

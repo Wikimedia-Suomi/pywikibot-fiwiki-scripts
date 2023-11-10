@@ -425,6 +425,8 @@ def isblockedimage(page):
         return True
     if (pagename.find("Lauluyhtye Seidat 1971.jpg") >= 0):
         return True
+    if (pagename.find("Ihmisiä ja poroja Hallassa 1910-luvulla.png") >= 0):
+        return True
 
     # copy upload not allowed
     if (pagename.find("Putsaaren piilokirkko") >= 0):
@@ -520,6 +522,16 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Jean Sibelius", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Arvid Järnefelt", 2)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:1952 Summer Olympics sportspeople")
+#pages = getcatpages(pywikibot, commonssite, "Category:Rilax gård")
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Alli Trygg-Helenius")
+#pages = getcatpages(pywikibot, commonssite, "Category:Eva Kuhlefelt-Ekelund", True)
+
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
@@ -527,22 +539,8 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
-#pages = getcatpages(pywikibot, commonssite, "Category:History of Uusikaupunki")
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Läskelä", 2)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Jean Sibelius", 2)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Arvid Järnefelt", 2)
-#pages = getcatpages(pywikibot, commonssite, "Category:Yläne")
-
-
-#pages = getcatpages(pywikibot, commonssite, "Category:1952 Summer Olympics sportspeople")
-#pages = getcatpages(pywikibot, commonssite, "Category:History of Salo")
-#pages = getcatpages(pywikibot, commonssite, "Category:Rilax gård")
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Alli Trygg-Helenius")
-#pages = getcatpages(pywikibot, commonssite, "Category:Eva Kuhlefelt-Ekelund", True)
-
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 

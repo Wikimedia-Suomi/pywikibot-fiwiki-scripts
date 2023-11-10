@@ -1038,10 +1038,21 @@ def getqcodeforpublisherfrominstitution(finnainstitution):
         return "Q11895148"
     if (finnainstitution == "Suomen Ilmailumuseo"):
         return "Q1418126"
+
+    if (finnainstitution == "Suomen kansallismuseo"):
+        return "Q1418136"
     
     # or Kansallisgalleria / Ateneumin taidemuseo
     if (finnainstitution == "Kansallisgalleria"):
         return "Q2983474"
+    if (finnainstitution == "Ateneumin taidemuseo"):
+        return "Q754507"
+    if (finnainstitution == "Sinebrychoffin taidemuseo"):
+        return "Q1393952"
+
+    if (finnainstitution == "Tekniikan museo"):
+        return "Q5549583"
+
     return ""
 
 def getqcodeforfinnapublisher(finna_record):
@@ -1247,9 +1258,13 @@ d_qcodetolabel["Q123357911"] = "F. E. Fremlingin kokoelma"
 d_qcodetolabel["Q123358422"] = "Markku Lepolan kokoelma"
 d_qcodetolabel["Q123365328"] = "Eero Saurin kokoelma"
 d_qcodetolabel["Q123378273"] = "Uuno Peltoniemen kokoelma"
+d_qcodetolabel["Q123383695"] = "UA Saarisen kokoelma"
+d_qcodetolabel["Q123396656"] = "Kari Pulkkisen kokoelma"
+d_qcodetolabel["Q123396641"] = "Valokuvaamo Jäniksen kokoelma"
 
 d_qcodetolabel["Q123358672"] = "Suomalais-ugrilainen kuvakokoelma"
 d_qcodetolabel["Q123378084"] = "Fazerin konserttitoimiston kokoelma"
+d_qcodetolabel["Q123390334"] = "Numismaattiset kokoelmat"
 
 d_labeltoqcode = dict()
 d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
@@ -1273,9 +1288,13 @@ d_labeltoqcode["F. E. Fremlingin kokoelma"] = "Q123357911"
 d_labeltoqcode["Markku Lepolan kokoelma"] = "Q123358422"
 d_labeltoqcode["Eero Saurin kokoelma"] = "Q123365328"
 d_labeltoqcode["Uuno Peltoniemen kokoelma"] = "Q123378273"
+d_labeltoqcode["UA Saarisen kokoelma"] = "Q123383695"
+d_labeltoqcode["Kari Pulkkisen kokoelma"] = "Q123396656"
+d_labeltoqcode["Valokuvaamo Jäniksen kokoelma"] = "Q123396641"
 
 d_labeltoqcode["Suomalais-ugrilainen kuvakokoelma"] = "Q123358672"
 d_labeltoqcode["Fazerin konserttitoimiston kokoelma"] = "Q123378084"
+d_labeltoqcode["Numismaattiset kokoelmat"] = "Q123390334"
 
 
 # Accessing wikidata properties and items
@@ -1320,8 +1339,6 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Fortresses in Finland", 4)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Battle of Raate Road", True)
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in World War II", 3)
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
@@ -1330,7 +1347,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Events in Finland by year", 3)
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Culture of Finland", 4)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Musicians from Finland", 3)
@@ -1348,7 +1364,6 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Politicians of Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Educators from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:", True)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Designers from Finland", 2)
 
@@ -1361,7 +1376,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Journalists from Finland", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
-#pages = getcatpages(pywikibot, commonssite, "Category:José Eibenschütz")
 #pages = getcatpages(pywikibot, commonssite, "Category:Eva Kuhlefelt-Ekelund", True)
 
 
@@ -1377,9 +1391,9 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
 
