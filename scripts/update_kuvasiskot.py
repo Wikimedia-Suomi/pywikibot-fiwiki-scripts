@@ -110,11 +110,19 @@ def isFinnaRecordOk(finnarecord, finnaid):
         return False
 
     if (finnarecord['status'] != 'OK'):
-        print("Skipping (status not OK): " + finnaid + " status: " + finnarecord['status'])
+        print("WARN: status not OK: " + finnaid + " status: " + finnarecord['status'])
         return False
 
     if (finnarecord['resultCount'] != 1):
-        print("Skipping (result not 1): " + finnaid + " count: " + str(finnarecord['resultCount']))
+        print("WARN: resultCount not 1: " + finnaid + " count: " + str(finnarecord['resultCount']))
+        return False
+
+    if "records" not in finnarecord:
+        print("WARN: 'records' not found in finna record: " + finnaid)
+        return False
+
+    if (len(finnarecord['records']) == 0):
+        print("WARN: empty array of 'records' for finna record: " + finnaid)
         return False
 
     return True
@@ -527,7 +535,7 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Arvid Järnefelt", 2)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:1952 Summer Olympics sportspeople")
-#pages = getcatpages(pywikibot, commonssite, "Category:Rilax gård")
+pages = getcatpages(pywikibot, commonssite, "Category:Jussi Jalas")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Alli Trygg-Helenius")
 #pages = getcatpages(pywikibot, commonssite, "Category:Eva Kuhlefelt-Ekelund", True)
@@ -539,7 +547,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
@@ -610,12 +618,6 @@ for page in pages:
         if (isFinnaRecordOk(finna_record, finnaid) == False):
             continue
 
-        if "records" not in finna_record:
-            print("WARN: 'records' not found in finna record, skipping: " + finnaid)
-            continue
-        if (len(finna_record['records']) == 0):
-            print("WARN: empty array of 'records' for finna record, skipping: " + finnaid)
-            continue
         if "collections" not in finna_record['records'][0]:
             print("WARN: 'collections' not found in finna record, skipping: " + finnaid)
             continue

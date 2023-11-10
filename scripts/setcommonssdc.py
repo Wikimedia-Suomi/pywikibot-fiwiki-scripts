@@ -1092,11 +1092,19 @@ def isFinnaRecordOk(finnarecord, finnaid):
         return False
 
     if (finnarecord['status'] != 'OK'):
-        print("Skipping (status not OK): " + finnaid + " status: " + finnarecord['status'])
+        print("WARN: status not OK: " + finnaid + " status: " + finnarecord['status'])
         return False
 
     if (finnarecord['resultCount'] != 1):
-        print("Skipping (result not 1): " + finnaid + " count: " + str(finnarecord['resultCount']))
+        print("WARN: resultCount not 1: " + finnaid + " count: " + str(finnarecord['resultCount']))
+        return False
+
+    if "records" not in finnarecord:
+        print("WARN: 'records' not found in finna record: " + finnaid)
+        return False
+
+    if (len(finnarecord['records']) == 0):
+        print("WARN: empty array of 'records' for finna record: " + finnaid)
         return False
 
     return True
@@ -1595,13 +1603,6 @@ for page in pages:
     
     print("finna record ok: " + finnaid)
     
-    if "records" not in finna_record:
-        print("WARN: 'records' not found in finna record, skipping: " + finnaid)
-        continue
-    if (len(finna_record['records']) == 0):
-        print("WARN: empty array of 'records' for finna record, skipping: " + finnaid)
-        continue
-
     # note: if there are no collections, don't remove from commons as they may have manual additions
     collectionqcodes = list()
     if "collections" not in finna_record['records'][0]:
