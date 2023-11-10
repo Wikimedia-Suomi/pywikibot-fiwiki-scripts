@@ -1565,9 +1565,9 @@ for page in pages:
     
     # note: in some cases, there is quoted ID which will not work
     # since quoting again mangles characters -> try unquoting
-    if (finnaid.find("%25") >= 0):
-        finnaid = urllib.parse.unquote(finnaid)
-        print("using unquoted finna ID: " + finnaid)
+    #if (finnaid.find("%25") >= 0):
+        #finnaid = urllib.parse.unquote(finnaid)
+        #print("using unquoted finna ID: " + finnaid)
 
     sourceurl = "https://www.finna.fi/Record/" + finnaid
 
