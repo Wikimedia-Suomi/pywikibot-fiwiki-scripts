@@ -1268,6 +1268,10 @@ d_qcodetolabel["Q123365328"] = "Eero Saurin kokoelma"
 d_qcodetolabel["Q123378273"] = "Uuno Peltoniemen kokoelma"
 d_qcodetolabel["Q123383695"] = "UA Saarisen kokoelma"
 d_qcodetolabel["Q123396656"] = "Kari Pulkkisen kokoelma"
+d_qcodetolabel["Q123397451"] = "Lauri Sorvojan kokoelma"
+d_qcodetolabel["Q123398725"] = "Matti Tapolan kokoelma"
+d_qcodetolabel["Q123398791"] = "Hannu Lindroosin kokoelma"
+d_qcodetolabel["Q123398858"] = "Helge Heinosen kokoelma"
 d_qcodetolabel["Q123396641"] = "Valokuvaamo Jäniksen kokoelma"
 
 d_qcodetolabel["Q123358672"] = "Suomalais-ugrilainen kuvakokoelma"
@@ -1298,12 +1302,15 @@ d_labeltoqcode["Eero Saurin kokoelma"] = "Q123365328"
 d_labeltoqcode["Uuno Peltoniemen kokoelma"] = "Q123378273"
 d_labeltoqcode["UA Saarisen kokoelma"] = "Q123383695"
 d_labeltoqcode["Kari Pulkkisen kokoelma"] = "Q123396656"
+d_labeltoqcode["Lauri Sorvojan kokoelma"] = "Q123397451"
+d_labeltoqcode["Matti Tapolan kokoelma"] = "Q123398725"
+d_labeltoqcode["Hannu Lindroosin kokoelma"] = "Q123398791"
+d_labeltoqcode["Helge Heinosen kokoelma"] = "Q123398858"
 d_labeltoqcode["Valokuvaamo Jäniksen kokoelma"] = "Q123396641"
 
 d_labeltoqcode["Suomalais-ugrilainen kuvakokoelma"] = "Q123358672"
 d_labeltoqcode["Fazerin konserttitoimiston kokoelma"] = "Q123378084"
 d_labeltoqcode["Numismaattiset kokoelmat"] = "Q123390334"
-
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1384,7 +1391,9 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Journalists from Finland", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
-pages = getcatpages(pywikibot, commonssite, "Category:Kantele players")
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Helge Heinonen")
+pages = getcatpages(pywikibot, commonssite, "Category:Harri Kirvesniemi")
+
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
