@@ -1053,6 +1053,11 @@ def getqcodeforpublisherfrominstitution(finnainstitution):
     if (finnainstitution == "Tekniikan museo"):
         return "Q5549583"
 
+    if (finnainstitution == "Museokeskus Vapriikki"):
+        return "Q18346706"
+    if (finnainstitution == "Helsingin kaupunginmuseo"):
+        return "Q2031357"
+
     return ""
 
 def getqcodeforfinnapublisher(finna_record):
@@ -1141,6 +1146,13 @@ def getSourceFromCommonsTemplate(template):
         return template.get("source")
     return None
 
+def getAccessionFromCommonsTemplate(template):
+    if template.has("Id"):
+        return template.get("Id")
+    if template.has("id"):
+        return template.get("id")
+    return None
+
 # find source urls from template(s) in commons-page
 def getsourceurlfrompagetemplate(page_text):
     wikicode = mwparserfromhell.parse(page_text)
@@ -1149,6 +1161,11 @@ def getsourceurlfrompagetemplate(page_text):
     for template in wikicode.filter_templates():
         # at least three different templates have been used..
         if (isSupportedCommonsTemplate(template) == True):
+            #paracc = getAccessionFromCommonsTemplate(template)
+            #if (paracc != None):
+                #accurls = geturlsfromsource(str(paracc.value))
+                # if accession has finna-url but source doesn't -> try it instead
+            
             par = getSourceFromCommonsTemplate(template)
             if (par != None):
                 srcvalue = str(par.value)
@@ -1415,7 +1432,7 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Helge Heinonen")
-pages = getcatpages(pywikibot, commonssite, "Category:Harri Kirvesniemi")
+pages = getcatpages(pywikibot, commonssite, "Category:Mayors of Helsinki")
 
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
