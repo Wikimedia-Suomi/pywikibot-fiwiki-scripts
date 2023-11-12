@@ -324,30 +324,16 @@ def leftfrom(string, char):
 
     return string
 
-# get pages immediately under cat
-# and upto depth of 1 in subcats
-def getcatpages(pywikibot, commonssite, maincat, recurse=False):
-    final_pages = list()
-    cat = pywikibot.Category(commonssite, maincat)
-    pages = list(commonssite.categorymembers(cat))
-    
-    for page in pages:
-        if isblockedimage(page) == False:
-            if page not in final_pages:
-                final_pages.append(page)
-
-    # no recursion by default, just get into depth of 1
-    if (recurse == True):
-        subcats = list(cat.subcategories())
-        for subcat in subcats:
-            subpages = commonssite.categorymembers(subcat)
-            for subpage in subpages:
-                # avoid duplicates and those we are blocked from modifying (403 error)
-                if isblockedimage(subpage) == False:
-                    if subpage not in pages:
-                        final_pages.append(subpage)
-
-    return final_pages
+def isSupportedMimetype(strmime):
+    if (strmime.find("audio") >= 0 
+        or strmime.find("ogg") >= 0 
+        or strmime.find("/svg") >= 0 
+        or strmime.find("/pdf") >= 0 
+        or strmime.find("image/vnd.djvu") >= 0
+        or strmime.find("video") >= 0):
+        print("unsupported mime-type: ", strmime)
+        return False
+    return True
 
 # check for list of images we are forbidden from changing (403 error)
 def isblockedimage(page):
@@ -441,6 +427,31 @@ def isblockedimage(page):
         return True
 
     return False
+
+# get pages immediately under cat
+# and upto depth of 1 in subcats
+def getcatpages(pywikibot, commonssite, maincat, recurse=False):
+    final_pages = list()
+    cat = pywikibot.Category(commonssite, maincat)
+    pages = list(commonssite.categorymembers(cat))
+    
+    for page in pages:
+        if isblockedimage(page) == False:
+            if page not in final_pages:
+                final_pages.append(page)
+
+    # no recursion by default, just get into depth of 1
+    if (recurse == True):
+        subcats = list(cat.subcategories())
+        for subcat in subcats:
+            subpages = commonssite.categorymembers(subcat)
+            for subpage in subpages:
+                # avoid duplicates and those we are blocked from modifying (403 error)
+                if isblockedimage(subpage) == False:
+                    if subpage not in pages:
+                        final_pages.append(subpage)
+
+    return final_pages
 
 # recurse upto given depth:
 # 0 for no recursion (only those directly in category)
@@ -574,14 +585,9 @@ for page in pages:
         
     file_info = file_page.latest_file_info
     
+    # there may be other media than images as well
     strmime = str(file_info.mime)
-    if (strmime.find("audio") >= 0 
-        or strmime.find("ogg") >= 0 
-        or strmime.find("/svg") >= 0 
-        or strmime.find("/pdf") >= 0 
-        or strmime.find("image/vnd.djvu") >= 0
-        or strmime.find("video") >= 0):
-        print("unsupported mime-type: ", strmime)
+    if (isSupportedMimetype(strmime) == False):
         continue
 
     # Check only low resolution images

@@ -1122,6 +1122,25 @@ def getImagesExtended(finnarecord):
     # at least one entry exists
     return imagesExtended[0]
 
+def isSupportedCommonsTemplate(template):
+    #print("DEBUG commons template: ", template.name)
+    name = template.name.lower()
+    name = leftfrom(name, "\n") # mwparserfromhell is bugged
+    if (name == "information" 
+        or name == "photograph" 
+        or name == "artwork" 
+        or name == "art photo"):
+        return True
+    #print("DEBUG: not supported template: ", name)
+    return False
+
+def getSourceFromCommonsTemplate(template):
+    if template.has("Source"):
+        return template.get("Source")
+    if template.has("source"):
+        return template.get("source")
+    return None
+
 # find source urls from template(s) in commons-page
 def getsourceurlfrompagetemplate(page_text):
     wikicode = mwparserfromhell.parse(page_text)
@@ -1129,28 +1148,32 @@ def getsourceurlfrompagetemplate(page_text):
 
     for template in wikicode.filter_templates():
         # at least three different templates have been used..
-        if (template.name.matches("Information") 
-            or template.name.matches("Photograph") 
-            or template.name.matches("Artwork") 
-            or template.name.matches("Art Photo")):
-            if template.has("Source"):
-                par = template.get("Source")
+        if (isSupportedCommonsTemplate(template) == True):
+            par = getSourceFromCommonsTemplate(template)
+            if (par != None):
                 srcvalue = str(par.value)
 
                 srcurls = geturlsfromsource(srcvalue)
                 if (len(srcurls) > 0):
                     return srcurls
-
-            if template.has("source"):
-                par = template.get("source")
-                srcvalue = str(par.value)
-
-                srcurls = geturlsfromsource(srcvalue)
-                if (len(srcurls) > 0):
-                    return srcurls
+            #else:
+                #print("DEBUG: no source par in template")
+        #else:
+            #print("DEBUG: not supported template")
 
     #print("DEBUG: no urls found in template")
     return None
+
+def isSupportedMimetype(strmime):
+    if (strmime.find("audio") >= 0 
+        or strmime.find("ogg") >= 0 
+        or strmime.find("/svg") >= 0 
+        or strmime.find("/pdf") >= 0 
+        or strmime.find("image/vnd.djvu") >= 0
+        or strmime.find("video") >= 0):
+        print("unsupported mime-type: ", strmime)
+        return False
+    return True
 
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
@@ -1443,14 +1466,9 @@ for page in pages:
     file_info = filepage.latest_file_info
     oldtext=page.text
     
+    # there may be other media than images as well
     strmime = str(file_info.mime)
-    if (strmime.find("audio") >= 0 
-        or strmime.find("ogg") >= 0 
-        or strmime.find("/svg") >= 0 
-        or strmime.find("/pdf") >= 0 
-        or strmime.find("image/vnd.djvu") >= 0
-        or strmime.find("video") >= 0):
-        print("unsupported mime-type: ", strmime)
+    if (isSupportedMimetype(strmime) == False):
         continue
 
     print(" ////////", rowcount, "/", len(pages), ": [ " + page.title() + " ] ////////")

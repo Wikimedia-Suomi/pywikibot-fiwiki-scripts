@@ -542,11 +542,13 @@ def hasMetapageInUrls(urllist, title):
 def isSupportedCommonsTemplate(template):
     #print("DEBUG commons template: ", template.name)
     name = template.name.lower()
+    name = leftfrom(name, "\n") # mwparserfromhell is bugged
     if (name == "information" 
         or name == "photograph" 
         or name == "artwork" 
         or name == "art photo"):
         return True
+    #print("DEBUG: not supported template: ", name)
     return False
 
 def getSourceFromCommonsTemplate(template):
