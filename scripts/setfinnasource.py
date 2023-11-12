@@ -443,6 +443,36 @@ def parsesourcefromeuropeana(commonssource):
     print("europeana page source: " + eusource)
     return eusource
 
+# try to find musketti-ID from flickr,
+# expecting to find ID-line like: HK6985:15 / Historian kuvakokoelma
+def parsemuskettifromflickr(flickrsource):
+    if (flickrsource.find("flickr.com") < 0):
+        print("Not flickr url: " + flickrsource)
+        return ""
+
+    flickrpage = requestpage(flickrsource)
+    if (len(flickrpage) <= 0):
+        return ""
+
+    elemname = '<h2 class=" meta-field photo-desc "'
+    indexdps = flickrpage.find(elemname)
+    if (indexdps < 0):
+        return ""
+    indexdpe = flickrpage.find('</h2>', indexdps+len(elemname))
+    if (indexdpe < 0):
+        # bugged page, can't continue
+        return ""
+    index = flickrpage.find('<p>', indexdps+len(elemname))
+    while (index >= 0 and index <= indexdpe):
+        # p-element content
+        inel = flickrpage.find('>', index)
+        inele = flickrpage.find('<', inel)
+        tmpstr = flickrpage[inel+1:inele]
+        if (tmpstr.startswith("HK")):
+            return tmpstr
+        index = flickrpage.find('<p>', index)
+    return ""
+
 # few checks on what the source value has
 def checkcommonsparsource(srcvalue, title):
     if (srcvalue.find("profium.com") > 0):
@@ -481,6 +511,23 @@ def isNormalFinnaRecord(srcvalue):
         return False
     return True
 
+# url in the form https://www.flickr.com/photos/museovirastonkuvakokoelmat/
+def isFlickrCollection(srcvalue):
+    index = srcvalue.find("flickr.com")
+    if (index < 0):
+        return False
+    index = srcvalue.find("museovirastonkuvakokoelmat/")
+    if (index < 0):
+        return False
+    
+    return True
+    # id at end of url, can we use it?
+    #index += len("museovirastonkuvakokoelmat/")
+    #tmpstr = srcvalue[index:]
+    #if (tmpstr.endswith("\n")):
+        #tmpstr = tmpstr[:len(tmpstr)-1]
+    
+
 def hasMetapageInUrls(urllist, title):
     for pageurltemp in urllist:
         # check for normal finna record, unless there's download-link handle that
@@ -492,6 +539,37 @@ def hasMetapageInUrls(urllist, title):
         #if (checkcommonsforfinnadownload(pageurltemp) == True):
     return False
 
+def isSupportedCommonsTemplate(template):
+    #print("DEBUG commons template: ", template.name)
+    name = template.name.lower()
+    if (name == "information" 
+        or name == "photograph" 
+        or name == "artwork" 
+        or name == "art photo"):
+        return True
+    return False
+
+def getSourceFromCommonsTemplate(template):
+    if template.has("Source"):
+        return template.get("Source")
+    if template.has("source"):
+        return template.get("source")
+    return None
+
+def getAccessionFromCommonsTemplate(template):
+    if template.has("Id"):
+        return template.get("Id")
+    if template.has("id"):
+        return template.get("id")
+    return None
+
+def getFlickrCollectionFromPar(par):
+    srcvalue = str(par.value)
+    urllist = geturlsfromsource(srcvalue)
+    for pageurltemp in urllist:
+        if (isFlickrCollection(pageurltemp) == True):
+            return pageurltemp
+    return ""
 
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
@@ -587,7 +665,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Jutta Zilliacus")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
@@ -605,10 +682,12 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
+
+pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Helge Heinonen")
 
 
 rowcount = 0
@@ -640,18 +719,40 @@ for page in pages:
     templatelist = wikicode.filter_templates()
 
     for template in wikicode.filter_templates():
-        if template.name.matches("Information") or template.name.matches("information") or template.name.matches("Photograph") or template.name.matches("photograph") or template.name.matches("Artwork") or template.name.matches("artwork") or template.name.matches("Art Photo") or template.name.matches("art photo"):
-            if template.has("Source"):
-                par = template.get("Source")
+        if (isSupportedCommonsTemplate(template) == True):
+            
+            # TODO: id-field could have correct finna-source,
+            # or it might have flickr-link. 
+            # if it is from flickr, it might have different url in source.
+            # Musketti-images in flickr are also in Finna, so try to find the ID.
+            
+            # TODO: flickr does not allow bot-access to the pages?
+            #accpar = getAccessionFromCommonsTemplate(template)
+            #if (accpar != None):
+                #flink = getFlickrCollectionFromPar(accpar)
+                #if (flink != ""):
+                    #musketti = parsemuskettifromflickr(flink)
+                    #print("DEBUG: musketti-id from flickr: ", musketti)
+            
+            par = getSourceFromCommonsTemplate(template)
+            if (par != None):
                 srcvalue = str(par.value)
 
                 urllist = geturlsfromsource(srcvalue)
                 if (hasMetapageInUrls(urllist, page.title()) == True):
                     # already has metapage -> skip
-                    break
+                   break
                 
                 for pageurltemp in urllist:
                     print("DEBUG: url in source: ", pageurltemp)
+
+                    # if commons has flickr as source,
+                    # try to find Finna-ID from flickr description
+                    # TODO: flickr does not allow bot-access to the pages?
+                    #if (isFlickrCollection(pageurltemp) == True):
+                        #musketti = parsemuskettifromflickr(pageurltemp)
+                        #print("DEBUG: musketti-id from flickr: ", musketti)
+                    
                     if (checkcommonsparsource(pageurltemp, page.title()) == False):
                         continue # skip, see if there's another usable url in source
 
@@ -667,33 +768,9 @@ for page in pages:
                                 srcvalue = srcvalue[:len(srcvalue)-1]
                             par.value = srcvalue + newsourcetext
                             changed = True
+            #else:
+                #print("DEBUG: no source par found")
 
-            if template.has("source"):
-                par = template.get("source")
-                srcvalue = str(par.value)
-
-                urllist = geturlsfromsource(srcvalue)
-                if (hasMetapageInUrls(urllist, page.title()) == True):
-                    # already has metapage -> skip
-                    break
-
-                for pageurltemp in urllist:
-                    print("DEBUG: url in source: ", pageurltemp)
-                    if (checkcommonsparsource(pageurltemp, page.title()) == False):
-                        continue # skip, see if there's another usable url in source
-
-                    newsourcetext = ""
-                    newsourceid = getnewsourcefromoldsource(pageurltemp)
-                    if (len(newsourceid) > 0):
-                        newsourceurl = getnewfinnarecordurl(newsourceid)
-                        if (len(newsourceurl) > 0):
-                            newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
-                        if (newsourcetext != srcvalue and len(newsourcetext) > 0):
-                            # remove newline from existing before appending
-                            if (srcvalue.endswith("\n")):
-                                srcvalue = srcvalue[:len(srcvalue)-1]
-                            par.value = srcvalue + newsourcetext
-                            changed = True
  
     if (changed == False):
         print("no change, skipping")
