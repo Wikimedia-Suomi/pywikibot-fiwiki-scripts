@@ -84,11 +84,26 @@ def stripid(oldsource):
 # - "/Cover/Show?id="
 # - "/Record/DownloadFile?id="
 def getidfromoldsource(oldsource):
+    strlen = len("id=")
     indexid = oldsource.find("id=")
     if (indexid < 0):
         return ""
 
-    oldsource = oldsource[indexid+3:]
+    oldsource = oldsource[indexid+strlen:]
+    return stripid(oldsource)
+
+# for: "Record/<id>" 
+def getrecordid(oldsource):
+    # not suitable here, use getlinksourceid()
+    indexid = oldsource.find("/Record/DownloadFile")
+    if (indexid > 0):
+        return ""
+    
+    strlen = len("/Record/")
+    indexid = oldsource.find("/Record/")
+    if (indexid < 0):
+        return ""
+    oldsource = oldsource[indexid+strlen:]
     return stripid(oldsource)
 
 # commons source information
@@ -689,8 +704,11 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
-pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Helge Heinonen")
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Helge Heinonen")
+#pages = getcatpages(pywikibot, commonssite, "Category:Mayors of Helsinki")
 
+
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
 rowcount = 0
 #rowlimit = 10
@@ -723,6 +741,19 @@ for page in pages:
     for template in wikicode.filter_templates():
         if (isSupportedCommonsTemplate(template) == True):
             
+            finnaidAcc = ""
+            paracc = getAccessionFromCommonsTemplate(template)
+            if (paracc != None):
+                # if accession has finna-url but source doesn't 
+                # -> try parse id from acc now
+                accurls = geturlsfromsource(str(paracc.value))
+                for urltemp in accurls:
+                    finnaidAcc = getrecordid(urltemp)
+                    if (len(finnaidAcc) > 0):
+                        print("DEBUG: found fnnna id in accession: ", finnaidAcc)
+                        break
+                    
+            
             # TODO: id-field could have correct finna-source,
             # or it might have flickr-link. 
             # if it is from flickr, it might have different url in source.
@@ -735,7 +766,8 @@ for page in pages:
                 #if (flink != ""):
                     #musketti = parsemuskettifromflickr(flink)
                     #print("DEBUG: musketti-id from flickr: ", musketti)
-            
+
+           
             par = getSourceFromCommonsTemplate(template)
             if (par != None):
                 srcvalue = str(par.value)
@@ -744,7 +776,7 @@ for page in pages:
                 if (hasMetapageInUrls(urllist, page.title()) == True):
                     # already has metapage -> skip
                    break
-                
+
                 for pageurltemp in urllist:
                     print("DEBUG: url in source: ", pageurltemp)
 
@@ -754,12 +786,15 @@ for page in pages:
                     #if (isFlickrCollection(pageurltemp) == True):
                         #musketti = parsemuskettifromflickr(pageurltemp)
                         #print("DEBUG: musketti-id from flickr: ", musketti)
-                    
-                    if (checkcommonsparsource(pageurltemp, page.title()) == False):
+
+                    if (len(finnaidAcc) == 0 
+                        and checkcommonsparsource(pageurltemp, page.title()) == False):
                         continue # skip, see if there's another usable url in source
 
                     newsourcetext = ""
                     newsourceid = getnewsourcefromoldsource(pageurltemp)
+                    if (len(newsourceid) == 0 and len(finnaidAcc) > 0):
+                        newsourceid = finnaidAcc
                     if (len(newsourceid) > 0):
                         newsourceurl = getnewfinnarecordurl(newsourceid)
                         if (len(newsourceurl) > 0):
