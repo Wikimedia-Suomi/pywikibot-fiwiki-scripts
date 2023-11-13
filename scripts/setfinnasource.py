@@ -574,6 +574,8 @@ def getSourceFromCommonsTemplate(template):
     return None
 
 def getAccessionFromCommonsTemplate(template):
+    if template.has("accession number"):
+        return template.get("accession number")
     if template.has("Id"):
         return template.get("Id")
     if template.has("id"):
