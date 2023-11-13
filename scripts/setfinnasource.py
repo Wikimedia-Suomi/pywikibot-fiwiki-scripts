@@ -329,7 +329,20 @@ def convertkuvakokoelmatid(kkid):
     musketti = "musketti.M012:" + kkid
     return musketti
 
+# try to find new id to Finna from whatever source might be marked:
+# if kuvakokoelmat -> try to generate new id from link (domain is down)
+# if europeana -> try to retrieve original from the linked page
 def getnewsourcefromoldsource(srcvalue):
+    if (srcvalue.find("profium.com") > 0):
+        print("WARN: unusable url (redirector), source: ", srcvalue)
+        return "" # failed to parse, don't add anything
+
+    if (srcvalue.find("finna.fi") < 0 
+        and srcvalue.find("kuvakokoelmat.fi") < 0
+        and srcvalue.find("europeana.eu") < 0):
+        print("unknown source, skipping", srcvalue)
+        return "" # failed to parse, don't add anything
+    
     if "kuvakokoelmat.fi" in srcvalue:
         kkid = getkuvakokoelmatidfromurl(srcvalue)
         newfinnaid = convertkuvakokoelmatid(kkid)
@@ -369,10 +382,13 @@ def getnewsourcefromoldsource(srcvalue):
     return ""
 
 def requestpage(pageurl):
+    print("DEBUG: requesting url: ", pageurl)
 
     page = ""
 
     try:
+        #if (pageurl.find("flickr.com") > 0):
+            #headers={'User-Agent': 'finnabrowser'}
         headers={'User-Agent': 'pywikibot'}
         #response = requests.get(url, headers=headers, stream=True)
     
@@ -467,6 +483,7 @@ def parsemuskettifromflickr(flickrsource):
 
     flickrpage = requestpage(flickrsource)
     if (len(flickrpage) <= 0):
+        print("WARN: failed to request page: " + flickrsource)
         return ""
 
     elemname = '<h2 class=" meta-field photo-desc "'
@@ -487,18 +504,6 @@ def parsemuskettifromflickr(flickrsource):
             return tmpstr
         index = flickrpage.find('<p>', index)
     return ""
-
-# few checks on what the source value has
-def checkcommonsparsource(srcvalue, title):
-    if (srcvalue.find("profium.com") > 0):
-        print("WARN: unusable url (redirector) in: " + title + ", source: " + srcvalue)
-        return False
-    if (srcvalue.find("finna.fi") < 0 
-        and srcvalue.find("kuvakokoelmat.fi") < 0
-        and srcvalue.find("europeana.eu") < 0):
-        print("unknown source, skipping")
-        return False
-    return True
 
 # if there is /Record/ but not /Record/DownloadFile
 # -> ok
@@ -526,16 +531,21 @@ def isNormalFinnaRecord(srcvalue):
         return False
     return True
 
+# does it have a collection that finna might support?
 # url in the form https://www.flickr.com/photos/museovirastonkuvakokoelmat/
 def isFlickrCollection(srcvalue):
     index = srcvalue.find("flickr.com")
     if (index < 0):
         return False
-    index = srcvalue.find("museovirastonkuvakokoelmat/")
-    if (index < 0):
-        return False
     
-    return True
+    index = srcvalue.find("museovirastonkuvakokoelmat")
+    if (index > 0):
+        return True
+    index = srcvalue.find("valokuvataiteenmuseo")
+    if (index > 0):
+        return True
+    
+    return False
     # id at end of url, can we use it?
     #index += len("museovirastonkuvakokoelmat/")
     #tmpstr = srcvalue[index:]
@@ -581,14 +591,6 @@ def getAccessionFromCommonsTemplate(template):
     if template.has("id"):
         return template.get("id")
     return None
-
-def getFlickrCollectionFromPar(par):
-    srcvalue = str(par.value)
-    urllist = geturlsfromsource(srcvalue)
-    for pageurltemp in urllist:
-        if (isFlickrCollection(pageurltemp) == True):
-            return pageurltemp
-    return ""
 
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
@@ -706,11 +708,13 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
+
+pages = getcatpages(pywikibot, commonssite, "Category:Photographers in Finland")
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Helge Heinonen")
 #pages = getcatpages(pywikibot, commonssite, "Category:Mayors of Helsinki")
 
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
 rowcount = 0
 #rowlimit = 10
@@ -737,7 +741,6 @@ for page in pages:
     print(" ////////", rowcount, ": [ " + page.title() + " ] ////////")
 
     wikicode = mwparserfromhell.parse(page.text)
-    
     templatelist = wikicode.filter_templates()
 
     for template in wikicode.filter_templates():
@@ -754,6 +757,10 @@ for page in pages:
                     if (len(finnaidAcc) > 0):
                         print("DEBUG: found fnnna id in accession: ", finnaidAcc)
                         break
+                    if (isFlickrCollection(urltemp) == True):
+                        print("DEBUG: flickr-collection in accession: ", urltemp)
+                        #musketti = parsemuskettifromflickr(urltemp)
+                        #print("DEBUG: musketti-id from flickr: ", musketti)
                     
             
             # TODO: id-field could have correct finna-source,
@@ -761,13 +768,6 @@ for page in pages:
             # if it is from flickr, it might have different url in source.
             # Musketti-images in flickr are also in Finna, so try to find the ID.
             
-            # TODO: flickr does not allow bot-access to the pages?
-            #accpar = getAccessionFromCommonsTemplate(template)
-            #if (accpar != None):
-                #flink = getFlickrCollectionFromPar(accpar)
-                #if (flink != ""):
-                    #musketti = parsemuskettifromflickr(flink)
-                    #print("DEBUG: musketti-id from flickr: ", musketti)
 
            
             par = getSourceFromCommonsTemplate(template)
@@ -789,9 +789,10 @@ for page in pages:
                         #musketti = parsemuskettifromflickr(pageurltemp)
                         #print("DEBUG: musketti-id from flickr: ", musketti)
 
-                    if (len(finnaidAcc) == 0 
-                        and checkcommonsparsource(pageurltemp, page.title()) == False):
-                        continue # skip, see if there's another usable url in source
+                    if (isFlickrCollection(pageurltemp) == True):
+                        print("DEBUG: flickr-collection in source: ", pageurltemp)
+                        #musketti = parsemuskettifromflickr(pageurltemp)
+                        #print("DEBUG: musketti-id from flickr: ", musketti)
 
                     newsourcetext = ""
                     newsourceid = getnewsourcefromoldsource(pageurltemp)
