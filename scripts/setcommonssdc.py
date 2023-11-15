@@ -748,11 +748,13 @@ def checklicensesources(statements, license, sourceurl):
 def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
     if (isSupportedFinnaLicense(license) == False):
         # bug? we only support one license currently
-        return False
+        return None
 
     # TODO: at least PDM and CC0 could be supported
 
     licqcode = getQcodeForLicense(license)
+    if (licqcode == ""):
+        return None
     lic_claim = pywikibot.Claim(wikidata_site, "P275") # property ID for "license"
     qualifier_targetlic = pywikibot.ItemPage(wikidata_site, licqcode)
     lic_claim.setTarget(qualifier_targetlic)
@@ -792,12 +794,22 @@ def addreferencetolicense(pywikibot, wikidata_site, license, sourceurl):
 def isfinnaidinstatements(statements, newid):
     if "P9478" not in statements:
         return False
+
+    unquotedNewId = urllib.parse.unquote(newid)
+
     claimlist = statements["P9478"]    
     for claim in claimlist:
         # target is expected to be like: "musketti." or "museovirasto."
+        # but may be something else (hkm. sibelius. fmp. and so on)
         target = claim.getTarget()
         if (target == newid):
             # match found: no need to add same ID again
+            return True
+        unquotedTarget = urllib.parse.unquote(target)
+        if (unquotedTarget == unquotedNewId):
+            # commons seems to have bug in some character quoting
+            # -> try to catch it
+            print("NOTE: unquoted target matches unquoted Finna-ID")
             return True
 
     # ID not found -> should be added
@@ -1142,6 +1154,10 @@ def getImagesExtended(finnarecord):
     # at least one entry exists
     return imagesExtended[0]
 
+def getFinnaLicense(imagesExtended):
+    # should be CC BY 4.0 or Public domain/CC0
+    return imagesExtended['rights']['copyright']
+
 def isSupportedCommonsTemplate(template):
     #print("DEBUG commons template: ", template.name)
     name = template.name.lower()
@@ -1335,6 +1351,8 @@ d_qcodetolabel["Q123358672"] = "Suomalais-ugrilainen kuvakokoelma"
 d_qcodetolabel["Q123378084"] = "Fazerin konserttitoimiston kokoelma"
 d_qcodetolabel["Q123390334"] = "Numismaattiset kokoelmat"
 
+d_qcodetolabel["Q123439974"] = "Salon Strindberg"
+
 d_labeltoqcode = dict()
 d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
 d_labeltoqcode["Historian kuvakokoelma"] = "Q107388072" # /Museovirasto/Historian kuvakokoelma/
@@ -1368,6 +1386,8 @@ d_labeltoqcode["Valokuvaamo Jäniksen kokoelma"] = "Q123396641"
 d_labeltoqcode["Suomalais-ugrilainen kuvakokoelma"] = "Q123358672"
 d_labeltoqcode["Fazerin konserttitoimiston kokoelma"] = "Q123378084"
 d_labeltoqcode["Numismaattiset kokoelmat"] = "Q123390334"
+
+d_labeltoqcode["Salon Strindberg"] = "Q123439974"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1471,7 +1491,7 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
-pages = getcatpages(pywikibot, commonssite, "Category:Santeri Levas")
+pages = getcatpages(pywikibot, commonssite, "Category:Robert Kajanus")
 
 
 cachedb = CachedImageData() 
@@ -1515,7 +1535,6 @@ for page in pages:
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
     # repo == site == commonssite
-    #testitem = pywikibot.ItemPage(commonssite, 'Q1') # test something like this?
     if (doessdcbaseexist(page) == False):
         print("Wikibase item does not yet exist for: " + page.title() )
         
@@ -1548,14 +1567,6 @@ for page in pages:
 
     print("Wikibase statements found for: " + page.title() )
 
-    #site = pywikibot.Site("wikidata", "wikidata")
-    #repo = site.data_repository()
-    #item = pywikibot.ItemPage(repo, "Q2225")    
-    
-    # should store new format id to picture source
-    # -> use setfinnasource.py for these for now
-    #addFinnaIdForKuvakokoelmatSource = False
-    
     # find source urls in template(s) in commons-page
     srcurls = getsourceurlfrompagetemplate(page.text)
     if (srcurls == None):
@@ -1590,9 +1601,6 @@ for page in pages:
         finnaid = convertkuvakokoelmatid(kkid)
         finnaid = urllib.parse.quote(finnaid) # quote for url
         print("Converted old id in: " + page.title() + " from: " + kkid + " to: " + finnaid)
-        # TODO: update source information to include new id
-        # -> use setfinnasource.py for now
-        #addFinnaIdForKuvakokoelmatSource = True
 
     if (len(finnaid) == 0):
         # urls coming from wikidata instead of in page?
@@ -1709,7 +1717,7 @@ for page in pages:
     # imageRights = finna_record['records'][0]['imageRights']
     
     # should be CC BY 4.0 or Public domain/CC0
-    copyrightlicense = imagesExtended['rights']['copyright']
+    copyrightlicense = getFinnaLicense(imagesExtended)
     if (isSupportedFinnaLicense(copyrightlicense) == False):
         print("Incorrect copyright: " + copyrightlicense)
         continue
@@ -1877,13 +1885,14 @@ for page in pages:
         print("no need to add source")
 
     # is license in statements
-    #P275, "CC BY 4.0" is Q20007257
+    #P275, "CC BY 4.0", may be "PDM" or "CC0"
     #P854, sourceurl
-    #if (copyrightlicense == "CC BY 4.0"): # maybe be PDM or CC0
-    #if (islicenseinstatements(claims, copyrightlicense) == False):
-        #print("NOTE: license missing or not same in statements")
-        #lic_claim = addlicensetostatements(pywikibot, wikidata_site, copyrightlicense, sourceurl)
-        #commonssite.addClaim(wditem, lic_claim)
+    if (islicenseinstatements(claims, copyrightlicense) == False):
+        print("license missing or not same in statements", copyrightlicense)
+        lic_claim = addlicensetostatements(pywikibot, wikidata_site, copyrightlicense, sourceurl)
+        if (lic_claim != None):
+            commonssite.addClaim(wditem, lic_claim)
+            print("license added to statements", copyrightlicense)
     #else:
         #print("license found in statements, OK")
         #if (checklicensesources(claims, copyrightlicense, sourceurl) == False):
