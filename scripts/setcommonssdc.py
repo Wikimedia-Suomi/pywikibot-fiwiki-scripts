@@ -681,19 +681,32 @@ def isSupportedFinnaLicense(copyrightlicense):
         return True
     return False
 
+# from string from Finna to Qcode to wikidata
+# CC0: Q6938433
+# CC BY 4.0: Q20007257
+def getQcodeForLicense(copyrightlicense):
+    if (copyrightlicense == "CC BY 4.0"):
+        return "Q20007257"
+    if (copyrightlicense == "CC0"):
+        return "Q6938433"
+    return ""
+
 # is license in statements
 #P275, "CC BY 4.0" is Q20007257
 def islicenseinstatements(statements, license):
-    if (license != "CC BY 4.0"):
+    if (isSupportedFinnaLicense(license) == False):
         # bug? we only support one license currently
         return False
     if "P275" not in statements:
         return False
+
+    # see if our license is already there in SDC
     claimlist = statements["P275"]    
     for claim in claimlist:
         target = claim.getTarget()
         targetqcode = getqcodefromwikidatalink(target)
-        if (targetqcode == "Q20007257"):
+        if (targetqcode == getQcodeForLicense(license)):
+            # already set there -> we are fine
             return True
         #else:
             # may have multiple licenses, just ignore (cc by sa/nc..)
@@ -702,7 +715,7 @@ def islicenseinstatements(statements, license):
     return False
 
 # check if 'P275' is missing 'P854' with reference url
-def checklicensesources(statements, sourceurl):
+def checklicensesources(statements, license, sourceurl):
     if "P275" not in statements:
         print("license property not in statements")
         return False
@@ -713,7 +726,7 @@ def checklicensesources(statements, sourceurl):
     for claim in claimlist:
         target = claim.getTarget()
         targetqcode = getqcodefromwikidatalink(target)
-        if (targetqcode != "Q20007257"): # not our license
+        if (targetqcode != getQcodeForLicense(license)): # not our license
             #print("DEBUG: unsupported license: " + targetqcode)
             continue
     
@@ -733,13 +746,13 @@ def checklicensesources(statements, sourceurl):
 #P275, license
 #P854, sourceurl
 def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
-    if (license != "CC BY 4.0"):
+    if (isSupportedFinnaLicense(license) == False):
         # bug? we only support one license currently
         return False
 
     # TODO: at least PDM and CC0 could be supported
 
-    licqcode = "Q20007257"
+    licqcode = getQcodeForLicense(license)
     lic_claim = pywikibot.Claim(wikidata_site, "P275") # property ID for "license"
     qualifier_targetlic = pywikibot.ItemPage(wikidata_site, licqcode)
     lic_claim.setTarget(qualifier_targetlic)
@@ -752,8 +765,10 @@ def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
     
     return lic_claim
 
+# CC0: Q6938433
+# CC BY 4.0: Q20007257
 def addreferencetolicense(pywikibot, wikidata_site, license, sourceurl):
-    if (license != "CC BY 4.0"):
+    if (isSupportedFinnaLicense(license) == False):
         # bug? we only support one license currently
         return False
 
@@ -762,7 +777,7 @@ def addreferencetolicense(pywikibot, wikidata_site, license, sourceurl):
     for claim in claimlist:
         target = claim.getTarget()
         targetqcode = getqcodefromwikidatalink(target)
-        if (targetqcode != "Q20007257"): # not our license
+        if (targetqcode != getQcodeForLicense(license)): # not our license
             #print("DEBUG: unsupported license: " + targetqcode)
             continue
 
@@ -774,7 +789,7 @@ def addreferencetolicense(pywikibot, wikidata_site, license, sourceurl):
     
     return True
 
-def isidinstatements(statements, newid):
+def isfinnaidinstatements(statements, newid):
     if "P9478" not in statements:
         return False
     claimlist = statements["P9478"]    
@@ -1147,6 +1162,8 @@ def getSourceFromCommonsTemplate(template):
     return None
 
 def getAccessionFromCommonsTemplate(template):
+    if template.has("accession number"):
+        return template.get("accession number")
     if template.has("Id"):
         return template.get("Id")
     if template.has("id"):
@@ -1432,7 +1449,7 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Helge Heinonen")
-pages = getcatpages(pywikibot, commonssite, "Category:Mayors of Helsinki")
+#pages = getcatpages(pywikibot, commonssite, "Category:Mayors of Helsinki")
 
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
@@ -1451,6 +1468,10 @@ pages = getcatpages(pywikibot, commonssite, "Category:Mayors of Helsinki")
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
+
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
+
+pages = getcatpages(pywikibot, commonssite, "Category:Santeri Levas")
 
 
 cachedb = CachedImageData() 
@@ -1858,14 +1879,14 @@ for page in pages:
     # is license in statements
     #P275, "CC BY 4.0" is Q20007257
     #P854, sourceurl
-    #if (copyrightlicense == "CC BY 4.0"): # maybe be PDM
-    #if (islicenseinstatements(claims, "CC BY 4.0") == False):
+    #if (copyrightlicense == "CC BY 4.0"): # maybe be PDM or CC0
+    #if (islicenseinstatements(claims, copyrightlicense) == False):
         #print("NOTE: license missing or not same in statements")
-        #lic_claim = addlicensetostatements(pywikibot, wikidata_site, "CC BY 4.0", sourceurl)
+        #lic_claim = addlicensetostatements(pywikibot, wikidata_site, copyrightlicense, sourceurl)
         #commonssite.addClaim(wditem, lic_claim)
     #else:
         #print("license found in statements, OK")
-        #if (checklicensesources(claims, sourceurl) == False):
+        #if (checklicensesources(claims, copyrightlicense, sourceurl) == False):
             #print("license source not found in statements")
         #else:
             #print("license source found in statements, OK")
@@ -1901,7 +1922,7 @@ for page in pages:
         print("no collections to add")
 
     # if the stored ID is not same (new ID) -> add new
-    if (isidinstatements(claims, finnaid) == False):
+    if (isfinnaidinstatements(claims, finnaid) == False):
         print("adding finna id to statements: " + finnaid)
         
         finna_claim = addfinnaidtostatements(pywikibot, wikidata_site, finnaid)
