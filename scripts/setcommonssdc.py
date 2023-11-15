@@ -660,6 +660,7 @@ def ispublisherinstatements(statements, publisherqcode):
             #print("not available on internet") # DEBUG
             continue
     
+        # publisher
         if "P123" in claim.qualifiers:
             foiquali = claim.qualifiers["P123"]
             for fclaim in foiquali:
@@ -668,6 +669,13 @@ def ispublisherinstatements(statements, publisherqcode):
                 if (fqcode == publisherqcode):
                     #print("publisher qcode found: " + fqcode)
                     return True
+
+        # TODO: other parameters as well,
+        # some pictures have been imported and marked as being from flickr
+        # but when same picture is in Finna we want to mark that as well
+        # "P137" is operator
+        # "P973" is described at url
+
 
     #print("did not find publisherqcode: " + str(publisherqcode))
     return False
@@ -707,6 +715,7 @@ def islicenseinstatements(statements, license):
         targetqcode = getqcodefromwikidatalink(target)
         if (targetqcode == getQcodeForLicense(license)):
             # already set there -> we are fine
+            print("found code", targetqcode, "for", license)
             return True
         #else:
             # may have multiple licenses, just ignore (cc by sa/nc..)
@@ -752,9 +761,14 @@ def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
 
     # TODO: at least PDM and CC0 could be supported
 
+    # note: don't set this for now since picture might be in PD already
+    # but Finna still says CC..
+    return None
+    
     licqcode = getQcodeForLicense(license)
     if (licqcode == ""):
         return None
+    
     lic_claim = pywikibot.Claim(wikidata_site, "P275") # property ID for "license"
     qualifier_targetlic = pywikibot.ItemPage(wikidata_site, licqcode)
     lic_claim.setTarget(qualifier_targetlic)
@@ -795,7 +809,8 @@ def isfinnaidinstatements(statements, newid):
     if "P9478" not in statements:
         return False
 
-    unquotedNewId = urllib.parse.unquote(newid)
+    # also see if unquoted one matches
+    unquotedNewId = urllib.parse.unquote_plus(newid)
 
     claimlist = statements["P9478"]    
     for claim in claimlist:
@@ -805,8 +820,10 @@ def isfinnaidinstatements(statements, newid):
         if (target == newid):
             # match found: no need to add same ID again
             return True
-        unquotedTarget = urllib.parse.unquote(target)
-        if (unquotedTarget == unquotedNewId):
+        unquotedTarget = urllib.parse.unquote_plus(target)
+        if (unquotedTarget == unquotedNewId 
+            or unquotedTarget == newid 
+            or target == unquotedNewId):
             # commons seems to have bug in some character quoting
             # -> try to catch it
             print("NOTE: unquoted target matches unquoted Finna-ID")
@@ -1491,7 +1508,8 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
-pages = getcatpages(pywikibot, commonssite, "Category:Robert Kajanus")
+pages = getcatpages(pywikibot, commonssite, "Category:Vera Hjelt")
+
 
 
 cachedb = CachedImageData() 
