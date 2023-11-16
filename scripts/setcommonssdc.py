@@ -1101,6 +1101,10 @@ def getqcodeforpublisherfrominstitution(finnainstitution):
         return "Q18346706"
     if (finnainstitution == "Helsingin kaupunginmuseo"):
         return "Q2031357"
+    if (finnainstitution == "Vantaan kaupunginmuseo"):
+        return "Q26723704"
+    if (finnainstitution == "Keravan museopalvelut"):
+        return "Q121266100"
 
     return ""
 
@@ -1369,6 +1373,12 @@ d_qcodetolabel["Q123378084"] = "Fazerin konserttitoimiston kokoelma"
 d_qcodetolabel["Q123390334"] = "Numismaattiset kokoelmat"
 
 d_qcodetolabel["Q123439974"] = "Salon Strindberg"
+d_qcodetolabel["Q123457977"] = "Seppo Konstigin kokoelma"
+d_qcodetolabel["Q123457996"] = "Urpo Rouhiaisen kokoelma"
+d_qcodetolabel["Q123458004"] = "Sari Gustafssonin kokoelma"
+d_qcodetolabel["Q123458213"] = "Jukka Kuusiston kokoelma"
+d_qcodetolabel["Q123458458"] = "Veijo Laineen kokoelma"
+
 
 d_labeltoqcode = dict()
 d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
@@ -1405,6 +1415,12 @@ d_labeltoqcode["Fazerin konserttitoimiston kokoelma"] = "Q123378084"
 d_labeltoqcode["Numismaattiset kokoelmat"] = "Q123390334"
 
 d_labeltoqcode["Salon Strindberg"] = "Q123439974"
+d_labeltoqcode["Seppo Konstigin kokoelma"] = "Q123457977"
+d_labeltoqcode["Urpo Rouhiaisen kokoelma"] = "Q123457996"
+d_labeltoqcode["Sari Gustafssonin kokoelma"] = "Q123458004"
+d_labeltoqcode["Jukka Kuusiston kokoelma"] = "Q123458213"
+d_labeltoqcode["Veijo Laineen kokoelma"] = "Q123458458"
+
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1426,7 +1442,7 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Generals of Finland")
+#pages = getcatpages(pywikibot, commonssite, "People of Finland in the 1980s", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Archaeology in Finland")
 #pages = getcatpages(pywikibot, commonssite, "Category:Painters from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
@@ -1461,7 +1477,7 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Musicians from Finland", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Artists from Finland", 3)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographers from Finland", 3)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Opera of Finland", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
 #Category:Cities in Finland by decade
@@ -1485,13 +1501,11 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Journalists from Finland", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Helge Heinonen")
-#pages = getcatpages(pywikibot, commonssite, "Category:Mayors of Helsinki")
-
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
 
+pages = getcatpages(pywikibot, commonssite, "Category:Salon Strindberg & Atelier Universal")
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
@@ -1507,8 +1521,6 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
-
-pages = getcatpages(pywikibot, commonssite, "Category:Vera Hjelt")
 
 
 
@@ -1598,6 +1610,9 @@ for page in pages:
     finnaid = ""
     finnarecordid = ""
     for srcvalue in srcurls:
+        if (srcvalue.find("elonet.finna.fi") > 0):
+            # elonet-service differs
+            continue
         if (srcvalue.find("kuvakokoelmat.fi") > 0):
             kkid = getkuvakokoelmatidfromurl(srcvalue)
         if (srcvalue.find("finna.fi") > 0):

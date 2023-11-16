@@ -13,11 +13,17 @@ import urllib3
 def getnewfinnarecordurl(finnarecordid):
     if (len(finnarecordid) == 0):
         return ""
+    # quote the id for url
+    #if (finnarecordid.find("%") < 0):
+        #finnarecordid = urllib.parse.quote(finnarecordid)
     return "https://finna.fi/Record/" + finnarecordid
 
 def getnewsourceforfinna(finnarecordurl, finnarecordid):
     if (len(finnarecordurl) == 0 or len(finnarecordid) == 0):
         return ""
+    # quote the id for url
+    #if (finnarecordurl.find("%") < 0):
+        #finnarecordurl = urllib.parse.quote(finnarecordurl)
     return "<br>Image record page in Finna: [" + finnarecordurl + " " + finnarecordid + "]\n"
 
 # strip id from other things that may be after it:
@@ -71,6 +77,11 @@ def stripid(oldsource):
 
     # some parameters in url?
     indexend = oldsource.find("?")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+
+    # in case of multiple lines in string, split at first
+    indexend = oldsource.find("\n")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
@@ -584,6 +595,8 @@ def getSourceFromCommonsTemplate(template):
     return None
 
 def getAccessionFromCommonsTemplate(template):
+    if template.has("Accession number"):
+        return template.get("Accession number")
     if template.has("accession number"):
         return template.get("accession number")
     if template.has("Id"):
@@ -591,6 +604,45 @@ def getAccessionFromCommonsTemplate(template):
     if template.has("id"):
         return template.get("id")
     return None
+
+# accession may hold:
+# - bare link (http..)
+# - wikilink with id ([http.. id])
+# - bare id (HK.. / d1999..)
+# -> convert to a usable ID with modern Finna
+def getIdFromAccessionValue(parval):
+    # bare link
+    if (parval.startswith("http")):
+        return ""
+
+    # wikimarkup with link and id (hopefully)
+    if (parval.startswith("[http")):
+        return ""
+    
+    # strip newline etc.
+    parval = stripid(parval)
+
+    # finnish photographic museum
+    if (parval.startswith("d1999")):
+        # to uppercase
+        parval = parval.upper()
+        # convert first underscore to colon, rest to slash
+        index = parval.find("_")
+        if (index > 0):
+            parval= parval[:index] + ":" + parval[index+1:]
+            #parval = parval.replace("_", "/")
+            parval = parval.replace("_", "%2F") # url-quoted
+        
+        # finally, add prefix
+        parval = "fmp." + parval
+        return parval
+
+    # historical picture collection
+    if (parval.startswith("HK")):
+        parval = "musketti.M012:" + parval
+        #parval = urllib.parse.quote(parval)
+        return parval
+    return ""
 
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
@@ -674,8 +726,6 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by photographer from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Painters from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
 
@@ -708,13 +758,9 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
-
-pages = getcatpages(pywikibot, commonssite, "Category:Photographers in Finland")
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Helge Heinonen")
-#pages = getcatpages(pywikibot, commonssite, "Category:Mayors of Helsinki")
-
-
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
+
+pages = getcatpages(pywikibot, commonssite, "Category:Salon Strindberg & Atelier Universal")
 
 rowcount = 0
 #rowlimit = 10
@@ -738,7 +784,7 @@ for page in pages:
     changed = False
     oldtext=page.text
 
-    print(" ////////", rowcount, ": [ " + page.title() + " ] ////////")
+    print(" ////////", rowcount, "/", len(pages), ": [ " + page.title() + " ] ////////")
 
     wikicode = mwparserfromhell.parse(page.text)
     templatelist = wikicode.filter_templates()
@@ -750,8 +796,9 @@ for page in pages:
             paracc = getAccessionFromCommonsTemplate(template)
             if (paracc != None):
                 # if accession has finna-url but source doesn't 
-                # -> try parse id from acc now
-                accurls = geturlsfromsource(str(paracc.value))
+                # -> try parse id from url-parameters in acc now
+                paracc_val = str(paracc.value)
+                accurls = geturlsfromsource(paracc_val)
                 for urltemp in accurls:
                     finnaidAcc = getrecordid(urltemp)
                     if (len(finnaidAcc) > 0):
@@ -761,6 +808,10 @@ for page in pages:
                         print("DEBUG: flickr-collection in accession: ", urltemp)
                         #musketti = parsemuskettifromflickr(urltemp)
                         #print("DEBUG: musketti-id from flickr: ", musketti)
+
+                # if there weren't urls in accession -> try to use id
+                if (len(accurls) == 0 and len(finnaidAcc) == 0):
+                    finnaidAcc = getIdFromAccessionValue(paracc_val)
                     
             
             # TODO: id-field could have correct finna-source,
@@ -781,6 +832,12 @@ for page in pages:
 
                 for pageurltemp in urllist:
                     print("DEBUG: url in source: ", pageurltemp)
+                    if (pageurltemp.find("profium.com") > 0):
+                        #print("WARN: unusable url (redirector), source: ", pageurltemp)
+                        continue
+                    if (pageurltemp.find("elonet.finna.fi") > 0):
+                        # elonet-service differs
+                        continue
 
                     # if commons has flickr as source,
                     # try to find Finna-ID from flickr description
