@@ -601,6 +601,12 @@ def leftfrom(string, char):
 
     return string
 
+# remove pre- and post-whitespaces when mwparser leaves them
+def trimlr(string):
+    string = string.lstrip()
+    string = string.rstrip()
+    return string
+
 # parse Q-code from link
 def getqcodefromwikidatalink(target):
     targetqcode = str(target)
@@ -754,16 +760,14 @@ def checklicensesources(statements, license, sourceurl):
 
 #P275, license
 #P854, sourceurl
+# Note: only set clearly supported licenses, in other cases
+# it might need deeper look at release time, if it is normal photo or artwork and so on.
+# So avoid complication and stick to clearly known licenses
 def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
+    # at least PDM and CC0 are be supported in addition to CC BY 4.0.
     if (isSupportedFinnaLicense(license) == False):
         # bug? we only support one license currently
         return None
-
-    # TODO: at least PDM and CC0 could be supported
-
-    # note: don't set this for now since picture might be in PD already
-    # but Finna still says CC..
-    return None
     
     licqcode = getQcodeForLicense(license)
     if (licqcode == ""):
@@ -1069,51 +1073,12 @@ def parseinceptionyearfromfinna(finnarecord):
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
 
-def getqcodeforpublisherfrominstitution(finnainstitution):
-    if (finnainstitution == "Museovirasto"):
-        return "Q3029524"
-    if (finnainstitution == "Sotamuseo"):
-        return "Q283140"
-    if (finnainstitution == "Sibelius-museon arkisto"):
-        return "Q4306382"
-    if (finnainstitution == "Sibelius-museo"):
-        return "Q4306382"
-    if (finnainstitution == "Suomen valokuvataiteen museo"):
-        return "Q11895148"
-    if (finnainstitution == "Suomen Ilmailumuseo"):
-        return "Q1418126"
-
-    if (finnainstitution == "Suomen kansallismuseo"):
-        return "Q1418136"
-    
-    # or Kansallisgalleria / Ateneumin taidemuseo
-    if (finnainstitution == "Kansallisgalleria"):
-        return "Q2983474"
-    if (finnainstitution == "Ateneumin taidemuseo"):
-        return "Q754507"
-    if (finnainstitution == "Sinebrychoffin taidemuseo"):
-        return "Q1393952"
-
-    if (finnainstitution == "Tekniikan museo"):
-        return "Q5549583"
-
-    if (finnainstitution == "Museokeskus Vapriikki"):
-        return "Q18346706"
-    if (finnainstitution == "Helsingin kaupunginmuseo"):
-        return "Q2031357"
-    if (finnainstitution == "Vantaan kaupunginmuseo"):
-        return "Q26723704"
-    if (finnainstitution == "Keravan museopalvelut"):
-        return "Q121266100"
-
-    return ""
-
-def getqcodeforfinnapublisher(finna_record):
-    if "records" not in finna_record:
+def getqcodeforfinnapublisher(finnarecord, institutionqcode):
+    if "records" not in finnarecord:
         print("ERROR: no records in finna record")
         return ""
 
-    records = finna_record['records'][0]
+    records = finnarecord['records'][0]
     if "institutions" not in records:
         print("WARN: no institutions in finna record")
         
@@ -1127,16 +1092,12 @@ def getqcodeforfinnapublisher(finna_record):
         finnainstitutions = records['institutions'][0]
         print("found institution in finna record: " + str(finnainstitutions))
 
-    qpublisher = ""
     for key, val in finnainstitutions.items():
         #print("val is: " + val)
-        qpublisher = getqcodeforpublisherfrominstitution(val)
-        if (qpublisher != ""):
-            #print("qcode is: " + qpublisher)
-            break
-    if (len(qpublisher) > 0):
-        print("found qcode for publisher: " + qpublisher)
-    return qpublisher
+        if val in institutionqcode:
+            return institutionqcode[val]
+        
+    return ""
 
 # simple checks if received record could be usable
 def isFinnaRecordOk(finnarecord, finnaid):
@@ -1183,6 +1144,7 @@ def isSupportedCommonsTemplate(template):
     #print("DEBUG commons template: ", template.name)
     name = template.name.lower()
     name = leftfrom(name, "\n") # mwparserfromhell is bugged
+    name = trimlr(name)
     if (name == "information" 
         or name == "photograph" 
         or name == "artwork" 
@@ -1199,6 +1161,8 @@ def getSourceFromCommonsTemplate(template):
     return None
 
 def getAccessionFromCommonsTemplate(template):
+    if template.has("Accession number"):
+        return template.get("Accession number")
     if template.has("accession number"):
         return template.get("accession number")
     if template.has("Id"):
@@ -1336,50 +1300,30 @@ def getfilepage(pywikibot, page):
 
 # ------ main()
 
-# TODO: check wikidata for correct qcodes
-# 
+# institutions maintaining collection(s)
+#
+d_institutionqcode = dict()
+d_institutionqcode["Museovirasto"] = "Q3029524"
+d_institutionqcode["Sotamuseo"] = "Q283140"
+d_institutionqcode["Sibelius-museon arkisto"] = "Q4306382"
+d_institutionqcode["Sibelius-museo"] = "Q4306382"
+d_institutionqcode["Suomen valokuvataiteen museo"] = "Q11895148"
+d_institutionqcode["Suomen Ilmailumuseo"] = "Q1418126"
+d_institutionqcode["Suomen kansallismuseo"] = "Q1418136"
+    
+# or Kansallisgalleria / Ateneumin taidemuseo
+d_institutionqcode["Kansallisgalleria"] = "Q2983474"
+d_institutionqcode["Ateneumin taidemuseo"] = "Q754507"
+d_institutionqcode["Sinebrychoffin taidemuseo"] = "Q1393952"
+d_institutionqcode["Tekniikan museo"] = "Q5549583"
+d_institutionqcode["Museokeskus Vapriikki"] = "Q18346706"
+d_institutionqcode["Helsingin kaupunginmuseo"] = "Q2031357"
+d_institutionqcode["Vantaan kaupunginmuseo"] = "Q26723704"
+d_institutionqcode["Keravan museopalvelut"] = "Q121266100"
+
+
 # qcode of collections -> label
-d_qcodetolabel = dict()
-d_qcodetolabel["Q118976025"] = "Studio Kuvasiskojen kokoelma"
-d_qcodetolabel["Q107388072"] = "Historian kuvakokoelma" # /Museovirasto/Historian kuvakokoelma/
-d_qcodetolabel["Q123272000"] = "Valokuvaamo Pietisen kokoelma" 
-d_qcodetolabel["Q123272489"] = "Suomen merimuseon kuvakokoelma" 
-d_qcodetolabel["Q113292201"] = "JOKA Journalistinen kuva-arkisto" 
-d_qcodetolabel["Q123308670"] = "Pekka Kyytisen kokoelma" 
-d_qcodetolabel["Q123308681"] = "Kansatieteen kuvakokoelma" 
-d_qcodetolabel["Q123308774"] = "Rakennushistorian kuvakokoelma"
-d_qcodetolabel["Q123311165"] = "Lentokuva Hannu Vallaksen kokoelma"
-d_qcodetolabel["Q123313922"] = "Antellin kokoelmat"
-
-d_qcodetolabel["Q123357635"] = "Börje Sandbergin kokoelma"
-d_qcodetolabel["Q123357692"] = "Enckellin kokoelma"
-d_qcodetolabel["Q123357711"] = "Karjalaisen osakunnan kokoelma"
-d_qcodetolabel["Q123357725"] = "V. K. Hietasen kokoelma"
-d_qcodetolabel["Q123357749"] = "Samuli Paulaharjun kokoelma"
-d_qcodetolabel["Q123357911"] = "F. E. Fremlingin kokoelma"
-d_qcodetolabel["Q123358422"] = "Markku Lepolan kokoelma"
-d_qcodetolabel["Q123365328"] = "Eero Saurin kokoelma"
-d_qcodetolabel["Q123378273"] = "Uuno Peltoniemen kokoelma"
-d_qcodetolabel["Q123383695"] = "UA Saarisen kokoelma"
-d_qcodetolabel["Q123396656"] = "Kari Pulkkisen kokoelma"
-d_qcodetolabel["Q123397451"] = "Lauri Sorvojan kokoelma"
-d_qcodetolabel["Q123398725"] = "Matti Tapolan kokoelma"
-d_qcodetolabel["Q123398791"] = "Hannu Lindroosin kokoelma"
-d_qcodetolabel["Q123398858"] = "Helge Heinosen kokoelma"
-d_qcodetolabel["Q123396641"] = "Valokuvaamo Jäniksen kokoelma"
-
-d_qcodetolabel["Q123358672"] = "Suomalais-ugrilainen kuvakokoelma"
-d_qcodetolabel["Q123378084"] = "Fazerin konserttitoimiston kokoelma"
-d_qcodetolabel["Q123390334"] = "Numismaattiset kokoelmat"
-
-d_qcodetolabel["Q123439974"] = "Salon Strindberg"
-d_qcodetolabel["Q123457977"] = "Seppo Konstigin kokoelma"
-d_qcodetolabel["Q123457996"] = "Urpo Rouhiaisen kokoelma"
-d_qcodetolabel["Q123458004"] = "Sari Gustafssonin kokoelma"
-d_qcodetolabel["Q123458213"] = "Jukka Kuusiston kokoelma"
-d_qcodetolabel["Q123458458"] = "Veijo Laineen kokoelma"
-
-
+#
 d_labeltoqcode = dict()
 d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
 d_labeltoqcode["Historian kuvakokoelma"] = "Q107388072" # /Museovirasto/Historian kuvakokoelma/
@@ -1413,6 +1357,8 @@ d_labeltoqcode["Valokuvaamo Jäniksen kokoelma"] = "Q123396641"
 d_labeltoqcode["Suomalais-ugrilainen kuvakokoelma"] = "Q123358672"
 d_labeltoqcode["Fazerin konserttitoimiston kokoelma"] = "Q123378084"
 d_labeltoqcode["Numismaattiset kokoelmat"] = "Q123390334"
+d_labeltoqcode["Matkailun edistämiskeskuksen kokoelma"] = "Q123463484"
+d_labeltoqcode["Osuusliike Elannon kokoelma"] = "Q123463766"
 
 d_labeltoqcode["Salon Strindberg"] = "Q123439974"
 d_labeltoqcode["Seppo Konstigin kokoelma"] = "Q123457977"
@@ -1505,7 +1451,11 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
 
-pages = getcatpages(pywikibot, commonssite, "Category:Salon Strindberg & Atelier Universal")
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Foto Roos")
+
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Carl Jacob Gardberg", 1)
+#pages = getcatpages(pywikibot, commonssite, "Category:Salon Strindberg & Atelier Universal")
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
@@ -1730,7 +1680,7 @@ for page in pages:
     #finna_title = finna_record['records'][0]['title']
     #addSdcCaption(commonssite, file_media_identifier, "fi", finna_title)
 
-    publisherqcode = getqcodeforfinnapublisher(finna_record)
+    publisherqcode = getqcodeforfinnapublisher(finna_record, d_institutionqcode)
     if (len(publisherqcode) == 0):
         print("WARN: failed to find a publisher in finna for: " + finnaid)
     else:
@@ -1744,15 +1694,6 @@ for page in pages:
     imagesExtended = getImagesExtended(finna_record)
     if (imagesExtended == None):
         print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
-        continue
-
-    # Test copyright (old field: rights, but request has imageRights?)
-    # imageRights = finna_record['records'][0]['imageRights']
-    
-    # should be CC BY 4.0 or Public domain/CC0
-    copyrightlicense = getFinnaLicense(imagesExtended)
-    if (isSupportedFinnaLicense(copyrightlicense) == False):
-        print("Incorrect copyright: " + copyrightlicense)
         continue
 
     # TODO! Python throws error if image is larger than 178956970 pixels
@@ -1917,21 +1858,29 @@ for page in pages:
     else:
         print("no need to add source")
 
-    # is license in statements
-    #P275, "CC BY 4.0", may be "PDM" or "CC0"
-    #P854, sourceurl
-    if (islicenseinstatements(claims, copyrightlicense) == False):
-        print("license missing or not same in statements", copyrightlicense)
-        lic_claim = addlicensetostatements(pywikibot, wikidata_site, copyrightlicense, sourceurl)
-        if (lic_claim != None):
-            commonssite.addClaim(wditem, lic_claim)
-            print("license added to statements", copyrightlicense)
-    #else:
-        #print("license found in statements, OK")
-        #if (checklicensesources(claims, copyrightlicense, sourceurl) == False):
-            #print("license source not found in statements")
+    # Test copyright (old field: rights, but request has imageRights?)
+    # imageRights = finna_record['records'][0]['imageRights']
+    
+    # should be CC BY 4.0 or Public domain/CC0
+    copyrightlicense = getFinnaLicense(imagesExtended)
+    if (isSupportedFinnaLicense(copyrightlicense) == False):
+        print("NOTE: License is not fully supported: " + copyrightlicense)
+    else:
+        # is license in statements
+        #P275, "CC BY 4.0", may be "PDM" or "CC0"
+        #P854, sourceurl
+        if (islicenseinstatements(claims, copyrightlicense) == False):
+            print("license missing or not same in statements", copyrightlicense)
+            lic_claim = addlicensetostatements(pywikibot, wikidata_site, copyrightlicense, sourceurl)
+            if (lic_claim != None):
+                commonssite.addClaim(wditem, lic_claim)
+                print("license added to statements", copyrightlicense)
         #else:
-            #print("license source found in statements, OK")
+            #print("license found in statements, OK")
+            #if (checklicensesources(claims, copyrightlicense, sourceurl) == False):
+                #print("license source not found in statements")
+            #else:
+                #print("license source found in statements, OK")
 
     # TODO: subjects / "kuvausaika 08.01.2016" -> inception
     inceptiondt = parseinceptionfromfinna(finna_record)
