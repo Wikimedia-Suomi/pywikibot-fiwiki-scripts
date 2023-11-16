@@ -281,6 +281,13 @@ def leftfrom(string, char):
 
     return string
 
+# remove pre- and post-whitespaces when mwparser leaves them
+def trimlr(string):
+    string = string.lstrip()
+    string = string.rstrip()
+    return string
+
+
 # input: old format "HK"-id, e.g. HK7155:219-65-1
 # output: newer "musketti"-id, e.g. musketti.M012%3AHK7155:219-65-1
 def convertkuvakokoelmatid(kkid):
@@ -798,21 +805,27 @@ for page in pages:
                 # if accession has finna-url but source doesn't 
                 # -> try parse id from url-parameters in acc now
                 paracc_val = str(paracc.value)
+                paracc_val = trimlr(paracc_val) # remove whitespace before and after
+                #print("DEBUG: accession number value: ", paracc_val)
                 accurls = geturlsfromsource(paracc_val)
                 for urltemp in accurls:
                     finnaidAcc = getrecordid(urltemp)
                     if (len(finnaidAcc) > 0):
                         print("DEBUG: found fnnna id in accession: ", finnaidAcc)
                         break
-                    if (isFlickrCollection(urltemp) == True):
-                        print("DEBUG: flickr-collection in accession: ", urltemp)
+                    #if (isFlickrCollection(urltemp) == True):
+                        #print("DEBUG: flickr-collection in accession: ", urltemp)
                         #musketti = parsemuskettifromflickr(urltemp)
                         #print("DEBUG: musketti-id from flickr: ", musketti)
 
                 # if there weren't urls in accession -> try to use id
                 if (len(accurls) == 0 and len(finnaidAcc) == 0):
+                    #print("DEBUG: parsing id from accession number value: ", paracc_val)
                     finnaidAcc = getIdFromAccessionValue(paracc_val)
-                    
+                    if (len(finnaidAcc) > 0):
+                        print("DEBUG: id from accession number: ", finnaidAcc)
+            #else:
+                #print("NOTE: could not find id or accession number")
             
             # TODO: id-field could have correct finna-source,
             # or it might have flickr-link. 
@@ -824,6 +837,7 @@ for page in pages:
             par = getSourceFromCommonsTemplate(template)
             if (par != None):
                 srcvalue = str(par.value)
+                srcvalue = trimlr(srcvalue) # remove whitespace before and after
 
                 urllist = geturlsfromsource(srcvalue)
                 if (hasMetapageInUrls(urllist, page.title()) == True):
@@ -854,6 +868,7 @@ for page in pages:
                     newsourcetext = ""
                     newsourceid = getnewsourcefromoldsource(pageurltemp)
                     if (len(newsourceid) == 0 and len(finnaidAcc) > 0):
+                        print("DEBUG: no id found in source, using id from accession: ", finnaidAcc)
                         newsourceid = finnaidAcc
                     if (len(newsourceid) > 0):
                         newsourceurl = getnewfinnarecordurl(newsourceid)
