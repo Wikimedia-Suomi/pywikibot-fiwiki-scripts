@@ -1421,8 +1421,12 @@ d_institutionqcode["Työväenmuseo Werstas"] = "Q11899172"
 d_institutionqcode["Työväen Arkisto"] = "Q11899166"
 d_institutionqcode["Satakunnan Museo"] = "Q6304688"
 d_institutionqcode["Suomen Metsästysmuseo"] = "Q1678320"
-
 d_institutionqcode["Svenska litteratursällskapet i Finland"] = "Q769544"
+d_institutionqcode["Lappeenrannan museot"] = "Q58636578"
+d_institutionqcode["Hyvinkään kaupunginmuseo"] = "Q41776741"
+d_institutionqcode["Helsingin yliopistomuseo"] = "Q3329065"
+d_institutionqcode["Suomen Rautatiemuseo"] = "Q1138355"
+d_institutionqcode["Salon historiallinen museo"] = "Q56403058"
 
 
 # qcode of collections -> label
@@ -1483,8 +1487,12 @@ d_labeltoqcode["Uusi Suomi − Iltalehti"] = "Q123508540"
 d_labeltoqcode["Östnyland"] = "Q123508541"
 d_labeltoqcode["Östnyland Borgåbladet"] = "Q123508541"
 d_labeltoqcode["Satakunnan Kansan kuva-arkisto"] = "Q123508726"
-
 d_labeltoqcode["Suomen Lähetysseura ry:n kuvakokoelma"] = "Q123508491"
+d_labeltoqcode["Hyvinkään kaupunginmuseon kokoelma"] = "Q123508767"
+d_labeltoqcode["Sote-kokoelma"] = "Q123508776"
+d_labeltoqcode["VR:n kuvakokoelma"] = "Q123508783"
+d_labeltoqcode["Suomen Rautatiemuseon kuvakokoelma"] = "Q123508786"
+d_labeltoqcode["Arkeologian kuvakokoelma"] = "Q123508795"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
