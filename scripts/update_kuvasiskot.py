@@ -61,9 +61,20 @@ def finna_api_parameter(name, value):
 # * https://api.finna.fi
 # * https://www.kiwi.fi/pages/viewpage.action?pageId=53839221 
 
-def get_finna_record(finnaid):
+def get_finna_record(finnaid, quoteid=True):
+    if (finnaid.startswith("fmp.") == True and finnaid.find("%2F") > 0):
+        quoteid = False
 
-    url="https://api.finna.fi/v1/record?id=" +  urllib.parse.quote_plus(finnaid)
+    if (finnaid.find("/") > 0):
+        quoteid = True
+    
+    if (quoteid == True):
+        quotedfinnaid = urllib.parse.quote_plus(finnaid)
+    else:
+        quotedfinnaid = finnaid
+    #print("DEBUG: using quoted id ", quotedfinnaid, " for id ", finnaid)
+
+    url="https://api.finna.fi/v1/record?id=" +  quotedfinnaid
     url+= finna_api_parameter('field[]', 'id')
     url+= finna_api_parameter('field[]', 'title')
     url+= finna_api_parameter('field[]', 'subTitle')
@@ -94,10 +105,11 @@ def get_finna_record(finnaid):
         print("Finna API query failed: " + url)
         return None
 
-# check if license from Finna is something
-# that is also supported in Commons
+# Check if license from Finna is something
+# that is also supported in Commons.
 def isSupportedFinnaLicense(copyrightlicense):
     if (copyrightlicense == "CC BY 4.0" 
+        or copyrightlicense == "CC BY-SA 4.0"
         or copyrightlicense == "PDM" 
         or copyrightlicense == "CC0"):
         return True
@@ -399,28 +411,6 @@ def isblockedimage(page):
     if (pagename.find("A. F. Granfelt.jpg") >= 0):
         return True
 
-    # just timeout for some reason
-    #if (pagename.find("Confiscated bootleggers") >= 0):
-        #return True
-    #if (pagename.find("Porvoon porvariskaartin lippu") >= 0):
-        #return True
-    #if (pagename.find("Hämeen savupirtti Korkanassa") >= 0):
-        #return True
-    #if (pagename.find("Ihmisiä ja poroja Hallassa 1910-luvulla") >= 0):
-        #return True
-    #if (pagename.find("Likorannan aittan seinnustalla on kalaverkkoja kuivumassa") >= 0):
-        #return True
-    #if (pagename.find("Sörnäinen harbour rail") >= 0):
-        #return True
-    # timeout
-    if (pagename.find("Choi Myeong-suk in 1952.jpg") >= 0):
-        return True
-    if (pagename.find("Hämeen savupirtti Korkanassa.png") >= 0):
-        return True
-    if (pagename.find("Lauluyhtye Seidat 1971.jpg") >= 0):
-        return True
-    if (pagename.find("Ihmisiä ja poroja Hallassa 1910-luvulla.png") >= 0):
-        return True
 
     # copy upload not allowed
     if (pagename.find("Putsaaren piilokirkko") >= 0):
@@ -545,9 +535,6 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Jean Sibelius", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Arvid Järnefelt", 2)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:1952 Summer Olympics sportspeople")
-pages = getcatpages(pywikibot, commonssite, "Category:Jussi Jalas")
-
 #pages = getcatpages(pywikibot, commonssite, "Category:Alli Trygg-Helenius")
 #pages = getcatpages(pywikibot, commonssite, "Category:Eva Kuhlefelt-Ekelund", True)
 
@@ -562,6 +549,11 @@ pages = getcatpages(pywikibot, commonssite, "Category:Jussi Jalas")
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
+
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Turun messut")
+pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
 
 rowcount = 0
