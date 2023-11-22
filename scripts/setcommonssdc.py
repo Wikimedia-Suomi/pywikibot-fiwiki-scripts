@@ -653,11 +653,28 @@ def getcollectiontargetqcode(statements, collections):
     # return list of those to be added
     return collections
 
+# helper to find publisher information in statements
+def isQcodeInClaimQualifiers(claim, qcode, prop):
+    if prop not in claim.qualifiers:
+        return False
+
+    foiquali = claim.qualifiers[prop]
+    print("DEBUG: quali:", str(foiquali), "in prop:", prop)
+    for fclaim in foiquali:
+        ftarget = fclaim.getTarget()
+        fqcode = getqcodefromwikidatalink(ftarget)
+        if (fqcode == qcode):
+            #print("DEBUG: qcode found: " + fqcode)
+            return True
+    return False
+
 # check if publisher exists in data
 def ispublisherinstatements(statements, publisherqcode):
     if "P7482" not in statements: # P7482 is source of file
         #print("source of file not found")
         return False
+    
+    publisherFound = False
     claimlist = statements["P7482"]    
     for claim in claimlist:
         target = claim.getTarget()
@@ -665,16 +682,10 @@ def ispublisherinstatements(statements, publisherqcode):
         if (targetqcode != "Q74228490"): # file available on internet
             #print("not available on internet") # DEBUG
             continue
+        
     
         # publisher
-        if "P123" in claim.qualifiers:
-            foiquali = claim.qualifiers["P123"]
-            for fclaim in foiquali:
-                ftarget = fclaim.getTarget()
-                fqcode = getqcodefromwikidatalink(ftarget)
-                if (fqcode == publisherqcode):
-                    #print("publisher qcode found: " + fqcode)
-                    return True
+        publisherFound = isQcodeInClaimQualifiers(claim, publisherqcode, "P123")
 
         # TODO: other parameters as well,
         # some pictures have been imported and marked as being from flickr
@@ -682,14 +693,79 @@ def ispublisherinstatements(statements, publisherqcode):
         # "P137" is operator
         # "P973" is described at url
 
+        # check: is source flick or finna or something else?
+        # if operator == Q103204 -> flickr
+        # if operator == Q420747 -> Kansalliskirjasto
+        # if operator == Q11895148 -> Suomen valokuvataiteen museo
+
+        #operatorFound = isQcodeInClaimQualifiers(claim, operatorqcode, "P137")
+
+        #descFound = isQcodeInClaimQualifiers(claim, descqcode, "P973")
+        #if "P973" in claim.qualifiers:
+            #foiquali = claim.qualifiers["P973"]
+            #print("DEBUG: described at:", str(foiquali))
+
 
     #print("did not find publisherqcode: " + str(publisherqcode))
-    return False
+    return publisherFound
+
+def isoperatorinstatements(statements, operatorqcode):
+    if "P7482" not in statements: # P7482 is source of file
+        #print("source of file not found")
+        return False
+    
+    operatorFound = False
+    claimlist = statements["P7482"]    
+    for claim in claimlist:
+        target = claim.getTarget()
+        targetqcode = getqcodefromwikidatalink(target)
+        if (targetqcode != "Q74228490"): # file available on internet
+            #print("not available on internet") # DEBUG
+            continue
+        
+        # some pictures have been imported and marked as being from flickr
+        # but when same picture is in Finna we want to mark that as well
+        # "P137" is operator
+        # "P973" is described at url
+
+        # check: is source flick or finna or something else?
+        # if operator == Q103204 -> flickr
+        # if operator == Q420747 -> Kansalliskirjasto
+        # if operator == Q11895148 -> Suomen valokuvataiteen museo
+
+        operatorFound = isQcodeInClaimQualifiers(claim, operatorqcode, "P137")
+
+    #print("did not find operatorqcode: " + str(operatorqcode))
+    return operatorFound
+
+def issourceurlinstatements(statements, descurl):
+    if "P7482" not in statements: # P7482 is source of file
+        #print("source of file not found")
+        return False
+    
+    descFound = False
+    claimlist = statements["P7482"]    
+    for claim in claimlist:
+        target = claim.getTarget()
+        targetqcode = getqcodefromwikidatalink(target)
+        if (targetqcode != "Q74228490"): # file available on internet
+            #print("not available on internet") # DEBUG
+            continue
+        
+        #descFound = isQcodeInClaimQualifiers(claim, descqcode, "P973")
+        #if "P973" in claim.qualifiers:
+            #foiquali = claim.qualifiers["P973"]
+            #print("DEBUG: described at:", str(foiquali))
+
+    #print("did not find descurl: " + str(descurl))
+    return descFound
 
 # check if license from Finna is something
 # that is also supported in Commons
 def isSupportedFinnaLicense(copyrightlicense):
+    # CC-BY-SA is also ok in Commons?
     if (copyrightlicense == "CC BY 4.0" 
+        or copyrightlicense == "CC BY-SA 4.0"
         or copyrightlicense == "PDM" 
         or copyrightlicense == "CC0"):
         return True
@@ -699,17 +775,25 @@ def isSupportedFinnaLicense(copyrightlicense):
 # CC0: Q6938433
 # CC BY 4.0: Q20007257
 def getQcodeForLicense(copyrightlicense):
-    if (copyrightlicense == "CC BY 4.0"):
-        return "Q20007257"
     if (copyrightlicense == "CC0"):
         return "Q6938433"
+    if (copyrightlicense == "CC BY 4.0"):
+        return "Q20007257"
+    if (copyrightlicense == "CC BY-SA 4.0"):
+        return "Q18199165"
+    
+    # "PDM" == Q98592850 ? "tekijänoikeuden omistaja julkaissut public domainiin"?
+    
+    #if (copyrightlicense == "CC BY-SA"):
+        #return "Q6905942"
+    #if (copyrightlicense == "CC BY-SA 2.0"):
+        #return "Q19068220"
     return ""
 
 # is license in statements
 #P275, "CC BY 4.0" is Q20007257
 def islicenseinstatements(statements, license):
     if (isSupportedFinnaLicense(license) == False):
-        # bug? we only support one license currently
         return False
     if "P275" not in statements:
         return False
@@ -766,7 +850,6 @@ def checklicensesources(statements, license, sourceurl):
 def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
     # at least PDM and CC0 are be supported in addition to CC BY 4.0.
     if (isSupportedFinnaLicense(license) == False):
-        # bug? we only support one license currently
         return None
     
     licqcode = getQcodeForLicense(license)
@@ -789,7 +872,6 @@ def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
 # CC BY 4.0: Q20007257
 def addreferencetolicense(pywikibot, wikidata_site, license, sourceurl):
     if (isSupportedFinnaLicense(license) == False):
-        # bug? we only support one license currently
         return False
 
     # if there are multiple licenses, check that we add source to right one
@@ -830,7 +912,7 @@ def isfinnaidinstatements(statements, newid):
             or target == unquotedNewId):
             # commons seems to have bug in some character quoting
             # -> try to catch it
-            print("NOTE: unquoted target matches unquoted Finna-ID")
+            print("NOTE: unquoted target matches unquoted Finna-ID", unquotedTarget)
             return True
 
     # ID not found -> should be added
@@ -1099,6 +1181,20 @@ def getqcodeforfinnapublisher(finnarecord, institutionqcode):
         
     return ""
 
+def getqcodeforfinnaoperator(finnarecord):
+    if "records" not in finnarecord:
+        print("ERROR: no records in finna record")
+        return ""
+    #records = finnarecord['records'][0]
+
+    # if operator == Kansalliskirjasto -> Q420747
+    # if operator == Suomen valokuvataiteen museo -> Q11895148
+    # if operator == Flickr -> Q103204
+
+
+    #if National Library of Finland (Kansalliskirjasto)
+    return "Q420747"
+
 # simple checks if received record could be usable
 def isFinnaRecordOk(finnarecord, finnaid):
     if (finnarecord == None):
@@ -1320,6 +1416,13 @@ d_institutionqcode["Museokeskus Vapriikki"] = "Q18346706"
 d_institutionqcode["Helsingin kaupunginmuseo"] = "Q2031357"
 d_institutionqcode["Vantaan kaupunginmuseo"] = "Q26723704"
 d_institutionqcode["Keravan museopalvelut"] = "Q121266100"
+d_institutionqcode["Turun museokeskus"] = "Q18346797"
+d_institutionqcode["Työväenmuseo Werstas"] = "Q11899172"
+d_institutionqcode["Työväen Arkisto"] = "Q11899166"
+d_institutionqcode["Satakunnan Museo"] = "Q6304688"
+d_institutionqcode["Suomen Metsästysmuseo"] = "Q1678320"
+
+d_institutionqcode["Svenska litteratursällskapet i Finland"] = "Q769544"
 
 
 # qcode of collections -> label
@@ -1327,7 +1430,7 @@ d_institutionqcode["Keravan museopalvelut"] = "Q121266100"
 d_labeltoqcode = dict()
 d_labeltoqcode["Studio Kuvasiskojen kokoelma"] = "Q118976025"
 d_labeltoqcode["Historian kuvakokoelma"] = "Q107388072" # /Museovirasto/Historian kuvakokoelma/
-d_labeltoqcode["Valokuvaamo Pietisen kokoelma"] = "Q123272000" 
+d_labeltoqcode["Valokuvaamo Pietisen kokoelma"] = "Q120728209" 
 d_labeltoqcode["Suomen merimuseon kuvakokoelma"] = "Q123272489" 
 d_labeltoqcode["JOKA Journalistinen kuva-arkisto"] = "Q113292201"
 d_labeltoqcode["Pekka Kyytisen kokoelma"] = "Q123308670"
@@ -1354,12 +1457,12 @@ d_labeltoqcode["Hannu Lindroosin kokoelma"] = "Q123398791"
 d_labeltoqcode["Helge Heinosen kokoelma"] = "Q123398858"
 d_labeltoqcode["Valokuvaamo Jäniksen kokoelma"] = "Q123396641"
 
+d_labeltoqcode["Yleisetnografinen kuvakokoelma"] = "Q122414127"
 d_labeltoqcode["Suomalais-ugrilainen kuvakokoelma"] = "Q123358672"
 d_labeltoqcode["Fazerin konserttitoimiston kokoelma"] = "Q123378084"
 d_labeltoqcode["Numismaattiset kokoelmat"] = "Q123390334"
 d_labeltoqcode["Matkailun edistämiskeskuksen kokoelma"] = "Q123463484"
 d_labeltoqcode["Osuusliike Elannon kokoelma"] = "Q123463766"
-
 d_labeltoqcode["Salon Strindberg"] = "Q123439974"
 d_labeltoqcode["Seppo Konstigin kokoelma"] = "Q123457977"
 d_labeltoqcode["Urpo Rouhiaisen kokoelma"] = "Q123457996"
@@ -1367,6 +1470,21 @@ d_labeltoqcode["Sari Gustafssonin kokoelma"] = "Q123458004"
 d_labeltoqcode["Jukka Kuusiston kokoelma"] = "Q123458213"
 d_labeltoqcode["Veijo Laineen kokoelma"] = "Q123458458"
 
+d_labeltoqcode["Otava"] = "Q123502566"
+d_labeltoqcode["Otavamedia"] = "Q123502645"
+d_labeltoqcode["Kaleva"] = "Q123508471"
+d_labeltoqcode["Hufvudstadsbladet"] = "Q123508495"
+d_labeltoqcode["Helsingin Sanomat"] = "Q123508499"
+d_labeltoqcode["Turun Sanomat"] = "Q123508529"
+d_labeltoqcode["Maaseudun Tulevaisuus"] = "Q123508530"
+d_labeltoqcode["Itä-Häme"] = "Q123508537"
+d_labeltoqcode["Uusi Suomi"] = "Q123508540"
+d_labeltoqcode["Uusi Suomi − Iltalehti"] = "Q123508540"
+d_labeltoqcode["Östnyland"] = "Q123508541"
+d_labeltoqcode["Östnyland Borgåbladet"] = "Q123508541"
+d_labeltoqcode["Satakunnan Kansan kuva-arkisto"] = "Q123508726"
+
+d_labeltoqcode["Suomen Lähetysseura ry:n kuvakokoelma"] = "Q123508491"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1432,10 +1550,6 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Politics of Finland", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Shipyards in Finland", 2)
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Politicians of Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Educators from Finland", True)
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Designers from Finland", 2)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Writers from Finland", True)
@@ -1451,10 +1565,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
 
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Foto Roos")
-
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Carl Jacob Gardberg", 1)
 #pages = getcatpages(pywikibot, commonssite, "Category:Salon Strindberg & Atelier Universal")
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
@@ -1465,13 +1575,27 @@ pages = getpagesrecurse(pywikibot, commonssite, "Category:Carl Jacob Gardberg", 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Journalists from Finland", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 1)
+
+# many are from valokuvataiteenmuseo via flickr
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 1)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 0)
+
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Turun messut")
+
+# many are from valokuvataiteenmuseo via flickr
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
 
 
 cachedb = CachedImageData() 
@@ -1690,6 +1814,10 @@ for page in pages:
         else:
             print("publisher " + publisherqcode + " found in commons for: " + finnaid)
 
+    operatorqcode = getqcodeforfinnaoperator(finna_record)
+    if (len(operatorqcode) == 0):
+        print("WARN: failed to find a operator qcode for: " + finnaid)
+
     # use helper to check that it is correctly formed
     imagesExtended = getImagesExtended(finna_record)
     if (imagesExtended == None):
@@ -1839,10 +1967,12 @@ for page in pages:
         source_claim.addQualifier(qualifier_url, summary='Adding described at URL qualifier')
 
         # P137 "operator"
-        qualifier_operator = pywikibot.Claim(wikidata_site, 'P137')  # Replace with the property ID for "operator"
-        qualifier_targetop = pywikibot.ItemPage(wikidata_site, 'Q420747')  # National Library of Finland (Kansalliskirjasto)
-        qualifier_operator.setTarget(qualifier_targetop)
-        source_claim.addQualifier(qualifier_operator, summary='Adding operator qualifier')
+        if (len(operatorqcode) > 0):
+            if (isoperatorinstatements(claims, operatorqcode) == False):
+                qualifier_operator = pywikibot.Claim(wikidata_site, 'P137')  # Replace with the property ID for "operator"
+                qualifier_targetop = pywikibot.ItemPage(wikidata_site, operatorqcode)  # National Library of Finland (Kansalliskirjasto)
+                qualifier_operator.setTarget(qualifier_targetop)
+                source_claim.addQualifier(qualifier_operator, summary='Adding operator qualifier')
 
         if (len(publisherqcode) > 0):
             if (ispublisherinstatements(claims, publisherqcode) == False):

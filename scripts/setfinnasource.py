@@ -563,6 +563,11 @@ def isFlickrCollection(srcvalue):
     if (index > 0):
         return True
     
+    # Svenska litteratursällskapet i Finland
+    #index = srcvalue.find("slsarkiva")
+    #if (index > 0):
+        #return True
+    
     return False
     # id at end of url, can we use it?
     #index += len("museovirastonkuvakokoelmat/")
@@ -586,6 +591,7 @@ def isSupportedCommonsTemplate(template):
     #print("DEBUG commons template: ", template.name)
     name = template.name.lower()
     name = leftfrom(name, "\n") # mwparserfromhell is bugged
+    name = trimlr(name)
     if (name == "information" 
         or name == "photograph" 
         or name == "artwork" 
@@ -618,43 +624,72 @@ def getAccessionFromCommonsTemplate(template):
 # - bare id (HK.. / d1999..)
 # -> convert to a usable ID with modern Finna
 def getIdFromAccessionValue(parval):
-    # bare link
+    # bare link, not finna? -> no id directly..
     if (parval.startswith("http")):
         return ""
 
     # wikimarkup with link and id (hopefully)
+    # sometimes link may point to flickr but text is finna-id..
     if (parval.startswith("[http")):
-        return ""
-    
+        if (isFlickrCollection(parval) == False):
+            return ""
+        # end of url in wikimarkup
+        indexend = parval.find("]")
+        if (indexend < 0):
+            return ""
+        # last space before descriptive text (might have multiple parts)
+        indexspace = parval.rfind(" ", 0, indexend)
+        if (indexspace < 0):
+            return ""
+        parval = parval[indexspace:indexend]
+
     # strip newline etc.
     parval = stripid(parval)
-
+        
+    # historical picture collection
+    if (parval.startswith("HK")):
+        parval = "musketti.M012:" + parval
+        #parval = urllib.parse.quote(parval)
+        print("DEBUG: accession number found in alien link:", parval)
+        return parval
+    
     # finnish photographic museum
-    if (parval.startswith("d1999")):
+    if (parval.startswith("d1999") 
+        or parval.startswith("d_") 
+        or parval.startswith("d_2005") 
+        or parval.startswith("D19")
+        or parval.startswith("D_")):
+
         # to uppercase
         parval = parval.upper()
+        
+        #if d_ -> remove first underscore
+        if (parval.startswith("D_")):
+            parval = parval.replace("D_", "D")
+
         # convert first underscore to colon, rest to slash
         index = parval.find("_")
         if (index > 0):
             parval= parval[:index] + ":" + parval[index+1:]
             #parval = parval.replace("_", "/")
             parval = parval.replace("_", "%2F") # url-quoted
+
+        parval = parval.replace("/", "%2F") # url-quoted
+
+        #if (parval.startswith("D:")):
+            #parval.replace("D:", "D")
         
         # finally, add prefix
         parval = "fmp." + parval
+        print("DEBUG: accession number found in alien link:", parval)
         return parval
 
-    # historical picture collection
-    if (parval.startswith("HK")):
-        parval = "musketti.M012:" + parval
-        #parval = urllib.parse.quote(parval)
-        return parval
     return ""
 
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
     pagename = str(page)
-    
+
     # no blocking currently here
     return False
 
@@ -767,7 +802,17 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
-pages = getcatpages(pywikibot, commonssite, "Category:Salon Strindberg & Atelier Universal")
+#pages = getcatpages(pywikibot, commonssite, "Category:Juho Vennola")
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 1)
+
+
+# many are from valokuvataiteenmuseo via flickr
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
+ 
+pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
+ 
+
 
 rowcount = 0
 #rowlimit = 10
@@ -785,7 +830,11 @@ for page in pages:
     if (filepage == None):
         continue
     if filepage.isRedirectPage():
-        continue    
+        continue
+
+    #print("DEBUG: history:", filepage.latest_file_info)
+    #print("DEBUG: history:", filepage.get_file_history())
+    #exit(1)
 
     newsourceurl = ""
     changed = False
@@ -817,6 +866,7 @@ for page in pages:
                         #print("DEBUG: flickr-collection in accession: ", urltemp)
                         #musketti = parsemuskettifromflickr(urltemp)
                         #print("DEBUG: musketti-id from flickr: ", musketti)
+                        #finnaidAcc = getIdFromAccessionValue(paracc_val)
 
                 # if there weren't urls in accession -> try to use id
                 if (len(accurls) == 0 and len(finnaidAcc) == 0):
@@ -837,7 +887,7 @@ for page in pages:
             par = getSourceFromCommonsTemplate(template)
             if (par != None):
                 srcvalue = str(par.value)
-                srcvalue = trimlr(srcvalue) # remove whitespace before and after
+                #srcvalue = trimlr(srcvalue) # remove whitespace before and after
 
                 urllist = geturlsfromsource(srcvalue)
                 if (hasMetapageInUrls(urllist, page.title()) == True):
