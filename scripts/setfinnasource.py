@@ -562,11 +562,15 @@ def isFlickrCollection(srcvalue):
     index = srcvalue.find("valokuvataiteenmuseo")
     if (index > 0):
         return True
+
+    index = srcvalue.find("photos/108605878")
+    if (index > 0):
+        return True
     
     # Svenska litteratursällskapet i Finland
-    #index = srcvalue.find("slsarkiva")
-    #if (index > 0):
-        #return True
+    index = srcvalue.find("slsarkiva")
+    if (index > 0):
+        return True
     
     return False
     # id at end of url, can we use it?
@@ -626,11 +630,13 @@ def getAccessionFromCommonsTemplate(template):
 def getIdFromAccessionValue(parval):
     # bare link, not finna? -> no id directly..
     if (parval.startswith("http")):
+        print("DEBUG: plain url in accession, ignored")
         return ""
 
     # wikimarkup with link and id (hopefully)
     # sometimes link may point to flickr but text is finna-id..
     if (parval.startswith("[http")):
+        print("DEBUG: link-markup in accession, parsing")
         if (isFlickrCollection(parval) == False):
             return ""
         # end of url in wikimarkup
@@ -655,9 +661,15 @@ def getIdFromAccessionValue(parval):
     
     # finnish photographic museum
     if (parval.startswith("d1999") 
-        or parval.startswith("d_") 
+        or parval.startswith("D1999") 
         or parval.startswith("d_2005") 
+        or parval.startswith("D_2005") 
+        or parval.startswith("d2000") 
+        or parval.startswith("D2000") 
+        or parval.startswith("d2005") 
+        or parval.startswith("D2005") 
         or parval.startswith("D19")
+        or parval.startswith("d_") 
         or parval.startswith("D_")):
 
         # to uppercase
@@ -808,9 +820,9 @@ commonssite.login()
 
 
 # many are from valokuvataiteenmuseo via flickr
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
  
-pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
+#pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
  
 
 
@@ -910,13 +922,16 @@ for page in pages:
                         #musketti = parsemuskettifromflickr(pageurltemp)
                         #print("DEBUG: musketti-id from flickr: ", musketti)
 
-                    if (isFlickrCollection(pageurltemp) == True):
-                        print("DEBUG: flickr-collection in source: ", pageurltemp)
+                    #if (isFlickrCollection(pageurltemp) == True):
+                        #print("DEBUG: flickr-collection in source: ", pageurltemp)
                         #musketti = parsemuskettifromflickr(pageurltemp)
                         #print("DEBUG: musketti-id from flickr: ", musketti)
 
                     newsourcetext = ""
                     newsourceid = getnewsourcefromoldsource(pageurltemp)
+                    if (len(newsourceid) == 0 and len(finnaidAcc) == 0):
+                        print("DEBUG: no id in source or in accession")
+                        continue
                     if (len(newsourceid) == 0 and len(finnaidAcc) > 0):
                         print("DEBUG: no id found in source, using id from accession: ", finnaidAcc)
                         newsourceid = finnaidAcc

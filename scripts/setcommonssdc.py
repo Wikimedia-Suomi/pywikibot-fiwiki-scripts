@@ -1583,7 +1583,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
@@ -1597,13 +1597,14 @@ pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1'
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 1)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
+#pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Turun messut")
 
 # many are from valokuvataiteenmuseo via flickr
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
 
 
 cachedb = CachedImageData() 
