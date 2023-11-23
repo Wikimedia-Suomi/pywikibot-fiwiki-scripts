@@ -659,7 +659,7 @@ def isQcodeInClaimQualifiers(claim, qcode, prop):
         return False
 
     foiquali = claim.qualifiers[prop]
-    print("DEBUG: quali:", str(foiquali), "in prop:", prop)
+    #print("DEBUG: quali:", str(foiquali), "in prop:", prop)
     for fclaim in foiquali:
         ftarget = fclaim.getTarget()
         fqcode = getqcodefromwikidatalink(ftarget)
@@ -683,28 +683,9 @@ def ispublisherinstatements(statements, publisherqcode):
             #print("not available on internet") # DEBUG
             continue
         
-    
-        # publisher
+        # publisher:
+        # kansalliskirjasto, merimuseo, valokuvataiteen museo.. jne.
         publisherFound = isQcodeInClaimQualifiers(claim, publisherqcode, "P123")
-
-        # TODO: other parameters as well,
-        # some pictures have been imported and marked as being from flickr
-        # but when same picture is in Finna we want to mark that as well
-        # "P137" is operator
-        # "P973" is described at url
-
-        # check: is source flick or finna or something else?
-        # if operator == Q103204 -> flickr
-        # if operator == Q420747 -> Kansalliskirjasto
-        # if operator == Q11895148 -> Suomen valokuvataiteen museo
-
-        #operatorFound = isQcodeInClaimQualifiers(claim, operatorqcode, "P137")
-
-        #descFound = isQcodeInClaimQualifiers(claim, descqcode, "P973")
-        #if "P973" in claim.qualifiers:
-            #foiquali = claim.qualifiers["P973"]
-            #print("DEBUG: described at:", str(foiquali))
-
 
     #print("did not find publisherqcode: " + str(publisherqcode))
     return publisherFound
@@ -733,6 +714,8 @@ def isoperatorinstatements(statements, operatorqcode):
         # if operator == Q420747 -> Kansalliskirjasto
         # if operator == Q11895148 -> Suomen valokuvataiteen museo
 
+        # operator:
+        # museovirasto, kansallisgalleria (eri domain?), flickr..
         operatorFound = isQcodeInClaimQualifiers(claim, operatorqcode, "P137")
 
     #print("did not find operatorqcode: " + str(operatorqcode))
@@ -751,11 +734,17 @@ def issourceurlinstatements(statements, descurl):
         if (targetqcode != "Q74228490"): # file available on internet
             #print("not available on internet") # DEBUG
             continue
-        
-        #descFound = isQcodeInClaimQualifiers(claim, descqcode, "P973")
-        #if "P973" in claim.qualifiers:
-            #foiquali = claim.qualifiers["P973"]
-            #print("DEBUG: described at:", str(foiquali))
+
+        # url has no q-code, just plain url
+        #descFound = isQcodeInClaimQualifiers(claim, descurl, "P973")
+        if "P973" in claim.qualifiers:
+            foiquali = claim.qualifiers["P973"]
+            for fclaim in foiquali:
+                ftarget = fclaim.getTarget()
+                targettxt = str(ftarget)
+                if (targettxt == descurl):
+                    descFound = True
+                    #print("DEBUG: target match found:", str(targettxt))
 
     #print("did not find descurl: " + str(descurl))
     return descFound
@@ -783,6 +772,8 @@ def getQcodeForLicense(copyrightlicense):
         return "Q18199165"
     
     # "PDM" == Q98592850 ? "tekijänoikeuden omistaja julkaissut public domainiin"?
+    # Q88088423 -> status
+    # Q98592850 -> license
     
     #if (copyrightlicense == "CC BY-SA"):
         #return "Q6905942"
@@ -1189,11 +1180,30 @@ def getqcodeforfinnaoperator(finnarecord):
 
     # if operator == Kansalliskirjasto -> Q420747
     # if operator == Suomen valokuvataiteen museo -> Q11895148
-    # if operator == Flickr -> Q103204
-
+    # Kansallisgalleria Q2983474 
 
     #if National Library of Finland (Kansalliskirjasto)
     return "Q420747"
+
+def getqcodeforbydomain(url):
+    if (url.find("finna.fi") > 0):
+        # National Library of Finland (Kansalliskirjasto)
+        return "Q420747"
+    if (url.find("fng.fi") > 0):
+        # Kansallisgalleria 
+        return "Q2983474"
+    if (url.find("kansallisgalleria.fi") > 0):
+        # Kansallisgalleria 
+        return "Q2983474"
+    # ateneum.fi
+    # sinebrychoffintaidemuseo.fi
+    # kiasma.fi
+    # Suomen valokuvataiteen museo -> Q11895148
+    
+    #if (url.find("flickr.com"):
+        #if "museovirastonkuvakokoelmat" or "valokuvataiteenmuseo"
+        # return "Q103204"
+    return ""
 
 # simple checks if received record could be usable
 def isFinnaRecordOk(finnarecord, finnaid):
@@ -1591,20 +1601,24 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Journalists from Finland", 2)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
 
 # many are from valokuvataiteenmuseo via flickr
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 1)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs of Ainola by Santeri Levas", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
+
+
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Turun messut")
+#pages = getcatpages(pywikibot, commonssite, "Category:Alapitkä railway station")
 
 # many are from valokuvataiteenmuseo via flickr
 pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
+
 
 
 cachedb = CachedImageData() 
@@ -1823,6 +1837,8 @@ for page in pages:
         else:
             print("publisher " + publisherqcode + " found in commons for: " + finnaid)
 
+    # TODO: get operator by url domain instead?
+    # if domain is kansallisgalleria -> no finna API available
     operatorqcode = getqcodeforfinnaoperator(finna_record)
     if (len(operatorqcode) == 0):
         print("WARN: failed to find a operator qcode for: " + finnaid)
@@ -1957,14 +1973,40 @@ for page in pages:
     if (match_found == False):
         print("No matching image found, skipping: " + finnaid)
         continue
-    
-    #continue # TESTING
-    
-    flag_add_source = False
-    flag_add_collection = False
-    flag_add_finna = False
 
-    if "P7482" not in claims:
+    claimsForSource = False
+    operatorFound = False
+    publisherFound = False
+    descFound = False
+    if "P7482" in claims:
+        print("DEBUG: claims found for: " + finnaid)
+        claimsForSource = True
+        
+        descFound = issourceurlinstatements(claims, sourceurl)
+        if (len(operatorqcode) > 0):
+            operatorFound = isoperatorinstatements(claims, operatorqcode)
+            
+        if (descFound == True and operatorFound == True):
+            print("DEBUG: no need to add source")
+        else:
+            # has source claims but not same operator or url?
+            # file imported from flickr?
+            print("DEBUG: operator/descriptive url missing for:", operatorqcode)
+            
+        if (len(publisherqcode) > 0):
+            publisherFound = ispublisherinstatements(claims, publisherqcode)
+            if (publisherFound == False):
+                print("DEBUG: publisher missing for:", publisherqcode)
+                # other data may have been added before publisher was added to wikidata
+                # -> try to add publisher
+            else:
+                print("DEBUG: publisher found", publisherqcode)
+
+    # NOTE! currently there is no way to add part of the missing information to a claim?
+    # it is all or nothing -> we get duplicates if we try to add just part
+    # or we get failure if we try to omit existing information
+    #
+    if claimsForSource == False or (operatorFound == False and descFound == False):
         # P7482 "source of file" 
         item_internet = pywikibot.ItemPage(wikidata_site, 'Q74228490')  # file available on the internet
         source_claim = pywikibot.Claim(wikidata_site, "P7482") # property ID for "source of file"
@@ -1977,25 +2019,21 @@ for page in pages:
 
         # P137 "operator"
         if (len(operatorqcode) > 0):
-            if (isoperatorinstatements(claims, operatorqcode) == False):
-                qualifier_operator = pywikibot.Claim(wikidata_site, 'P137')  # Replace with the property ID for "operator"
-                qualifier_targetop = pywikibot.ItemPage(wikidata_site, operatorqcode)  # National Library of Finland (Kansalliskirjasto)
-                qualifier_operator.setTarget(qualifier_targetop)
-                source_claim.addQualifier(qualifier_operator, summary='Adding operator qualifier')
+            qualifier_operator = pywikibot.Claim(wikidata_site, 'P137')  # Replace with the property ID for "operator"
+            qualifier_targetop = pywikibot.ItemPage(wikidata_site, operatorqcode)  # National Library of Finland (Kansalliskirjasto)
+            qualifier_operator.setTarget(qualifier_targetop)
+            source_claim.addQualifier(qualifier_operator, summary='Adding operator qualifier')
 
+        # P123 "publisher"
         if (len(publisherqcode) > 0):
-            if (ispublisherinstatements(claims, publisherqcode) == False):
-                # P123 "publisher"
-                # Q3029524 Finnish Heritage Agency (Museovirasto)
-                qualifier_publisher = pywikibot.Claim(wikidata_site, 'P123')  # property ID for "publisher"
-                qualifier_targetpub = pywikibot.ItemPage(wikidata_site, publisherqcode)  # Finnish Heritage Agency (Museovirasto)
-                qualifier_publisher.setTarget(qualifier_targetpub)
-                source_claim.addQualifier(qualifier_publisher, summary='Adding publisher qualifier')
+            # Q3029524 Finnish Heritage Agency (Museovirasto)
+            qualifier_publisher = pywikibot.Claim(wikidata_site, 'P123')  # property ID for "publisher"
+            qualifier_targetpub = pywikibot.ItemPage(wikidata_site, publisherqcode)  # Finnish Heritage Agency (Museovirasto)
+            qualifier_publisher.setTarget(qualifier_targetpub)
+            source_claim.addQualifier(qualifier_publisher, summary='Adding publisher qualifier')
 
         commonssite.addClaim(wditem, source_claim)
-        flag_add_source = True
-    else:
-        print("no need to add source")
+                
 
     # Test copyright (old field: rights, but request has imageRights?)
     # imageRights = finna_record['records'][0]['imageRights']
@@ -2046,8 +2084,6 @@ for page in pages:
             # batching does not work correctly with pywikibot:
             # need to commit each one
             commonssite.addClaim(wditem, coll_claim)
-            
-        flag_add_collection = True
     else:
         print("no collections to add")
 
@@ -2057,13 +2093,8 @@ for page in pages:
         
         finna_claim = addfinnaidtostatements(pywikibot, wikidata_site, finnaid)
         commonssite.addClaim(wditem, finna_claim)
-        flag_add_finna = True
     else:
         print("id found, not adding again")
-
-    #if (flag_add_source == False and flag_add_collection == False and flag_add_finna == False):
-        #print("Nothing to add, skipping.")
-        #continue
 
     #pywikibot.info('----')
     #pywikibot.showDiff(oldtext, newtext,2)
