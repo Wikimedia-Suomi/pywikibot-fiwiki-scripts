@@ -566,6 +566,9 @@ def isFlickrCollection(srcvalue):
     index = srcvalue.find("photos/108605878")
     if (index > 0):
         return True
+    index = srcvalue.find("people/108605878")
+    if (index > 0):
+        return True
     
     # Svenska litteratursällskapet i Finland
     index = srcvalue.find("slsarkiva")
@@ -622,32 +625,41 @@ def getAccessionFromCommonsTemplate(template):
         return template.get("id")
     return None
 
-# accession may hold:
+# accession number may hold:
 # - bare link (http..)
 # - wikilink with id ([http.. id])
 # - bare id (HK.. / d1999..)
 # -> convert to a usable ID with modern Finna
+# also use method for flickr-links
 def getIdFromAccessionValue(parval):
+    # mwparser is bugged, remove spaces before or after
+    parval = trimlr(parval)
+    
     # bare link, not finna? -> no id directly..
     if (parval.startswith("http")):
-        print("DEBUG: plain url in accession, ignored")
+        print("DEBUG: plain url for accession, ignored")
         return ""
 
     # wikimarkup with link and id (hopefully)
     # sometimes link may point to flickr but text is finna-id..
-    if (parval.startswith("[http")):
-        print("DEBUG: link-markup in accession, parsing")
+    if (parval.startswith("[http:")
+        or parval.startswith("[https:")):
+        #print("DEBUG: link-markup in accession, parsing", parval)
+        
         if (isFlickrCollection(parval) == False):
+            print("DEBUG: not supported flickr collection:", parval)
             return ""
         # end of url in wikimarkup
         indexend = parval.find("]")
         if (indexend < 0):
+            print("DEBUG: failed to find link end:", parval)
             return ""
         # last space before descriptive text (might have multiple parts)
         indexspace = parval.rfind(" ", 0, indexend)
         if (indexspace < 0):
+            print("DEBUG: failed to find space:", parval)
             return ""
-        parval = parval[indexspace:indexend]
+        parval = parval[indexspace+1:indexend]
 
     # strip newline etc.
     parval = stripid(parval)
@@ -658,23 +670,19 @@ def getIdFromAccessionValue(parval):
         #parval = urllib.parse.quote(parval)
         print("DEBUG: accession number found in alien link:", parval)
         return parval
+
+    # to uppercase
+    parval = parval.upper()
     
     # finnish photographic museum
-    if (parval.startswith("d1999") 
-        or parval.startswith("D1999") 
-        or parval.startswith("d_2005") 
+    if (parval.startswith("D1999") 
         or parval.startswith("D_2005") 
-        or parval.startswith("d2000") 
         or parval.startswith("D2000") 
-        or parval.startswith("d2005") 
         or parval.startswith("D2005") 
+        or parval.startswith("D1970") 
         or parval.startswith("D19")
-        or parval.startswith("d_") 
         or parval.startswith("D_")):
-
-        # to uppercase
-        parval = parval.upper()
-        
+       
         #if d_ -> remove first underscore
         if (parval.startswith("D_")):
             parval = parval.replace("D_", "D")
@@ -696,12 +704,13 @@ def getIdFromAccessionValue(parval):
         print("DEBUG: accession number found in alien link:", parval)
         return parval
 
+    print("DEBUG: not valid accession number:", parval)
     return ""
 
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
     pagename = str(page)
-
+    
     # no blocking currently here
     return False
 
@@ -816,11 +825,15 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Juho Vennola")
 
+pages = getcatpages(pywikibot, commonssite, "Category:Finnish Museum of Photography")
+
+
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
 
 # many are from valokuvataiteenmuseo via flickr
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
  
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
  
@@ -868,6 +881,7 @@ for page in pages:
                 paracc_val = str(paracc.value)
                 paracc_val = trimlr(paracc_val) # remove whitespace before and after
                 #print("DEBUG: accession number value: ", paracc_val)
+                
                 accurls = geturlsfromsource(paracc_val)
                 for urltemp in accurls:
                     finnaidAcc = getrecordid(urltemp)
@@ -901,6 +915,14 @@ for page in pages:
                 srcvalue = str(par.value)
                 #srcvalue = trimlr(srcvalue) # remove whitespace before and after
 
+                # if source is flickr -> try to parse accession number from it
+                # in case we don't have one from actual accession number
+                if (len(finnaidAcc) == 0):
+                    if (isFlickrCollection(srcvalue) == True):
+                        print("DEBUG: flickr-collection in source: ", srcvalue)
+                        finnaidAcc = getIdFromAccessionValue(srcvalue)
+                        #print("DEBUG: musketti-id from flickr: ", finnaidAcc)
+
                 urllist = geturlsfromsource(srcvalue)
                 if (hasMetapageInUrls(urllist, page.title()) == True):
                     # already has metapage -> skip
@@ -919,11 +941,6 @@ for page in pages:
                     # try to find Finna-ID from flickr description
                     # TODO: flickr does not allow bot-access to the pages?
                     #if (isFlickrCollection(pageurltemp) == True):
-                        #musketti = parsemuskettifromflickr(pageurltemp)
-                        #print("DEBUG: musketti-id from flickr: ", musketti)
-
-                    #if (isFlickrCollection(pageurltemp) == True):
-                        #print("DEBUG: flickr-collection in source: ", pageurltemp)
                         #musketti = parsemuskettifromflickr(pageurltemp)
                         #print("DEBUG: musketti-id from flickr: ", musketti)
 
