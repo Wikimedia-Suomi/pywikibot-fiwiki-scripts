@@ -1201,7 +1201,7 @@ def getqcodeforbydomain(url):
     # Suomen valokuvataiteen museo -> Q11895148
     
     #if (url.find("flickr.com"):
-        #if "museovirastonkuvakokoelmat" or "valokuvataiteenmuseo"
+        #if "museovirastonkuvakokoelmat" or "valokuvataiteenmuseo" or "finnishnationalgallery"
         # return "Q103204"
     return ""
 
@@ -1437,7 +1437,8 @@ d_institutionqcode["Hyvinkään kaupunginmuseo"] = "Q41776741"
 d_institutionqcode["Helsingin yliopistomuseo"] = "Q3329065"
 d_institutionqcode["Suomen Rautatiemuseo"] = "Q1138355"
 d_institutionqcode["Salon historiallinen museo"] = "Q56403058"
-
+d_institutionqcode["Etelä-Karjalan museo"] = "Q18346681"
+d_institutionqcode["Kymenlaakson museo"] = "Q18346674"
 
 # qcode of collections -> label
 #
@@ -1503,6 +1504,10 @@ d_labeltoqcode["Sote-kokoelma"] = "Q123508776"
 d_labeltoqcode["VR:n kuvakokoelma"] = "Q123508783"
 d_labeltoqcode["Suomen Rautatiemuseon kuvakokoelma"] = "Q123508786"
 d_labeltoqcode["Arkeologian kuvakokoelma"] = "Q123508795"
+d_labeltoqcode["Hugo Simbergin valokuvat"] = "Q123523516"
+
+d_labeltoqcode["Wiipuri-kokoelma"] = "Q123523357"
+d_labeltoqcode["Wiipuri-museon kokoelma"] = "Q123523357"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1593,7 +1598,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
@@ -1605,7 +1610,7 @@ commonssite.login()
 
 # many are from valokuvataiteenmuseo via flickr
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs of Ainola by Santeri Levas", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
@@ -1614,10 +1619,8 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Alapitkä railway station")
-
 # many are from valokuvataiteenmuseo via flickr
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
 
 
 

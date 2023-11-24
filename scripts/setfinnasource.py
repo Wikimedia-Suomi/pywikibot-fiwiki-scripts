@@ -562,6 +562,9 @@ def isFlickrCollection(srcvalue):
     index = srcvalue.find("valokuvataiteenmuseo")
     if (index > 0):
         return True
+    index = srcvalue.find("finnishnationalgallery")
+    if (index > 0):
+        return True
 
     index = srcvalue.find("photos/108605878")
     if (index > 0):
@@ -639,6 +642,9 @@ def getIdFromAccessionValue(parval):
     if (parval.startswith("http")):
         print("DEBUG: plain url for accession, ignored")
         return ""
+    
+    # national gallery in flickr
+    isFngflickr = False
 
     # wikimarkup with link and id (hopefully)
     # sometimes link may point to flickr but text is finna-id..
@@ -649,17 +655,34 @@ def getIdFromAccessionValue(parval):
         if (isFlickrCollection(parval) == False):
             print("DEBUG: not supported flickr collection:", parval)
             return ""
+        if (parval.find("finnishnationalgallery") > 0):
+            isFngflickr = True
+        
         # end of url in wikimarkup
         indexend = parval.find("]")
         if (indexend < 0):
             print("DEBUG: failed to find link end:", parval)
             return ""
-        # last space before descriptive text (might have multiple parts)
-        indexspace = parval.rfind(" ", 0, indexend)
-        if (indexspace < 0):
-            print("DEBUG: failed to find space:", parval)
-            return ""
-        parval = parval[indexspace+1:indexend]
+        if (isFngflickr == True):
+            indexspace = parval.find(" ", 0, indexend)
+            if (indexspace < 0):
+                print("DEBUG: failed to find space:", parval)
+                return ""
+            parval = parval[indexspace+1:indexend]
+            if (parval.startswith("HS")):
+                indexcomma = parval.find(",")
+                if (indexcomma > 0):
+                    parval = parval[:indexcomma]
+                parval = "fng_simberg." + parval.replace(" ", "_")
+            print("DEBUG: accession number found in alien link:", parval)
+            return parval
+        else:
+            # last space before descriptive text (might have multiple parts)
+            indexspace = parval.rfind(" ", 0, indexend)
+            if (indexspace < 0):
+                print("DEBUG: failed to find space:", parval)
+                return ""
+            parval = parval[indexspace+1:indexend]
 
     # strip newline etc.
     parval = stripid(parval)
@@ -707,10 +730,28 @@ def getIdFromAccessionValue(parval):
     print("DEBUG: not valid accession number:", parval)
     return ""
 
+# TODO:
+# try to parse file history for potentially useful information,
+# file might originate from finna but isn't marked in sources
+# in which case url might be a comment in the history..
+def parseCommonsHistory(filepage):
+    #print("DEBUG: history:", filepage.latest_file_info)
+    #print("DEBUG: history:", filepage.get_file_history())
+    #hd = dict(filepage.get_file_history())
+    #for k, v in hd:
+        #print("DEBUG: history:", str(k), str(v))
+    
+    #for hist in filepage.get_file_history():
+        #print("DEBUG: history:", str(hist), type(hist))
+        #for k, v in hist.items()
+        #for v in hist.values():
+           # print("DEBUG: ", v)
+    return ""
+
 # filter blocked images that can't be updated for some reason
 def isblockedimage(page):
     pagename = str(page)
-    
+
     # no blocking currently here
     return False
 
@@ -825,10 +866,9 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Juho Vennola")
 
-pages = getcatpages(pywikibot, commonssite, "Category:Finnish Museum of Photography")
+pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Hugo Simberg")
 
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
 
@@ -857,9 +897,9 @@ for page in pages:
     if filepage.isRedirectPage():
         continue
 
-    #print("DEBUG: history:", filepage.latest_file_info)
-    #print("DEBUG: history:", filepage.get_file_history())
-    #exit(1)
+    # TODO:
+    # try to parse history for potentially userful information?
+    #parseCommonsHistory(filepage)
 
     newsourceurl = ""
     changed = False
