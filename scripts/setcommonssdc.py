@@ -1126,7 +1126,7 @@ def timestringtodatetime(timestring):
 
     # plain year in string?
     if (timestring.isnumeric() == True):
-        if (len(timestring) >= 6):
+        if (len(timestring) == 6):
             # there is year and month like "189605"
             year = int(timestring[:4])
             month = int(timestring[4:6])
@@ -1712,10 +1712,7 @@ commonssite.login()
 # many from fng via flickr
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland")
-
-pages = getcatpages(pywikibot, commonssite, "Category:Helsinki Old Central railway station")
-
+pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland")
 
 
 cachedb = CachedImageData() 
