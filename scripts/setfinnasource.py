@@ -10,6 +10,35 @@ from urllib.request import urlopen
 
 import urllib3
 
+# fix quoting of id:
+# commons/python mangles if there are percent-signs by doubling them
+# and doesn't handle slashes, also there are problems with umlauted characters.
+#
+# Note that we normally want to preserve unquoted form 
+# and quoted form is used in the query url.
+#
+def quoteFinnaId(finnaid):
+    if (finnaid.find(" ") >= 0):
+        # spaces may need to be:
+        # plus signs (+) 
+        # %20
+        # or underscores, 
+        # depending on id/source
+        finnaid = finnaid.replace(" ", "_")
+
+    finnaid = finnaid.replace("/", "%2F")
+
+    # sls.%C3%96TA%2B112
+    finnaid = finnaid.replace("Ö", "%C3%96")
+
+    # %25C3%2596TA%2B112 -> undo mangling
+    finnaid = finnaid.replace("%25C3%2596", "%C3%96")
+
+    # %252F -> undo mangling
+    finnaid = finnaid.replace("%252F", "%2F")
+
+    return finnaid
+
 def getnewfinnarecordurl(finnarecordid):
     if (len(finnarecordid) == 0):
         return ""
@@ -398,6 +427,7 @@ def getnewsourcefromoldsource(srcvalue):
         return getidfromoldsource(srcvalue)
 
     return ""
+
 
 def requestpage(pageurl):
     print("DEBUG: requesting url: ", pageurl)
@@ -866,10 +896,13 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Juho Vennola")
 
-pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Hugo Simberg")
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
+
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Atte Matilainen")
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
 
 # many are from valokuvataiteenmuseo via flickr
