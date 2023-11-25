@@ -8,6 +8,9 @@ import json
 import urllib
 from urllib.request import urlopen
 
+from http.client import InvalidURL
+#import HTTPException
+
 import urllib3
 
 # fix quoting of id:
@@ -18,13 +21,12 @@ import urllib3
 # and quoted form is used in the query url.
 #
 def quoteFinnaId(finnaid):
-    if (finnaid.find(" ") >= 0):
-        # spaces may need to be:
-        # plus signs (+) 
-        # %20
-        # or underscores, 
-        # depending on id/source
-        finnaid = finnaid.replace(" ", "_")
+    # spaces may need to be:
+    # plus signs (+) 
+    # %20
+    # or underscores, 
+    # depending on id/source
+    finnaid = finnaid.replace(" ", "_")
 
     finnaid = finnaid.replace("/", "%2F")
 
@@ -32,7 +34,7 @@ def quoteFinnaId(finnaid):
     finnaid = finnaid.replace("Ö", "%C3%96")
 
     # %25C3%2596TA%2B112 -> undo mangling
-    finnaid = finnaid.replace("%25C3%2596", "%C3%96")
+    #finnaid = finnaid.replace("%25C3%2596", "%C3%96")
 
     # %252F -> undo mangling
     finnaid = finnaid.replace("%252F", "%2F")
@@ -466,7 +468,7 @@ def requestpage(pageurl):
     except UnicodeEncodeError as e:
         print(e.__dict__)
         return ""
-    except http.client.InvalidURL as e:
+    except InvalidURL as e:
         print(e.__dict__)
         return ""
     #except:
@@ -700,9 +702,16 @@ def getIdFromAccessionValue(parval):
                 return ""
             parval = parval[indexspace+1:indexend]
             if (parval.startswith("HS")):
-                indexcomma = parval.find(",")
+                indexcomma = parval.rfind(",")
                 if (indexcomma > 0):
-                    parval = parval[:indexcomma]
+                    temp = parval[indexcomma+1:]
+                    temp = stripid(temp)
+                    temp = trimlr(temp)
+                    if (temp.isnumeric() == True):
+                        # if there is number like year -> not part of finna id
+                        parval = parval[:indexcomma]
+                    #else:
+                        # if it is a string -> part of finna id
                 parval = "fng_simberg." + parval.replace(" ", "_")
             print("DEBUG: accession number found in alien link:", parval)
             return parval
@@ -897,12 +906,12 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Juho Vennola")
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
+pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Hugo Simberg")
 
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Atte Matilainen")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Karl Emil Ståhlberg")
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
 
 # many are from valokuvataiteenmuseo via flickr
@@ -910,7 +919,6 @@ pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish
  
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
  
-
 
 rowcount = 0
 #rowlimit = 10
@@ -1026,6 +1034,8 @@ for page in pages:
                         print("DEBUG: no id found in source, using id from accession: ", finnaidAcc)
                         newsourceid = finnaidAcc
                     if (len(newsourceid) > 0):
+                        #newsourceid = quoteFinnaId(newsourceid)
+                        #print("DEBUG: using source id: ", newsourceid)
                         newsourceurl = getnewfinnarecordurl(newsourceid)
                         if (len(newsourceurl) > 0):
                             newsourcetext = getnewsourceforfinna(newsourceurl, newsourceid)
@@ -1034,7 +1044,7 @@ for page in pages:
                             if (srcvalue.endswith("\n")):
                                 srcvalue = srcvalue[:len(srcvalue)-1]
                             par.value = srcvalue + newsourcetext
-                            changed = True
+                            changed = True 
             #else:
                 #print("DEBUG: no source par found")
 
