@@ -22,6 +22,9 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 
+#from http.client import InvalidURL
+#import HTTPException
+
 import urllib3
 import sqlite3
 
@@ -67,6 +70,8 @@ def finna_api_parameter(name, value):
 def get_finna_record(finnaid, quoteid=True):
     if (finnaid.startswith("fmp.") == True and finnaid.find("%2F") > 0):
         quoteid = False
+    #if (finnaid.startswith("sls.") == True and finnaid.find("%") > 0):
+        #quoteid = False
 
     if (finnaid.find("/") > 0):
         quoteid = True
@@ -75,7 +80,7 @@ def get_finna_record(finnaid, quoteid=True):
         quotedfinnaid = urllib.parse.quote_plus(finnaid)
     else:
         quotedfinnaid = finnaid
-    #print("DEBUG: using quoted id ", quotedfinnaid, " for id ", finnaid)
+    #print("DEBUG: fetching record with id ", quotedfinnaid, " for id ", finnaid)
 
     url="https://api.finna.fi/v1/record?id=" +  quotedfinnaid
     url+= finna_api_parameter('field[]', 'id')
@@ -334,6 +339,20 @@ def addSdcMimetype(commons_site, media_identifier, mimetype):
 # ----- /CommonsMediaInfo
 
 
+# ----- FinnaTimestamp
+class FinnaTimestamp:
+    def setYear(self, year):
+        self.year = year
+        self.month = 0
+        self.day = 0
+
+    def setDate(self, year, month, day):
+        self.year = year
+        self.month = month
+        self.day = day
+# ----- /FinnaTimestamp
+
+
 # strip id from other things that may be after it:
 # there might be part of url or some html in same field..
 def stripid(oldsource):
@@ -343,6 +362,7 @@ def stripid(oldsource):
         oldsource = oldsource[:indexend]
 
     # some other text after url?
+    # TODO: sometimes comma is part of ID, sometimes not..
     indexend = oldsource.find(",")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
@@ -936,8 +956,17 @@ def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
 def addinceptiontosdc(pywikibot, wikidata_site, incdate):
     #wbdate = pywikibot.WbTime.fromTimestr(incdate.isoformat())
 
+    if (incdate.year == 0):
+        print("DEBUG: not a valid year for inception")
+        return None
+
     # note: need "WbTime" which is not a standard datetime
-    wbdate = pywikibot.WbTime(incdate.year, incdate.month, incdate.day)
+    if (incdate.year != 0 and incdate.month != 0 and incdate.day != 0):
+        #print("DEBUG: setting year, month, day")
+        wbdate = pywikibot.WbTime(incdate.year, incdate.month, incdate.day)
+    else:
+        #print("DEBUG: setting year only")
+        wbdate = pywikibot.WbTime(incdate.year)
 
     claim_incp = 'P571'  # property ID for "inception"
     inc_claim = pywikibot.Claim(wikidata_site, claim_incp)
@@ -1037,6 +1066,9 @@ def requestpage(pageurl):
     except http.client.InvalidURL as e:
         print(e.__dict__)
         return ""
+    except InvalidURL as e:
+        print(e.__dict__)
+        return ""
     #except:
         #print("failed to retrieve page")
         #return ""
@@ -1074,12 +1106,20 @@ def parsemetaidfromfinnapage(finnaurl):
 # note alternate: might have timestamp like "1943-06-24" or "01.06.1930"
 def timestringtodatetime(timestring):
     if (timestring.find('.') > 0): 
-        return datetime.strptime(timestring, '%d.%m.%Y')
+        dt = datetime.strptime(timestring, '%d.%m.%Y')
+        fdt = FinnaTimestamp()
+        fdt.setDate(dt.year, dt.month, dt.day)
+        return fdt
     if (timestring.find('-') > 0): 
-        return datetime.strptime(timestring, '%Y-%m-%d')
+        dt = datetime.strptime(timestring, '%Y-%m-%d')
+        fdt = FinnaTimestamp()
+        fdt.setDate(dt.year, dt.month, dt.day)
+        return fdt
     return None
 
 # parse timestamp of picture from finna data
+# TODO: sometimes there is a range of approximate dates given
+# -> we could parse them but how do we mark them in SDC?
 def parseinceptionfromfinna(finnarecord):
     if "records" not in finnarecord:
         print("ERROR: no records in finna record")
@@ -1097,6 +1137,8 @@ def parseinceptionfromfinna(finnarecord):
                 if (index >= 0):
                     index = index+len("kuvausaika ")
                     timestamp = sbstr[index:]
+                    # TODO: sometimes there is newlines and tabs in the string -> strip them out
+                    timestamp = trimlr(timestamp)
                     print("DEBUG: kuvausaika in subjects: " + timestamp)
                     return timestringtodatetime(timestamp)
 
@@ -1104,6 +1146,8 @@ def parseinceptionfromfinna(finnarecord):
                 if (index >= 0):
                     index = index+len("ajankohta: ")
                     timestamp = sbstr[index:]
+                    # TODO: sometimes there is newlines and tabs in the string -> strip them out
+                    timestamp = trimlr(timestamp)
                     print("DEBUG: ajankohta in subjects: " + timestamp)
                     return timestringtodatetime(timestamp)
                 
@@ -1112,6 +1156,8 @@ def parseinceptionfromfinna(finnarecord):
                 if (index >= 0):
                     index = index+len("valmistusaika ")
                     timestamp = sbstr[index:]
+                    # TODO: sometimes there is newlines and tabs in the string -> strip them out
+                    timestamp = trimlr(timestamp)
                     print("DEBUG: valmistusaika in subjects: " + timestamp)
                     return timestringtodatetime(timestamp)
                 
@@ -1119,6 +1165,9 @@ def parseinceptionfromfinna(finnarecord):
                 #dt = timestringtodatetime(timestamp)
                 #if (dt != None):
                     #return dt
+                    
+        # try to find plain year if there is no other date format
+        return parseinceptionyearfromfinna(finnarecord)
     except:
         print("failed to parse timestamp")
         return None
@@ -1136,8 +1185,13 @@ def parseinceptionyearfromfinna(finnarecord):
         return None
     try:
         year = finna_record['records'][0]['year']
-        print("DEBUG: year in record: " + year)
-        return date(year, 0, 0)
+        year = trimlr(year)
+        if (year.isnumeric() == False):
+            print("DEBUG: not a numeric year: " + year)
+            
+        fdt = FinnaTimestamp()
+        fdt.setYear(int(year))
+        return fdt
     except:
         print("failed to parse timestamp")
         return None
@@ -1331,6 +1385,11 @@ def isblockedimage(page):
     if (pagename.find("Sotavirkailija Kari Suomalainen.jpg") >= 0):
         return True
 
+    ## TESTING
+    #if (pagename.find("Hanna Cederholm") >= 0):
+        #return False
+    #return True
+
     # no blocking currently here
     return False
 
@@ -1419,6 +1478,8 @@ d_institutionqcode["Suomen kansallismuseo"] = "Q1418136"
     
 # or Kansallisgalleria / Ateneumin taidemuseo
 d_institutionqcode["Kansallisgalleria"] = "Q2983474"
+d_institutionqcode["Kansallisgalleria Arkistokokoelmat"] = "Q2983474"
+d_institutionqcode["Kansallisgalleria/Arkisto ja kirjasto"] = "Q2983474"
 d_institutionqcode["Ateneumin taidemuseo"] = "Q754507"
 d_institutionqcode["Sinebrychoffin taidemuseo"] = "Q1393952"
 d_institutionqcode["Tekniikan museo"] = "Q5549583"
@@ -1439,6 +1500,8 @@ d_institutionqcode["Suomen Rautatiemuseo"] = "Q1138355"
 d_institutionqcode["Salon historiallinen museo"] = "Q56403058"
 d_institutionqcode["Etelä-Karjalan museo"] = "Q18346681"
 d_institutionqcode["Kymenlaakson museo"] = "Q18346674"
+d_institutionqcode["Pielisen museo"] = "Q11887930"
+
 
 # qcode of collections -> label
 #
@@ -1484,6 +1547,7 @@ d_labeltoqcode["Urpo Rouhiaisen kokoelma"] = "Q123457996"
 d_labeltoqcode["Sari Gustafssonin kokoelma"] = "Q123458004"
 d_labeltoqcode["Jukka Kuusiston kokoelma"] = "Q123458213"
 d_labeltoqcode["Veijo Laineen kokoelma"] = "Q123458458"
+d_labeltoqcode["Atte Matilaisen kokoelma"] = "Q123531731"
 
 d_labeltoqcode["Otava"] = "Q123502566"
 d_labeltoqcode["Otavamedia"] = "Q123502645"
@@ -1598,12 +1662,13 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
+
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Journalists from Finland", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
@@ -1611,8 +1676,6 @@ pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1'
 # many are from valokuvataiteenmuseo via flickr
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs of Ainola by Santeri Levas", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
 
@@ -1621,6 +1684,13 @@ pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1'
 
 # many are from valokuvataiteenmuseo via flickr
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
+
+# many from fng via flickr
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland")
+
+pages = getcatpages(pywikibot, commonssite, "Category:Helsinki Old Central railway station")
 
 
 
@@ -2065,7 +2135,7 @@ for page in pages:
     # TODO: subjects / "kuvausaika 08.01.2016" -> inception
     inceptiondt = parseinceptionfromfinna(finna_record)
     if (inceptiondt != None):
-        print("DEBUG: found inception date for: " + finnaid + " " + inceptiondt.isoformat())
+        #print("DEBUG: found inception date for: " + finnaid + " " + inceptiondt.isoformat())
         if (isinceptioninstatements(claims, inceptiondt) == False):
             inc_claim = addinceptiontosdc(pywikibot, wikidata_site, inceptiondt)
             commonssite.addClaim(wditem, inc_claim)
