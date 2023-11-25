@@ -1133,7 +1133,7 @@ def timestringtodatetime(timestring):
             fdt = FinnaTimestamp()
             fdt.setYearMonth(year, month)
             return fdt
-        else:
+        if (len(timestring) == 4):
             num = int(timestring)
             fdt = FinnaTimestamp()
             fdt.setYear(num)
