@@ -345,6 +345,11 @@ class FinnaTimestamp:
         self.year = year
         self.month = 0
         self.day = 0
+        
+    def setYearMonth(self, year, month):
+        self.year = year
+        self.month = month
+        self.day = 0
 
     def setDate(self, year, month, day):
         self.year = year
@@ -964,6 +969,9 @@ def addinceptiontosdc(pywikibot, wikidata_site, incdate):
     if (incdate.year != 0 and incdate.month != 0 and incdate.day != 0):
         #print("DEBUG: setting year, month, day")
         wbdate = pywikibot.WbTime(incdate.year, incdate.month, incdate.day)
+    elif (incdate.year != 0 and incdate.month != 0):
+        #print("DEBUG: setting year, month")
+        wbdate = pywikibot.WbTime(incdate.year, incdate.month)
     else:
         #print("DEBUG: setting year only")
         wbdate = pywikibot.WbTime(incdate.year)
@@ -1115,6 +1123,22 @@ def timestringtodatetime(timestring):
         fdt = FinnaTimestamp()
         fdt.setDate(dt.year, dt.month, dt.day)
         return fdt
+
+    # plain year in string?
+    if (timestring.isnumeric() == True):
+        if (len(timestring) >= 6):
+            # there is year and month like "189605"
+            year = int(timestring[:4])
+            month = int(timestring[4:6])
+            fdt = FinnaTimestamp()
+            fdt.setYearMonth(year, month)
+            return fdt
+        else:
+            num = int(timestring)
+            fdt = FinnaTimestamp()
+            fdt.setYear(num)
+            return fdt
+    
     return None
 
 # parse timestamp of picture from finna data
