@@ -814,6 +814,9 @@ def getAccessionFromFilename(parval):
         #parval = parval.replace("_", "/")
         parval = parval.replace("_", "%2F") # url-quoted
     parval = parval.replace("/", "%2F") # url-quoted
+    
+    # finally, add prefix
+    parval = "fmp." + parval
     print("DEBUG: accession from filename:", parval)
     return parval
 
@@ -1088,9 +1091,9 @@ for page in pages:
                     if (len(newsourceid) == 0 and len(finnaidAcc) > 0):
                         print("DEBUG: no id found in source, using id from accession: ", finnaidAcc)
                         newsourceid = finnaidAcc
-                    #if (len(newsourceid) == 0 and len(finnaAccFromName) > 0 and isFlickrSource == True):
-                        #print("DEBUG: no id found in source, using id from filename: ", finnaAccFromName)
-                        #newsourceid = finnaAccFromName
+                    if (len(newsourceid) == 0 and len(finnaAccFromName) > 0 and isFlickrSource == True):
+                        print("DEBUG: no id found in source, using id from filename: ", finnaAccFromName)
+                        newsourceid = finnaAccFromName
                     if (len(newsourceid) > 0):
                         #newsourceid = quoteFinnaId(newsourceid)
                         #print("DEBUG: using source id: ", newsourceid)
