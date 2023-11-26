@@ -368,7 +368,8 @@ def stripid(oldsource):
 
     # some other text after url?
     # TODO: sometimes comma is part of ID, sometimes not..
-    indexend = oldsource.find(",")
+    #indexend = oldsource.find(",")
+    indexend = oldsource.find(", ")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
     indexend = oldsource.find(")")
@@ -1283,6 +1284,29 @@ def getqcodeforbydomain(url):
         # return "Q103204"
     return ""
 
+# note: if there are no collections, don't remove from commons as they may have manual additions
+def getCollectionsFromRecord(finnarecord, finnaid, labeltoqcode):
+
+    collectionqcodes = list()
+    if "collections" not in finnarecord['records'][0]:
+        print("WARN: 'collections' not found in finna record: " + finnaid)
+        return collectionqcodes
+    
+    # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
+    finna_collections = finnarecord['records'][0]['collections']
+
+    print("found collections in finna record: " + str(finna_collections))
+
+    #if ("Antellin kokoelma" in finna_collections):
+        #print("Skipping collection (can't match by hash due similarities): " + finnaid)
+        #continue
+
+    # lookup qcode by label TODO: fetch from wikidata 
+    for coll in finna_collections:
+        if coll in labeltoqcode:
+            collectionqcodes.append(labeltoqcode[coll])
+    return collectionqcodes
+
 # simple checks if received record could be usable
 def isFinnaRecordOk(finnarecord, finnaid):
     if (finnarecord == None):
@@ -1596,6 +1620,9 @@ d_labeltoqcode["Hugo Simbergin valokuvat"] = "Q123523516"
 
 d_labeltoqcode["Wiipuri-kokoelma"] = "Q123523357"
 d_labeltoqcode["Wiipuri-museon kokoelma"] = "Q123523357"
+d_labeltoqcode["Kulutusosuuskuntien Keskusliitto"] = "Q123555033"
+d_labeltoqcode["Kulutusosuuskuntien Keskusliiton kokoelma"] = "Q123555033"
+d_labeltoqcode["Kulutusosuuskuntien Keskusliitto (KK)"] = "Q123555033"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1711,8 +1738,9 @@ commonssite.login()
 
 # many from fng via flickr
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
-pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland")
+#pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland")
 
 
 cachedb = CachedImageData() 
@@ -1901,21 +1929,10 @@ for page in pages:
     print("finna record ok: " + finnaid)
     
     # note: if there are no collections, don't remove from commons as they may have manual additions
-    collectionqcodes = list()
-    if "collections" not in finna_record['records'][0]:
-        print("WARN: 'collections' not found in finna record: " + finnaid)
-    else:
-        # collections: expecting ['Historian kuvakokoelma', 'Studio Kuvasiskojen kokoelma']
-        finna_collections = finna_record['records'][0]['collections']
+    collectionqcodes = getCollectionsFromRecord(finna_record, finnaid, d_labeltoqcode)
+    if (len(collectionqcodes) == 0):
+        print("No collections for: " + finnaid)
 
-        #if ("Antellin kokoelma" in finna_collections):
-            #print("Skipping collection (can't match by hash due similarities): " + finnaid)
-            #continue
-
-        # lookup qcode by label TODO: fetch from wikidata 
-        for coll in finna_collections:
-            if coll in d_labeltoqcode:
-                collectionqcodes.append(d_labeltoqcode[coll])
 
     # TODO: add caption to sdc?
     #finna_title = finna_record['records'][0]['title']
