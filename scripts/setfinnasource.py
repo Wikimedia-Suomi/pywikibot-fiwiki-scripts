@@ -669,20 +669,20 @@ def getAccessionFromCommonsTemplate(template):
 def getIdFromAccessionValue(parval):
     # mwparser is bugged, remove spaces before or after
     parval = trimlr(parval)
-    
+
     # bare link, not finna? -> no id directly..
     if (parval.startswith("http")):
         print("DEBUG: plain url for accession, ignored")
         return ""
     
-    # national gallery in flickr
-    isFngflickr = False
-
     # wikimarkup with link and id (hopefully)
     # sometimes link may point to flickr but text is finna-id..
     if (parval.startswith("[http:")
         or parval.startswith("[https:")):
         #print("DEBUG: link-markup in accession, parsing", parval)
+
+        # national gallery in flickr
+        isFngflickr = False
         
         if (isFlickrCollection(parval) == False):
             print("DEBUG: not supported flickr collection:", parval)
@@ -742,6 +742,7 @@ def getIdFromAccessionValue(parval):
         or parval.startswith("D2000") 
         or parval.startswith("D2005") 
         or parval.startswith("D1970") 
+        or parval.startswith("D200") 
         or parval.startswith("D19")
         or parval.startswith("D_")):
        
@@ -768,6 +769,54 @@ def getIdFromAccessionValue(parval):
 
     print("DEBUG: not valid accession number:", parval)
     return ""
+
+def getAccessionFromFilename(parval):
+    # mwparser is bugged, remove spaces before or after
+    parval = trimlr(parval)
+
+    # filename from commons
+    if (parval.startswith("File:") == False):
+        return ""
+        
+    print("DEBUG: trying to find accession from filename:", parval)
+    
+    # to uppercase
+    parval = parval.upper()
+    
+    indexbegin = parval.find("D19")
+    if (indexbegin < 0):
+        indexbegin = parval.find("D20")
+        if (indexbegin < 0):
+            return ""
+    indexend = parval.find("(", indexbegin)
+    if (indexend < 0):
+        indexend = parval.find(")", indexbegin)
+
+    if (indexend < 0):
+        indexend = parval.rfind(".")
+    parval = parval[indexbegin:indexend]
+    print("DEBUG: accession from filename:", parval)
+    
+    if (parval.find("33") < 0):
+        indexspace = parval.find(" ")
+        if (indexspace > 0):
+            parval = parval[:indexspace] + " 33 " + parval[indexspace+1:]
+            print("DEBUG: added missing part:", parval)
+
+    parval = trimlr(parval)
+    parval = parval.replace(" ", "_")
+    if (parval.startswith("D_")):
+        parval = parval.replace("D_", "D")
+
+    index = parval.find("_")
+    if (index > 0):
+        parval= parval[:index] + ":" + parval[index+1:]
+        #parval = parval.replace("_", "/")
+        parval = parval.replace("_", "%2F") # url-quoted
+    parval = parval.replace("/", "%2F") # url-quoted
+    print("DEBUG: accession from filename:", parval)
+    return parval
+
 
 # TODO:
 # try to parse file history for potentially useful information,
@@ -906,12 +955,12 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Juho Vennola")
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
-pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Hugo Simberg")
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Hugo Simberg")
 
 #pages = getcatpages(pywikibot, commonssite, "Photographs by Karl Emil Ståhlberg")
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
 
 # many are from valokuvataiteenmuseo via flickr
@@ -947,6 +996,12 @@ for page in pages:
     oldtext=page.text
 
     print(" ////////", rowcount, "/", len(pages), ": [ " + page.title() + " ] ////////")
+
+    # try to find accession number from commons filename
+    isFlickrSource = False
+    finnaAccFromName = getAccessionFromFilename(page.title())
+    if (len(finnaAccFromName) > 0):
+        print("DEBUG: id from file name: ", finnaAccFromName)
 
     wikicode = mwparserfromhell.parse(page.text)
     templatelist = wikicode.filter_templates()
@@ -989,7 +1044,6 @@ for page in pages:
             # if it is from flickr, it might have different url in source.
             # Musketti-images in flickr are also in Finna, so try to find the ID.
             
-
            
             par = getSourceFromCommonsTemplate(template)
             if (par != None):
@@ -1001,9 +1055,10 @@ for page in pages:
                 if (len(finnaidAcc) == 0):
                     if (isFlickrCollection(srcvalue) == True):
                         print("DEBUG: flickr-collection in source: ", srcvalue)
+                        isFlickrSource = True
                         finnaidAcc = getIdFromAccessionValue(srcvalue)
                         #print("DEBUG: musketti-id from flickr: ", finnaidAcc)
-
+                        
                 urllist = geturlsfromsource(srcvalue)
                 if (hasMetapageInUrls(urllist, page.title()) == True):
                     # already has metapage -> skip
@@ -1027,12 +1082,15 @@ for page in pages:
 
                     newsourcetext = ""
                     newsourceid = getnewsourcefromoldsource(pageurltemp)
-                    if (len(newsourceid) == 0 and len(finnaidAcc) == 0):
-                        print("DEBUG: no id in source or in accession")
+                    if (len(newsourceid) == 0 and len(finnaidAcc) == 0 and len(finnaAccFromName) == 0):
+                        print("DEBUG: no id in source, in accession or in filename")
                         continue
                     if (len(newsourceid) == 0 and len(finnaidAcc) > 0):
                         print("DEBUG: no id found in source, using id from accession: ", finnaidAcc)
                         newsourceid = finnaidAcc
+                    #if (len(newsourceid) == 0 and len(finnaAccFromName) > 0 and isFlickrSource == True):
+                        #print("DEBUG: no id found in source, using id from filename: ", finnaAccFromName)
+                        #newsourceid = finnaAccFromName
                     if (len(newsourceid) > 0):
                         #newsourceid = quoteFinnaId(newsourceid)
                         #print("DEBUG: using source id: ", newsourceid)
