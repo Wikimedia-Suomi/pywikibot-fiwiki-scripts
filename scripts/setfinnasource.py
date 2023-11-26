@@ -796,12 +796,15 @@ def getAccessionFromFilename(parval):
         indexend = parval.rfind(".")
     parval = parval[indexbegin:indexend]
     print("DEBUG: accession from filename:", parval)
-    
-    if (parval.find("33") < 0):
-        indexspace = parval.find(" ")
-        if (indexspace > 0):
-            parval = parval[:indexspace] + " 33 " + parval[indexspace+1:]
-            print("DEBUG: added missing part:", parval)
+
+    # note: might be something else in some cases,
+    # but most of the pictures found is missing this in filename
+    if (parval.startswith("D1974")):
+        if (parval.find("33") < 0):
+            indexspace = parval.find(" ")
+            if (indexspace > 0):
+                parval = parval[:indexspace] + " 33 " + parval[indexspace+1:]
+                print("DEBUG: added missing part:", parval)
 
     parval = trimlr(parval)
     parval = parval.replace(" ", "_")

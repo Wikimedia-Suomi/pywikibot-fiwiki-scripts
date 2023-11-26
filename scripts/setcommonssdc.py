@@ -1114,16 +1114,19 @@ def parsemetaidfromfinnapage(finnaurl):
 
 # note alternate: might have timestamp like "1943-06-24" or "01.06.1930"
 def timestringtodatetime(timestring):
-    if (timestring.find('.') > 0): 
-        dt = datetime.strptime(timestring, '%d.%m.%Y')
-        fdt = FinnaTimestamp()
-        fdt.setDate(dt.year, dt.month, dt.day)
-        return fdt
-    if (timestring.find('-') > 0): 
-        dt = datetime.strptime(timestring, '%Y-%m-%d')
-        fdt = FinnaTimestamp()
-        fdt.setDate(dt.year, dt.month, dt.day)
-        return fdt
+    print("DEBUG: timestring", timestring)
+
+    if (len(timestring) == 10):
+        if (timestring.find('.') > 0): 
+            dt = datetime.strptime(timestring, '%d.%m.%Y')
+            fdt = FinnaTimestamp()
+            fdt.setDate(dt.year, dt.month, dt.day)
+            return fdt
+        if (timestring.find('-') > 0): 
+            dt = datetime.strptime(timestring, '%Y-%m-%d')
+            fdt = FinnaTimestamp()
+            fdt.setDate(dt.year, dt.month, dt.day)
+            return fdt
 
     # plain year in string?
     if (timestring.isnumeric() == True):
@@ -1187,9 +1190,9 @@ def parseinceptionfromfinna(finnarecord):
                     return timestringtodatetime(timestamp)
                 
                 # note: in some cases there is just timestamp without a string before it
-                #dt = timestringtodatetime(timestamp)
-                #if (dt != None):
-                    #return dt
+                fdt = timestringtodatetime(sbstr)
+                if (fdt != None):
+                    return fdt
                     
         # try to find plain year if there is no other date format
         return parseinceptionyearfromfinna(finnarecord)
@@ -1617,6 +1620,7 @@ d_labeltoqcode["VR:n kuvakokoelma"] = "Q123508783"
 d_labeltoqcode["Suomen Rautatiemuseon kuvakokoelma"] = "Q123508786"
 d_labeltoqcode["Arkeologian kuvakokoelma"] = "Q123508795"
 d_labeltoqcode["Hugo Simbergin valokuvat"] = "Q123523516"
+d_labeltoqcode["I K Inha"] = "Q123555486"
 
 d_labeltoqcode["Wiipuri-kokoelma"] = "Q123523357"
 d_labeltoqcode["Wiipuri-museon kokoelma"] = "Q123523357"
@@ -1657,7 +1661,7 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:History of Finland", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:History of Karelia", 2)
-#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Finland", True)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
@@ -1738,9 +1742,9 @@ commonssite.login()
 
 # many from fng via flickr
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland")
+pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland")
 
 
 cachedb = CachedImageData() 
