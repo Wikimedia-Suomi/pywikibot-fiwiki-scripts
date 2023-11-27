@@ -92,10 +92,15 @@ def get_finna_record(finnaid, quoteid=True):
     else:
         quotedfinnaid = finnaid
 
-    if (finnaid.find("+") > 0):
-        quotedfinnaid = finnaid.replace("+", "%2B")
+    if (quotedfinnaid.find("Ö") > 0):
+        quotedfinnaid = quotedfinnaid.replace("Ö", "%C3%96")
+        #quotedfinnaid = quotedfinnaid.replace("Ö", "%25C3%2596")
+        #quotedfinnaid = urllib.parse.quote_plus(quotedfinnaid)
+
+    if (quotedfinnaid.find("+") > 0):
+        quotedfinnaid = quotedfinnaid.replace("+", "%2B")
         
-    print("DEBUG: fetching record with id ", quotedfinnaid, " for id ", finnaid)
+    print("DEBUG: fetching record with id:", quotedfinnaid, ", for id:", finnaid)
 
     url="https://api.finna.fi/v1/record?id=" +  quotedfinnaid
     url+= finna_api_parameter('field[]', 'id')
@@ -129,6 +134,7 @@ def get_finna_record(finnaid, quoteid=True):
     url+= finna_api_parameter('field[]', 'formats')
     #url+= finna_api_parameter('field[]', 'physicalDescriptions')
     url+= finna_api_parameter('field[]', 'measurements')
+
 
     try:
         response = requests.get(url)
@@ -923,9 +929,10 @@ def addreferencetolicense(pywikibot, wikidata_site, license, sourceurl):
     
     return True
 
-def isfinnaidinstatements(statements, newid):
+def isFinnaIdInStatements(statements, newid):
     if "P9478" not in statements:
         return False
+    #print("DEBUG: checking sdc for Finna ID:", newid)
 
     unquotedNewId = newid.replace("%25", "%")
 
@@ -955,6 +962,11 @@ def isfinnaidinstatements(statements, newid):
             # commons seems to have bug in some character quoting
             # -> try to catch it
             print("NOTE: unquoted target matches unquoted Finna-ID", unquotedTarget)
+            return True
+        if (newid.startswith("sls.") and target.startswith("sls.")):
+            # the quoting is a problem to make work reliably so just skip if there's any sls-ID:
+            # there seems to be special rules in commons/wikidata/finna that make it quoting a pain
+            print("WARN: SLS-ID found, skip this")
             return True
 
     # ID not found -> should be added
@@ -1142,7 +1154,6 @@ def parsemetaidfromfinnapage(finnaurl):
 # also: might be "yyyymm" or plain year.
 # other cases: "1920-luku" or "1920 - 1929", there may be other text there as well
 def timestringtodatetime(timestring):
-    print("DEBUG: timestring", timestring)
 
     if (len(timestring) == 10):
         if (timestring.find('.') > 0): 
@@ -1171,6 +1182,7 @@ def timestringtodatetime(timestring):
             fdt.setYear(num)
             return fdt
     
+    #print("DEBUG: timestring", timestring)
     return None
 
 # parse timestamp of picture from finna data
@@ -1375,6 +1387,7 @@ def isFinnaRecordOk(finnarecord, finnaid):
         print("WARN: empty array of 'records' for finna record: " + finnaid)
         return False
 
+    #print("DEBUG: ", finnarecord)
     return True
 
 # helper to check in case of malformed json
@@ -1664,6 +1677,8 @@ d_labeltoqcode["Wiipuri-museon kokoelma"] = "Q123523357"
 d_labeltoqcode["Kulutusosuuskuntien Keskusliitto"] = "Q123555033"
 d_labeltoqcode["Kulutusosuuskuntien Keskusliiton kokoelma"] = "Q123555033"
 d_labeltoqcode["Kulutusosuuskuntien Keskusliitto (KK)"] = "Q123555033"
+d_labeltoqcode["Rafael Olins fotosamling"] = "Q123563819"
+
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1764,22 +1779,20 @@ pages = getcatpages(pywikibot, commonssite, "Kantele players", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
 
 # many are from valokuvataiteenmuseo via flickr
+# many from fng via flickr
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
-
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-# many are from valokuvataiteenmuseo via flickr
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
-
-# many from fng via flickr
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
-
 #pages = getcatpages(pywikibot, commonssite, "Category:Tyrgils' museum's archive")
+
+pages = getcatpages(pywikibot, commonssite, "Category:Rafael Olin's Photo Collection")
+
+
 
 cachedb = CachedImageData() 
 cachedb.opencachedb()
@@ -2239,7 +2252,7 @@ for page in pages:
         print("no collections to add")
 
     # if the stored ID is not same (new ID) -> add new
-    if (isfinnaidinstatements(claims, finnaid) == False):
+    if (isFinnaIdInStatements(claims, finnaid) == False):
         print("adding finna id to statements: ", finnaid)
         finna_claim = addfinnaidtostatements(pywikibot, wikidata_site, finnaid)
         commonssite.addClaim(wditem, finna_claim)
