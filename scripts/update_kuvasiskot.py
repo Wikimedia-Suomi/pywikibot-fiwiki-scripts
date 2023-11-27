@@ -61,6 +61,10 @@ def finna_api_parameter(name, value):
 # * https://api.finna.fi
 # * https://www.kiwi.fi/pages/viewpage.action?pageId=53839221 
 
+# note: finna API query id and finna metapage id need different quoting:
+# https://www.finna.fi/Record/sls.%25C3%2596TA+335_%25C3%2596TA+335+foto+81
+# https://api.finna.fi/v1/record?id=sls.%25C3%2596TA%2B335_%25C3%2596TA%2B335%2Bfoto%2B81&lng=fi&prettyPrint=1
+
 def get_finna_record(finnaid, quoteid=True):
     if (finnaid.startswith("fmp.") == True and finnaid.find("%2F") > 0):
         quoteid = False
@@ -72,6 +76,10 @@ def get_finna_record(finnaid, quoteid=True):
         quotedfinnaid = urllib.parse.quote_plus(finnaid)
     else:
         quotedfinnaid = finnaid
+
+    if (finnaid.find("+") > 0):
+        quotedfinnaid = finnaid.replace("+", "%2B")
+
     #print("DEBUG: using quoted id ", quotedfinnaid, " for id ", finnaid)
 
     url="https://api.finna.fi/v1/record?id=" +  quotedfinnaid
@@ -343,7 +351,6 @@ def isSupportedMimetype(strmime):
         or strmime.find("/pdf") >= 0 
         or strmime.find("image/vnd.djvu") >= 0
         or strmime.find("video") >= 0):
-        print("unsupported mime-type: ", strmime)
         return False
     return True
 
@@ -552,8 +559,10 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Turun messut")
-pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
+#pages = getcatpages(pywikibot, commonssite, "Category:Nakkila church", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
+
+pages = getcatpages(pywikibot, commonssite, "Category:Reino Helismaa")
 
 
 rowcount = 0
@@ -574,20 +583,21 @@ for page in pages:
 
     if file_page.isRedirectPage():
         continue
+
+    print(" -- ", rowcount, "/", len(pages), " [ " + page.title() + " ] --")
         
     file_info = file_page.latest_file_info
     
     # there may be other media than images as well
     strmime = str(file_info.mime)
     if (isSupportedMimetype(strmime) == False):
+        print("unsupported mime-type: ", strmime, "page:", page.title())
         continue
 
     # Check only low resolution images
     if file_info.width > 2000 or file_info.height > 2000:
         print("Skipping " + page.title() + ", width or height over 2000")
         continue
-
-    print(" -- ", rowcount, "/", len(pages), " [ " + page.title() + " ] --")
 
     # Find ids used in Finna
     finna_ids=get_finna_ids(page)
