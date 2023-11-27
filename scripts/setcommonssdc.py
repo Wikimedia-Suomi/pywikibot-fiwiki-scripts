@@ -72,15 +72,17 @@ def finna_api_parameter(name, value):
 # https://www.finna.fi/Record/sls.%25C3%2596TA+335_%25C3%2596TA+335+foto+81
 # https://api.finna.fi/v1/record?id=sls.%25C3%2596TA%2B335_%25C3%2596TA%2B335%2Bfoto%2B81&lng=fi&prettyPrint=1
 
+# note: if there is already %25 don't add it again
+# OK: sls.%25C3%2596TA%2B112_ota112-9_foto_01536
+# ERROR: sls.%2525C3%252596TA%252B112_ota112-9_foto_01536
+
 def get_finna_record(finnaid, quoteid=True):
     finnaid = trimlr(finnaid)
     if (finnaid.startswith("fmp.") == True and finnaid.find("%2F") > 0):
         quoteid = False
-    #if (finnaid.startswith("sls.") == True and finnaid.find("%") > 0):
-        #quoteid = False
     # already quoted, don't mangle again
-    #if (finnaid.startswith("sls.") == True and finnaid.find("%25") > 0):
-        #quoteid = False
+    if (finnaid.startswith("sls.") == True and finnaid.find("%25") > 0):
+        quoteid = False
 
     if (finnaid.find("/") > 0):
         quoteid = True
@@ -89,7 +91,7 @@ def get_finna_record(finnaid, quoteid=True):
         quotedfinnaid = urllib.parse.quote_plus(finnaid)
     else:
         quotedfinnaid = finnaid
-        
+
     if (finnaid.find("+") > 0):
         quotedfinnaid = finnaid.replace("+", "%2B")
         
@@ -1674,12 +1676,10 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getcatpages(pywikibot, commonssite, "Archaeologists from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Kantele players", True)
+pages = getcatpages(pywikibot, commonssite, "Kantele players", True)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", True)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency", 3)
+#pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency")
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
 
@@ -1707,7 +1707,7 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in World War II", 3)
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
-pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
+#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
 #pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
@@ -1780,8 +1780,6 @@ pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vybor
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Tyrgils' museum's archive")
-
-
 
 cachedb = CachedImageData() 
 cachedb.opencachedb()
