@@ -925,22 +925,28 @@ def isfinnaidinstatements(statements, newid):
     if "P9478" not in statements:
         return False
 
-    # also see if unquoted one matches
-    unquotedNewId = urllib.parse.unquote_plus(newid)
-    # finna-API query needs quoted plus sign, check if target has it or doesn't
-    unquotedNewId = unquotedNewId.replace("%2B", "+")
+    unquotedNewId = newid.replace("%25", "%")
 
+    # also see if unquoted one matches
+    unquotedNewId = urllib.parse.unquote_plus(unquotedNewId)
+    # finna-API query needs quoted plus sign, check if target has it or doesn't
+    #unquotedNewId = unquotedNewId.replace("%2B", "+")
+
+    #print("DEBUG: looking for finna id from sdc:", newid, unquotedNewId)
 
     claimlist = statements["P9478"]    
     for claim in claimlist:
         # target is expected to be like: "musketti." or "museovirasto."
         # but may be something else (hkm. sibelius. fmp. and so on)
         target = claim.getTarget()
-        if (target == newid):
-            # match found: no need to add same ID again
-            return True
         unquotedTarget = urllib.parse.unquote_plus(target)
-        unquotedTarget = unquotedTarget.replace("%2B", "+")
+        
+        #print("DEBUG: target has:", target, unquotedTarget)
+        if (target == newid):
+            # exact match found: no need to add same ID again
+            #print("DEBUG: found Finna-ID", newid)
+            return True
+        # try to compare with unquoted version(s)
         if (unquotedTarget == unquotedNewId 
             or unquotedTarget == newid 
             or target == unquotedNewId):
@@ -950,6 +956,7 @@ def isfinnaidinstatements(statements, newid):
             return True
 
     # ID not found -> should be added
+    #print("DEBUG: did not find finna id from sdc:", newid)
     return False
 
 def addfinnaidtostatements(pywikibot, wikidata_site, finnaid):
@@ -1700,7 +1707,7 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in World War II", 3)
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
-#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
 #pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
@@ -1733,7 +1740,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Salon Strindberg & Atelier Universal")
 
@@ -2235,12 +2242,11 @@ for page in pages:
 
     # if the stored ID is not same (new ID) -> add new
     if (isfinnaidinstatements(claims, finnaid) == False):
-        print("adding finna id to statements: " + finnaid)
-        
+        print("adding finna id to statements: ", finnaid)
         finna_claim = addfinnaidtostatements(pywikibot, wikidata_site, finnaid)
         commonssite.addClaim(wditem, finna_claim)
     else:
-        print("id found, not adding again")
+        print("id found, not adding again", finnaid)
 
     #pywikibot.info('----')
     #pywikibot.showDiff(oldtext, newtext,2)
