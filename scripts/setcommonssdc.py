@@ -927,6 +927,9 @@ def isfinnaidinstatements(statements, newid):
 
     # also see if unquoted one matches
     unquotedNewId = urllib.parse.unquote_plus(newid)
+    # finna-API query needs quoted plus sign, check if target has it or doesn't
+    unquotedNewId = unquotedNewId.replace("%2B", "+")
+
 
     claimlist = statements["P9478"]    
     for claim in claimlist:
@@ -937,6 +940,7 @@ def isfinnaidinstatements(statements, newid):
             # match found: no need to add same ID again
             return True
         unquotedTarget = urllib.parse.unquote_plus(target)
+        unquotedTarget = unquotedTarget.replace("%2B", "+")
         if (unquotedTarget == unquotedNewId 
             or unquotedTarget == newid 
             or target == unquotedNewId):
@@ -1447,7 +1451,6 @@ def isSupportedMimetype(strmime):
         or strmime.find("/pdf") >= 0 
         or strmime.find("image/vnd.djvu") >= 0
         or strmime.find("video") >= 0):
-        print("unsupported mime-type: ", strmime)
         return False
     return True
 
@@ -1730,7 +1733,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Salon Strindberg & Atelier Universal")
 
@@ -1769,7 +1772,7 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
-pages = getcatpages(pywikibot, commonssite, "Category:Tyrgils' museum's archive")
+#pages = getcatpages(pywikibot, commonssite, "Category:Tyrgils' museum's archive")
 
 
 
@@ -1802,13 +1805,15 @@ for page in pages:
     file_media_identifier='M' + str(filepage.pageid)
     file_info = filepage.latest_file_info
     oldtext=page.text
+
+    print(" ////////", rowcount, "/", len(pages), ": [ " + page.title() + " ] ////////")
     
     # there may be other media than images as well
     strmime = str(file_info.mime)
     if (isSupportedMimetype(strmime) == False):
+        print("unsupported mime-type: ", strmime, "page:", page.title())
         continue
 
-    print(" ////////", rowcount, "/", len(pages), ": [ " + page.title() + " ] ////////")
     print("latest change in commons: " + filepage.latest_file_info.timestamp.isoformat())
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
