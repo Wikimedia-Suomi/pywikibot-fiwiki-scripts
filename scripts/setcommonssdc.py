@@ -67,10 +67,19 @@ def finna_api_parameter(name, value):
 # * https://api.finna.fi
 # * https://www.kiwi.fi/pages/viewpage.action?pageId=53839221 
 
+
+# note: finna API query id and finna metapage id need different quoting:
+# https://www.finna.fi/Record/sls.%25C3%2596TA+335_%25C3%2596TA+335+foto+81
+# https://api.finna.fi/v1/record?id=sls.%25C3%2596TA%2B335_%25C3%2596TA%2B335%2Bfoto%2B81&lng=fi&prettyPrint=1
+
 def get_finna_record(finnaid, quoteid=True):
+    finnaid = trimlr(finnaid)
     if (finnaid.startswith("fmp.") == True and finnaid.find("%2F") > 0):
         quoteid = False
     #if (finnaid.startswith("sls.") == True and finnaid.find("%") > 0):
+        #quoteid = False
+    # already quoted, don't mangle again
+    #if (finnaid.startswith("sls.") == True and finnaid.find("%25") > 0):
         #quoteid = False
 
     if (finnaid.find("/") > 0):
@@ -80,7 +89,11 @@ def get_finna_record(finnaid, quoteid=True):
         quotedfinnaid = urllib.parse.quote_plus(finnaid)
     else:
         quotedfinnaid = finnaid
-    #print("DEBUG: fetching record with id ", quotedfinnaid, " for id ", finnaid)
+        
+    if (finnaid.find("+") > 0):
+        quotedfinnaid = finnaid.replace("+", "%2B")
+        
+    print("DEBUG: fetching record with id ", quotedfinnaid, " for id ", finnaid)
 
     url="https://api.finna.fi/v1/record?id=" +  quotedfinnaid
     url+= finna_api_parameter('field[]', 'id')
@@ -1453,11 +1466,6 @@ def isblockedimage(page):
     if (pagename.find("Sotavirkailija Kari Suomalainen.jpg") >= 0):
         return True
 
-    ## TESTING
-    #if (pagename.find("Hanna Cederholm") >= 0):
-        #return False
-    #return True
-
     # no blocking currently here
     return False
 
@@ -1747,7 +1755,7 @@ commonssite.login()
 
 # many are from valokuvataiteenmuseo via flickr
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
 
@@ -1761,7 +1769,8 @@ pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Phot
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland")
+pages = getcatpages(pywikibot, commonssite, "Category:Tyrgils' museum's archive")
+
 
 
 cachedb = CachedImageData() 
