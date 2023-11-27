@@ -1113,6 +1113,8 @@ def parsemetaidfromfinnapage(finnaurl):
     return ""
 
 # note alternate: might have timestamp like "1943-06-24" or "01.06.1930"
+# also: might be "yyyymm" or plain year.
+# other cases: "1920-luku" or "1920 - 1929", there may be other text there as well
 def timestringtodatetime(timestring):
     print("DEBUG: timestring", timestring)
 
@@ -1161,21 +1163,31 @@ def parseinceptionfromfinna(finnarecord):
         subjects = finna_record['records'][0]['subjects']
         for subject in subjects:
             for sbstr in subject:
-                index = sbstr.find("kuvausaika ")
+                index = sbstr.find("kuvausaika")
                 if (index >= 0):
-                    index = index+len("kuvausaika ")
+                    index = index+len("kuvausaika")
                     timestamp = sbstr[index:]
-                    # TODO: sometimes there is newlines and tabs in the string -> strip them out
+                    #  sometimes there is newlines and tabs in the string -> strip them out
+                    timestamp = timestamp.replace("\n", " ")
+                    timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
+                    indexend = timestamp.rfind(" ")
+                    if (indexend >= 0):
+                        timestamp = timestamp[indexend:]
                     print("DEBUG: kuvausaika in subjects: " + timestamp)
                     return timestringtodatetime(timestamp)
 
-                index = sbstr.find("ajankohta: ")
+                index = sbstr.find("ajankohta:")
                 if (index >= 0):
-                    index = index+len("ajankohta: ")
+                    index = index+len("ajankohta:")
                     timestamp = sbstr[index:]
-                    # TODO: sometimes there is newlines and tabs in the string -> strip them out
+                    # sometimes there is newlines and tabs in the string -> strip them out
+                    timestamp = timestamp.replace("\n", " ")
+                    timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
+                    indexend = timestamp.rfind(" ")
+                    if (indexend >= 0):
+                        timestamp = timestamp[indexend:]
                     print("DEBUG: ajankohta in subjects: " + timestamp)
                     return timestringtodatetime(timestamp)
                 
@@ -1184,8 +1196,13 @@ def parseinceptionfromfinna(finnarecord):
                 if (index >= 0):
                     index = index+len("valmistusaika ")
                     timestamp = sbstr[index:]
-                    # TODO: sometimes there is newlines and tabs in the string -> strip them out
+                    # sometimes there is newlines and tabs in the string -> strip them out
+                    timestamp = timestamp.replace("\n", " ")
+                    timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
+                    indexend = timestamp.rfind(" ")
+                    if (indexend >= 0):
+                        timestamp = timestamp[indexend:]
                     print("DEBUG: valmistusaika in subjects: " + timestamp)
                     return timestringtodatetime(timestamp)
                 
@@ -1730,7 +1747,7 @@ commonssite.login()
 
 # many are from valokuvataiteenmuseo via flickr
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
 
@@ -1744,7 +1761,7 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
-pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland")
+#pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland")
 
 
 cachedb = CachedImageData() 

@@ -807,7 +807,8 @@ def getAccessionFromFilename(parval):
                 print("DEBUG: added missing part:", parval)
 
     parval = trimlr(parval)
-    parval = parval.replace(" ", "_")
+    parval = parval.replace(" ", "_") # some files have space..
+    parval = parval.replace("-", "_") # some files have dash..
     if (parval.startswith("D_")):
         parval = parval.replace("D_", "D")
 
@@ -965,8 +966,9 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Photographs by Karl Emil Ståhlberg")
 
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
 
 # many are from valokuvataiteenmuseo via flickr
