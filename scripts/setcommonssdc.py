@@ -1691,7 +1691,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
 #pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
 #pages = getcatpages(pywikibot, commonssite, "Archaeologists from Finland", True)
-pages = getcatpages(pywikibot, commonssite, "Kantele players", True)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency")
@@ -1747,6 +1746,7 @@ pages = getcatpages(pywikibot, commonssite, "Kantele players", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Writers from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
@@ -1787,10 +1787,6 @@ pages = getcatpages(pywikibot, commonssite, "Kantele players", True)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Tyrgils' museum's archive")
-
-pages = getcatpages(pywikibot, commonssite, "Category:Rafael Olin's Photo Collection")
 
 
 
