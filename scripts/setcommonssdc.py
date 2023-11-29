@@ -1222,6 +1222,11 @@ def parseinceptionfromfinna(finnarecord):
                     timestamp = timestamp.replace("\n", " ")
                     timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
+                    
+                    # remove dot at end if any
+                    if (timestamp.endswith(".")):
+                        timestamp = timestamp[:len(timestamp)-1]
+                        
                     indexend = timestamp.rfind(" ")
                     if (indexend >= 0):
                         timestamp = timestamp[indexend:]
@@ -1236,6 +1241,11 @@ def parseinceptionfromfinna(finnarecord):
                     timestamp = timestamp.replace("\n", " ")
                     timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
+                    
+                    # remove dot at end if any
+                    if (timestamp.endswith(".")):
+                        timestamp = timestamp[:len(timestamp)-1]
+                    
                     indexend = timestamp.rfind(" ")
                     if (indexend >= 0):
                         timestamp = timestamp[indexend:]
@@ -1251,6 +1261,11 @@ def parseinceptionfromfinna(finnarecord):
                     timestamp = timestamp.replace("\n", " ")
                     timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
+                    
+                    # remove dot at end if any
+                    if (timestamp.endswith(".")):
+                        timestamp = timestamp[:len(timestamp)-1]
+                    
                     indexend = timestamp.rfind(" ")
                     if (indexend >= 0):
                         timestamp = timestamp[indexend:]
@@ -1801,7 +1816,9 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-pages = getcatpages(pywikibot, commonssite, "Category:Mikael Lybeck")
+#pages = getcatpages(pywikibot, commonssite, "Category:Mikael Lybeck")
+pages = getcatpages(pywikibot, commonssite, "Category:Politicians of Finland")
+
 
 
 cachedb = CachedImageData() 
@@ -2238,7 +2255,7 @@ for page in pages:
     if (inceptiondt != None):
         #print("DEBUG: found inception date for: " + finnaid + " " + inceptiondt.isoformat())
         if (isinceptioninstatements(claims, inceptiondt, sourceurl) == False):
-            #print("DEBUG: adding inception date for: " + finnaid)
+            print("DEBUG: adding inception date for: " + finnaid)
             inc_claim = addinceptiontosdc(pywikibot, wikidata_site, inceptiondt, sourceurl)
             commonssite.addClaim(wditem, inc_claim)
         else:
