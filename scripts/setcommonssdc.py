@@ -923,7 +923,7 @@ def isFinnaIdInStatements(statements, newid):
 
     #print("DEBUG: looking for finna id from sdc:", newid, unquotedNewId)
 
-    claimlist = statements["P9478"]    
+    claimlist = statements["P9478"]
     for claim in claimlist:
         # target is expected to be like: "musketti." or "museovirasto."
         # but may be something else (hkm. sibelius. fmp. and so on)
@@ -979,6 +979,18 @@ def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
     mime_claim.setTarget(mimetype)
     return mime_claim
 
+# note: we need "WbTime" which is not a standard datetime
+def getwbdate(incdate):
+    if (incdate.year != 0 and incdate.month != 0 and incdate.day != 0):
+        #print("DEBUG: setting year, month, day")
+        return pywikibot.WbTime(incdate.year, incdate.month, incdate.day)
+    elif (incdate.year != 0 and incdate.month != 0):
+        #print("DEBUG: setting year, month")
+        return pywikibot.WbTime(incdate.year, incdate.month)
+    else:
+        #print("DEBUG: setting year only")
+        return pywikibot.WbTime(incdate.year)
+
 # add inception date to sdc data
 def addinceptiontosdc(pywikibot, wikidata_site, incdate, sourceurl):
     #wbdate = pywikibot.WbTime.fromTimestr(incdate.isoformat())
@@ -986,17 +998,9 @@ def addinceptiontosdc(pywikibot, wikidata_site, incdate, sourceurl):
     if (incdate.year == 0):
         print("DEBUG: not a valid year for inception")
         return None
-
+    
     # note: need "WbTime" which is not a standard datetime
-    if (incdate.year != 0 and incdate.month != 0 and incdate.day != 0):
-        #print("DEBUG: setting year, month, day")
-        wbdate = pywikibot.WbTime(incdate.year, incdate.month, incdate.day)
-    elif (incdate.year != 0 and incdate.month != 0):
-        #print("DEBUG: setting year, month")
-        wbdate = pywikibot.WbTime(incdate.year, incdate.month)
-    else:
-        #print("DEBUG: setting year only")
-        wbdate = pywikibot.WbTime(incdate.year)
+    wbdate = getwbdate(incdate)
 
     claim_incp = 'P571'  # property ID for "inception"
     inc_claim = pywikibot.Claim(wikidata_site, claim_incp)
@@ -1010,9 +1014,22 @@ def addinceptiontosdc(pywikibot, wikidata_site, incdate, sourceurl):
     
     return inc_claim
 
-def isinceptioninstatements(statements, incdt):
-    if "P571" in statements:
-        return True
+# check if same inception already exists
+def isinceptioninstatements(statements, incdate, sourceurl):
+    if "P571" not in statements:
+        return False
+
+    # note: need "WbTime" which is not a standard datetime
+    wbdate = getwbdate(incdate)
+
+    claimlist = statements["P571"]
+    for claim in claimlist:
+        target = claim.getTarget()
+        #print("DEBUG: target date", str(target))
+        if (target == wbdate):
+            #print("DEBUG: target date match found")
+            return True
+
     return False
 
 # https&#x3A;&#x2F;&#x2F;api.finna.fi&#x2F;v1&#x2F;record&#x3F;id&#x3D;
@@ -1764,7 +1781,7 @@ commonssite.login()
 
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
@@ -1783,6 +1800,9 @@ pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2'
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
+
+pages = getcatpages(pywikibot, commonssite, "Category:Mikael Lybeck")
+
 
 cachedb = CachedImageData() 
 cachedb.opencachedb()
@@ -2213,11 +2233,12 @@ for page in pages:
             #else:
                 #print("license source found in statements, OK")
 
-    # TODO: subjects / "kuvausaika 08.01.2016" -> inception
+    # subjects / "kuvausaika 08.01.2016" -> inception
     inceptiondt = parseinceptionfromfinna(finna_record)
     if (inceptiondt != None):
         #print("DEBUG: found inception date for: " + finnaid + " " + inceptiondt.isoformat())
-        if (isinceptioninstatements(claims, inceptiondt) == False):
+        if (isinceptioninstatements(claims, inceptiondt, sourceurl) == False):
+            #print("DEBUG: adding inception date for: " + finnaid)
             inc_claim = addinceptiontosdc(pywikibot, wikidata_site, inceptiondt, sourceurl)
             commonssite.addClaim(wditem, inc_claim)
         else:
