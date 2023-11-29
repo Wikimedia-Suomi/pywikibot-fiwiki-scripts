@@ -1165,10 +1165,10 @@ def timestringtodatetime(timestring):
             monthb = int(timestring[:2])
             yearb = int(timestring[2:6])
             
-            if (montha > 0 and montha < 13 and yeara < 2050):
+            if (montha > 0 and montha < 13 and yeara < 2050 and yeara > 1300):
                 fdt.setYearMonth(yeara, montha)
                 return fdt
-            if (monthb > 0 and monthb < 13 and yearb < 2050):
+            if (monthb > 0 and monthb < 13 and yearb < 2050 and yearb > 1300):
                 fdt.setYearMonth(yearb, monthb)
                 return fdt
 
