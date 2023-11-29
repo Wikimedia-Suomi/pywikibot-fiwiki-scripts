@@ -255,6 +255,11 @@ def convert_tiff_to_png(tiff_image):
         tiff_image.convert('RGB').save(fp, "PNG", quality=100)
     return fp.name    
 
+def convert_tiff_to_gif(tiff_image):
+    with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as fp:
+        tiff_image.convert('RGB').save(fp, "GIF", quality=100)
+    return fp.name    
+
 # note: commons at least once has thrown error due to client policy?
 # "Client Error: Forbidden. Please comply with the User-Agent policy"
 # keep an eye out for problems..
@@ -521,7 +526,7 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Vyborg by decade", 2)
-#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
+pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
 
@@ -562,7 +567,9 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Nakkila church", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-pages = getcatpages(pywikibot, commonssite, "Category:Reino Helismaa")
+#pages = getcatpages(pywikibot, commonssite, "Category:Reino Helismaa")
+#pages = getcatpages(pywikibot, commonssite, "Category:Eugen Schauman")
+
 
 
 rowcount = 0
@@ -794,6 +801,16 @@ for page in pages:
                 continue
             image_file_name = convert_tiff_to_png(local_image)
             local_file=True    
+        #elif hires["format"] == "tif" and file_info.mime == 'image/gif':
+            #print("converting image from tiff to gif") # log it
+            #if (need_index == False):
+                #finna_image_url = hires['url']
+            #local_image = downloadimage(finna_image_url)
+            #if (local_image == None):
+                #print("WARN: Failed to download finna-image: " + page.title() )
+                #continue
+            #image_file_name = convert_tiff_to_gif(local_image)
+            #local_file=True    
         elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
             if (need_index == False):
                 finna_image_url = hires['url']
