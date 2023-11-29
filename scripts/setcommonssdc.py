@@ -903,31 +903,11 @@ def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
     qualifier_url.setTarget(sourceurl)
     lic_claim.addSource(qualifier_url, summary='Adding reference URL qualifier')
     # is there "addreference()"?
+
+    # note: commons does not support adding qualifiers to items,
+    # you need to add items and qualifiers at same time.
     
     return lic_claim
-
-# CC0: Q6938433
-# CC BY 4.0: Q20007257
-def addreferencetolicense(pywikibot, wikidata_site, license, sourceurl):
-    if (isSupportedFinnaLicense(license) == False):
-        return False
-
-    # if there are multiple licenses, check that we add source to right one
-    claimlist = statements["P275"]    
-    for claim in claimlist:
-        target = claim.getTarget()
-        targetqcode = getqcodefromwikidatalink(target)
-        if (targetqcode != getQcodeForLicense(license)): # not our license
-            #print("DEBUG: unsupported license: " + targetqcode)
-            continue
-
-        # note: this add qualifer but we want "reference" type
-        #qualifier_url = pywikibot.Claim(wikidata_site, 'P854')  # property ID for source URL (reference url)
-        #qualifier_url.setTarget(sourceurl)
-        #claim.addSource(qualifier_url, summary='Adding reference URL qualifier')
-        # is there "addreference()"?
-    
-    return True
 
 def isFinnaIdInStatements(statements, newid):
     if "P9478" not in statements:
@@ -976,8 +956,11 @@ def isFinnaIdInStatements(statements, newid):
 def addfinnaidtostatements(pywikibot, wikidata_site, finnaid):
     claim_finnaidp = 'P9478'  # property ID for "finna ID"
     finna_claim = pywikibot.Claim(wikidata_site, claim_finnaidp)
+
+    # TODO: sls ID has different quoting rules
     # url might have old style id as quoted -> no need with new id
     finnaunquoted = urllib.parse.unquote(finnaid)
+    
     finna_claim.setTarget(finnaunquoted)
     return finna_claim
 
@@ -997,7 +980,7 @@ def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
     return mime_claim
 
 # add inception date to sdc data
-def addinceptiontosdc(pywikibot, wikidata_site, incdate):
+def addinceptiontosdc(pywikibot, wikidata_site, incdate, sourceurl):
     #wbdate = pywikibot.WbTime.fromTimestr(incdate.isoformat())
 
     if (incdate.year == 0):
@@ -1017,10 +1000,14 @@ def addinceptiontosdc(pywikibot, wikidata_site, incdate):
 
     claim_incp = 'P571'  # property ID for "inception"
     inc_claim = pywikibot.Claim(wikidata_site, claim_incp)
-    #qualifier_targetmime = pywikibot.ItemPage(wikidata_site, mimetype)
-    
     # note: must format into "WbTime"
     inc_claim.setTarget(wbdate)
+    
+    # note: this add qualifer but we want "reference" type
+    qualifier_url = pywikibot.Claim(wikidata_site, 'P854')  # property ID for source URL (reference url)
+    qualifier_url.setTarget(sourceurl)
+    inc_claim.addSource(qualifier_url, summary='Adding reference URL qualifier')
+    
     return inc_claim
 
 def isinceptioninstatements(statements, incdt):
@@ -1151,7 +1138,7 @@ def parsemetaidfromfinnapage(finnaurl):
     return ""
 
 # note alternate: might have timestamp like "1943-06-24" or "01.06.1930"
-# also: might be "yyyymm" or plain year.
+# also: might be "yyyymm" or plain year or "mmyyyy".
 # other cases: "1920-luku" or "1920 - 1929", there may be other text there as well
 def timestringtodatetime(timestring):
 
@@ -1170,12 +1157,21 @@ def timestringtodatetime(timestring):
     # plain year in string?
     if (timestring.isnumeric() == True):
         if (len(timestring) == 6):
-            # there is year and month like "189605"
-            year = int(timestring[:4])
-            month = int(timestring[4:6])
             fdt = FinnaTimestamp()
-            fdt.setYearMonth(year, month)
-            return fdt
+            # there is year and month like "189605"
+            yeara = int(timestring[:4])
+            montha = int(timestring[4:6])
+            # in some cases, there is another order
+            monthb = int(timestring[:2])
+            yearb = int(timestring[2:6])
+            
+            if (montha > 0 and montha < 13 and yeara < 2050):
+                fdt.setYearMonth(yeara, montha)
+                return fdt
+            if (monthb > 0 and monthb < 13 and yearb < 2050):
+                fdt.setYearMonth(yearb, monthb)
+                return fdt
+
         if (len(timestring) == 4):
             num = int(timestring)
             fdt = FinnaTimestamp()
@@ -1768,7 +1764,7 @@ commonssite.login()
 
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
@@ -1787,8 +1783,6 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
-
-
 
 cachedb = CachedImageData() 
 cachedb.opencachedb()
@@ -2224,7 +2218,7 @@ for page in pages:
     if (inceptiondt != None):
         #print("DEBUG: found inception date for: " + finnaid + " " + inceptiondt.isoformat())
         if (isinceptioninstatements(claims, inceptiondt) == False):
-            inc_claim = addinceptiontosdc(pywikibot, wikidata_site, inceptiondt)
+            inc_claim = addinceptiontosdc(pywikibot, wikidata_site, inceptiondt, sourceurl)
             commonssite.addClaim(wditem, inc_claim)
         else:
             print("DEBUG: sdc already has inception date for: " + finnaid)
