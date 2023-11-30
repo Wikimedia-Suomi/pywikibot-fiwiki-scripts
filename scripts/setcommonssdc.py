@@ -1027,10 +1027,13 @@ def isinceptioninstatements(statements, incdate, sourceurl):
         target = claim.getTarget()
         #print("DEBUG: target date", str(target))
         if (target == wbdate):
-            #print("DEBUG: target date match found")
+            print("DEBUG: exact target date match found")
             return True
 
-    return False
+    # just ignore adding for now, we need more checks that value we've got is usable
+    # which has problems due to human-readable additions in some cases..
+    print("DEBUG: inception exists, ignoring for now")
+    return True
 
 # https&#x3A;&#x2F;&#x2F;api.finna.fi&#x2F;v1&#x2F;record&#x3F;id&#x3D;
 def parseapiidfromfinnapage(finnapage):
@@ -1195,7 +1198,7 @@ def timestringtodatetime(timestring):
             fdt.setYear(num)
             return fdt
     
-    #print("DEBUG: timestring", timestring)
+    print("DEBUG: cannot use timestring", timestring)
     return None
 
 # parse timestamp of picture from finna data
@@ -1519,6 +1522,7 @@ def isblockedimage(page):
     if (pagename.find("Sotavirkailija Kari Suomalainen.jpg") >= 0):
         return True
 
+
     # no blocking currently here
     return False
 
@@ -1620,6 +1624,7 @@ d_institutionqcode["Turun museokeskus"] = "Q18346797"
 d_institutionqcode["Työväenmuseo Werstas"] = "Q11899172"
 d_institutionqcode["Työväen Arkisto"] = "Q11899166"
 d_institutionqcode["Satakunnan Museo"] = "Q6304688"
+d_institutionqcode["Lusto - Suomen Metsämuseo"] = "Q11879901"
 d_institutionqcode["Suomen Metsästysmuseo"] = "Q1678320"
 d_institutionqcode["Svenska litteratursällskapet i Finland"] = "Q769544"
 d_institutionqcode["Lappeenrannan museot"] = "Q58636578"
@@ -1816,8 +1821,7 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Mikael Lybeck")
-pages = getcatpages(pywikibot, commonssite, "Category:Politicians of Finland")
+pages = getcatpages(pywikibot, commonssite, "Category:Foresters from Finland")
 
 
 
