@@ -1636,6 +1636,7 @@ d_institutionqcode["Salon historiallinen museo"] = "Q56403058"
 d_institutionqcode["Etelä-Karjalan museo"] = "Q18346681"
 d_institutionqcode["Kymenlaakson museo"] = "Q18346674"
 d_institutionqcode["Pielisen museo"] = "Q11887930"
+d_institutionqcode["Forssan museo"] = "Q23040125"
 
 
 # qcode of collections -> label
@@ -1822,7 +1823,9 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-pages = getcatpages(pywikibot, commonssite, "Category:Foresters from Finland")
+#pages = getcatpages(pywikibot, commonssite, "Category:Foresters from Finland")
+pages = getcatpages(pywikibot, commonssite, "Category:Politicians of Finland in 1984")
+
 
 
 
@@ -1897,6 +1900,7 @@ for page in pages:
     if "statements" not in sdcdata:
         print("No statements found for claims: " + page.title())
         continue
+    #wdrepo = wikidata_site.data_repository()
     claims = sdcdata['statements']  # claims are just one step from dataproperties down
 
     print("Wikibase statements found for: " + page.title() )
@@ -2215,7 +2219,7 @@ for page in pages:
 
         # P137 "operator"
         if (len(operatorqcode) > 0):
-            qualifier_operator = pywikibot.Claim(wikidata_site, 'P137')  # Replace with the property ID for "operator"
+            qualifier_operator = pywikibot.Claim(wikidata_site, 'P137')  # property ID for "operator"
             qualifier_targetop = pywikibot.ItemPage(wikidata_site, operatorqcode)  # National Library of Finland (Kansalliskirjasto)
             qualifier_operator.setTarget(qualifier_targetop)
             source_claim.addQualifier(qualifier_operator, summary='Adding operator qualifier')
@@ -2229,7 +2233,48 @@ for page in pages:
             source_claim.addQualifier(qualifier_publisher, summary='Adding publisher qualifier')
 
         commonssite.addClaim(wditem, source_claim)
-                
+
+    #if claimsForSource == True:
+        #print("DEBUG: adding to existing")
+        #wdrepo = wikidata_site.data_repository()
+
+        #item_internet = pywikibot.ItemPage(wdrepo, 'Q74228490')  # file available on the internet
+        #item_internet.get()
+        
+        #print("DEBUG: adding to existing, item found", str(item_internet))
+        #claims_source = item_internet.claims['P7482']  # property ID for "source of file"
+        #claim = claims_source[0]
+        
+        #print("DEBUG: adding to existing, item found", str(item_internet))
+        #claims_desc = item_internet.claims['P973']  # property ID for "described at URL"
+        #claim = claims_desc[0]
+
+        #claim = wditem.claims["P7482"]
+        
+        #print("DEBUG: adding to existing, claim found", str(claim))
+        #if operatorFound == False:
+            #claims_operator = item_internet.claims['P137']
+            #qualifier_op = pywikibot.Claim(wdrepo, 'P137')
+            #qualifier_target = pywikibot.ItemPage(wdrepo, operatorqcode) 
+            #qualifier_op.setTarget(qualifier_target)            
+            #claim.addQualifier(qualifier_op)
+            #print("DEBUG: added operator", operatorqcode)
+
+        #if publisherFound == False:
+            #claims_publisher = item_internet.claims['P123']
+            #qualifier_pub = pywikibot.Claim(wdrepo, 'P123')
+            #qualifier_target = pywikibot.ItemPage(wdrepo, publisherqcode) 
+            #qualifier_pub.setTarget(qualifier_target)            
+            #claim.addQualifier(qualifier_pub)
+
+            #qualifier = pywikibot.Claim(wdrepo, 'P123')
+            #qualifier.setTarget(publisherqcode)
+            #claim.addQualifier(qualifier)
+            #print("DEBUG: added published", publisherqcode)
+
+        #print("DEBUG: added, editing entity")
+        #wdrepo.editEntity({'claims': [claim.toJSON()]})
+        #print("DEBUG: added, entity edited")
 
     # Test copyright (old field: rights, but request has imageRights?)
     # imageRights = finna_record['records'][0]['imageRights']
