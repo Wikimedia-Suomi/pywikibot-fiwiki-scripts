@@ -246,16 +246,40 @@ def isidentical(img1, img2):
     return False
 
 def convert_tiff_to_jpg(tiff_image):
+    # if image is CMYK/grayscale ("L") 
+    # might have to abort/use different method with ImageCms module ?
+    bands = tiff_image.getbands()
+    if (len(bands) == 1 and bands[0] == "I"):
+        print("DEBUG: single-band, not supported", bands[0])
+        return None
+    print("DEBUG: image bands", tiff_image.getbands())
+    
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as fp:
         tiff_image.convert('RGB').save(fp, "JPEG", quality=100)
     return fp.name    
 
 def convert_tiff_to_png(tiff_image):
+    # if image is CMYK/grayscale ("L") 
+    # might have to abort/use different method with ImageCms module ?
+    bands = tiff_image.getbands()
+    if (len(bands) == 1 and bands[0] == "I"):
+        print("DEBUG: single-band, not supported", bands[0])
+        return None
+    print("DEBUG: image bands", tiff_image.getbands())
+
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as fp:
         tiff_image.convert('RGB').save(fp, "PNG", quality=100)
     return fp.name    
 
 def convert_tiff_to_gif(tiff_image):
+    # if image is CMYK/grayscale ("L") 
+    # might have to abort/use different method with ImageCms module ?
+    bands = tiff_image.getbands()
+    if (len(bands) == 1 and bands[0] == "I"):
+        print("DEBUG: single-band, not supported", bands[0])
+        return None
+    print("DEBUG: image bands", tiff_image.getbands())
+
     with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as fp:
         tiff_image.convert('RGB').save(fp, "GIF", quality=100)
     return fp.name    
@@ -400,8 +424,10 @@ def isblockedimage(page):
     # (python does not handle floating point format in some tiffs correctly?)
     if (pagename.find("Synnytyslaitoksen rakennus Tampereella.jpg") >= 0):
         return True
+    
     if (pagename.find("Vilho Penttilä, Kansallis-Osake-Pankin talo, Kauppakatu 4, Tampere.jpg") >= 0):
         return True
+    
     # another image where conversion fails, we detect it before upload though
     ##if (pagename.find("Itäinen Viertotie 24. (Hämeentie) jossa toimi Alli Trygg-Heleniuksen Kansankoti") >= 0):
 
@@ -526,7 +552,7 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Vyborg by decade", 2)
-pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
+#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
 
@@ -567,9 +593,7 @@ pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vybor
 #pages = getcatpages(pywikibot, commonssite, "Category:Nakkila church", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Reino Helismaa")
-#pages = getcatpages(pywikibot, commonssite, "Category:Eugen Schauman")
-
+#pages = getcatpages(pywikibot, commonssite, "Category:Kauppakatu (Tampere)")
 
 
 rowcount = 0
