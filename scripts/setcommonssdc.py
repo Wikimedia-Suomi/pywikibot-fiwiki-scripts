@@ -421,6 +421,9 @@ def stripid(oldsource):
     indexend = oldsource.find("|")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
+    indexend = oldsource.find("*")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
 
     # some parameters in url?
     indexend = oldsource.find("&")
@@ -583,6 +586,42 @@ def getkuvakokoelmatidfromurl(source):
         # .jpg or something at end? remove id
         kkid = kkid[:indexlast]
     return kkid
+
+# parse inventory number from old-style link
+# http://kokoelmat.fng.fi/app?si=A-1995-96
+# http://kokoelmat.fng.fi/app?si=A+I+223
+def getfngaccessionnumberfromurl(source):
+    if (source.find("fng.fi") < 0):
+        print("invalid url: " + source)
+        return ""
+
+    strlen = len("si=")
+    indexid = source.find("si=")
+    if (indexid < 0):
+        return ""
+
+    source = source[indexid+strlen:]
+    source = stripid(source)
+    
+    # replace + with spaces etc.
+    source = urllib.unquote(source)
+    source = source.replace("-", " ")
+    source = source.replace("+", " ")
+    return source
+
+# parse objectid from new-style link
+# https://www.kansallisgalleria.fi/en/object/624337
+def getkansallisgalleriaidfromurl(source):
+    if (source.find("kansallisgalleria.fi") < 0):
+        print("invalid url: " + source)
+        return ""
+
+    strlen = len("/object/")
+    indexid = source.find("/object/")
+    if (indexid < 0):
+        return ""
+    source = source[indexid+strlen:]
+    return stripid(source)
 
 # input: old format "HK"-id, e.g. HK7155:219-65-1
 # output: newer "musketti"-id, e.g. musketti.M012%3AHK7155:219-65-1
@@ -964,17 +1003,38 @@ def addfinnaidtostatements(pywikibot, wikidata_site, finnaid):
     finna_claim.setTarget(finnaunquoted)
     return finna_claim
 
+# kgtid should be plain number, same as objectId in object data
+def isKansallisgalleriateosInStatements(statements, kgobjectid):
+    if "P9834" not in statements:
+        return False
+
+    claimlist = statements["P9834"]
+    for claim in claimlist:
+        target = claim.getTarget()
+        if (target == kgobjectid):
+            # exact match found: no need to add same ID again
+            return True
+    return False
+
+# kgtid should be plain number, same as objectId in object data
+def addkansallisgalleriateostosdc(pywikibot, wikidata_site, kgobjectid):
+    # property ID for "Kansallisgallerian teostunniste" / "Finnish National Gallery artwork ID"
+    f_claim = pywikibot.Claim(wikidata_site, 'P9834')
+    f_claim.setTarget(kgobjectid)
+    return f_claim
+
+# add collection qcode to sdc data
 def addcollectiontostatements(pywikibot, wikidata_site, collection):
-    claim_collp = 'P195'  # property ID for "collection"
-    coll_claim = pywikibot.Claim(wikidata_site, claim_collp)
+    # property ID for "collection"
+    coll_claim = pywikibot.Claim(wikidata_site, 'P195')
     qualifier_targetcoll = pywikibot.ItemPage(wikidata_site, collection)
     coll_claim.setTarget(qualifier_targetcoll)
     return coll_claim
 
-# add mime-type to sdc data
+# add mime-type to sdc data (string)
 def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
-    claim_mimep = 'P1163'  # property ID for "mime type"
-    mime_claim = pywikibot.Claim(wikidata_site, claim_mimep)
+    # property ID for "mime type"
+    mime_claim = pywikibot.Claim(wikidata_site, 'P1163')
     #qualifier_targetmime = pywikibot.ItemPage(wikidata_site, mimetype)
     mime_claim.setTarget(mimetype)
     return mime_claim
@@ -1358,7 +1418,7 @@ def getqcodeforbydomain(url):
         # National Library of Finland (Kansalliskirjasto)
         return "Q420747"
     if (url.find("fng.fi") > 0):
-        # Kansallisgalleria 
+        # Kansallisgalleria (vanha domain, ei toimiva)
         return "Q2983474"
     if (url.find("kansallisgalleria.fi") > 0):
         # Kansallisgalleria 
@@ -1637,6 +1697,10 @@ d_institutionqcode["Etelä-Karjalan museo"] = "Q18346681"
 d_institutionqcode["Kymenlaakson museo"] = "Q18346674"
 d_institutionqcode["Pielisen museo"] = "Q11887930"
 d_institutionqcode["Forssan museo"] = "Q23040125"
+d_institutionqcode["Suomen käsityön museo"] = "Q18346792"
+d_institutionqcode["Aalto-yliopiston arkisto"] = "Q300980"
+d_institutionqcode["Kokemäen maatalousmuseo"] = "Q11872136"
+d_institutionqcode["Suomen maatalousmuseo Sarka"] = "Q11895074"
 
 
 # qcode of collections -> label
@@ -1706,6 +1770,8 @@ d_labeltoqcode["Suomen Rautatiemuseon kuvakokoelma"] = "Q123508786"
 d_labeltoqcode["Arkeologian kuvakokoelma"] = "Q123508795"
 d_labeltoqcode["Hugo Simbergin valokuvat"] = "Q123523516"
 d_labeltoqcode["I K Inha"] = "Q123555486"
+d_labeltoqcode["Collianderin kokoelma"] = "Q123694615"
+d_labeltoqcode["Heikki Y. Rissasen kokoelma"] = "Q123699187"
 
 d_labeltoqcode["Wiipuri-kokoelma"] = "Q123523357"
 d_labeltoqcode["Wiipuri-museon kokoelma"] = "Q123523357"
@@ -1713,6 +1779,9 @@ d_labeltoqcode["Kulutusosuuskuntien Keskusliitto"] = "Q123555033"
 d_labeltoqcode["Kulutusosuuskuntien Keskusliiton kokoelma"] = "Q123555033"
 d_labeltoqcode["Kulutusosuuskuntien Keskusliitto (KK)"] = "Q123555033"
 d_labeltoqcode["Rafael Olins fotosamling"] = "Q123563819"
+d_labeltoqcode["Kuurojen museo"] = "Q58685161"
+d_labeltoqcode["Vankilamuseon kokoelma"] = "Q123699925"
+d_labeltoqcode["TKA Kanninen"] = "Q123700007"
 
 
 # Accessing wikidata properties and items
@@ -1824,9 +1893,9 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Foresters from Finland")
-pages = getcatpages(pywikibot, commonssite, "Category:Politicians of Finland in 1984")
+#pages = getcatpages(pywikibot, commonssite, "Category:Politicians of Finland in 1984")
 
-
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Kuvasiskot", 2)
 
 
 cachedb = CachedImageData() 
@@ -1921,6 +1990,14 @@ for page in pages:
         if (srcvalue.find("elonet.finna.fi") > 0):
             # elonet-service differs
             continue
+        
+        if (srcvalue.find("fng.fi") > 0):
+            # parse inventory number from old-style link
+            fngacc = getfngaccessionnumberfromurl(srcvalue)
+        if (srcvalue.find("kansallisgalleria.fi") > 0):
+            # parse objectid from new-style link
+            kgtid = getkansallisgalleriaidfromurl(srcvalue)
+            
         if (srcvalue.find("kuvakokoelmat.fi") > 0):
             kkid = getkuvakokoelmatidfromurl(srcvalue)
         if (srcvalue.find("finna.fi") > 0):

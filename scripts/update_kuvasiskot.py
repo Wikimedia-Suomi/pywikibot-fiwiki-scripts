@@ -246,12 +246,13 @@ def isidentical(img1, img2):
     return False
 
 def convert_tiff_to_jpg(tiff_image):
-    # if image is CMYK/grayscale ("L") 
+    # if image is CMYK/grayscale ("L") might work or not,
     # might have to abort/use different method with ImageCms module ?
+    # if it is signed 32-bit int ("I") often does not work..
     bands = tiff_image.getbands()
     if (len(bands) == 1 and bands[0] == "I"):
-        print("DEBUG: single-band, not supported", bands[0])
-        return None
+        print("DEBUG: single-band, might not be supported", bands[0])
+        #return None
     print("DEBUG: image bands", tiff_image.getbands())
     
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as fp:
@@ -259,12 +260,13 @@ def convert_tiff_to_jpg(tiff_image):
     return fp.name    
 
 def convert_tiff_to_png(tiff_image):
-    # if image is CMYK/grayscale ("L") 
+    # if image is CMYK/grayscale ("L") might work or not,
     # might have to abort/use different method with ImageCms module ?
+    # if it is signed 32-bit int ("I") often does not work..
     bands = tiff_image.getbands()
     if (len(bands) == 1 and bands[0] == "I"):
-        print("DEBUG: single-band, not supported", bands[0])
-        return None
+        print("DEBUG: single-band, might not be supported", bands[0])
+        #return None
     print("DEBUG: image bands", tiff_image.getbands())
 
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as fp:
@@ -272,12 +274,13 @@ def convert_tiff_to_png(tiff_image):
     return fp.name    
 
 def convert_tiff_to_gif(tiff_image):
-    # if image is CMYK/grayscale ("L") 
+    # if image is CMYK/grayscale ("L") might work or not,
     # might have to abort/use different method with ImageCms module ?
+    # if it is signed 32-bit int ("I") often does not work..
     bands = tiff_image.getbands()
     if (len(bands) == 1 and bands[0] == "I"):
-        print("DEBUG: single-band, not supported", bands[0])
-        return None
+        print("DEBUG: single-band, might not be supported", bands[0])
+        #return None
     print("DEBUG: image bands", tiff_image.getbands())
 
     with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as fp:
@@ -343,6 +346,9 @@ def stripid(oldsource):
     if (indexend > 0):
         oldsource = oldsource[:indexend]
     indexend = oldsource.find("|")
+    if (indexend > 0):
+        oldsource = oldsource[:indexend]
+    indexend = oldsource.find("*")
     if (indexend > 0):
         oldsource = oldsource[:indexend]
 
@@ -594,6 +600,9 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kauppakatu (Tampere)")
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Finland in the 1930s")
+pages = getcatpages(pywikibot, commonssite, "Category:Britta Wikström")
 
 
 rowcount = 0
@@ -859,6 +868,7 @@ for page in pages:
             if (local_image == None):
                 print("WARN: Failed to download finna-image: " + page.title() )
                 continue
+            # if image is identical by sha-hash -> commons won't allow again
             if (isidentical(local_image, commons_image) == True):
                 print("Images are identical files, skipping: " + finnaid)
                 continue
@@ -867,6 +877,7 @@ for page in pages:
             # internal consistency of the API has an error?
             if (is_same_image(local_image, finna_image) == False):
                 print("WARN: Images are NOT same in the API! " + finnaid)
+                print("DEBUG: image bands", local_image.getbands())
                 continue
             
             # verify if file in commons is still larger?
@@ -877,12 +888,14 @@ for page in pages:
 
         else:
             converted_image = Image.open(image_file_name)
+            # if image is identical by sha-hash -> commons won't allow again
             if (isidentical(converted_image, commons_image) == True):
                 print("Images are identical files, skipping: " + finnaid)
                 continue
             # at least one image fails in conversion, see if there are others
             if (is_same_image(converted_image, commons_image) == False):
                 print("ERROR! Images are NOT same after conversion! " + finnaid)
+                print("DEBUG: image bands", local_image.getbands())
                 continue
 
             # after conversion, file in commons is still larger?
