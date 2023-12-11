@@ -1221,6 +1221,13 @@ def parsemetaidfromfinnapage(finnaurl):
 # also: might be "yyyymm" or plain year or "mmyyyy".
 # other cases: "1920-luku" or "1920 - 1929", there may be other text there as well
 def timestringtodatetime(timestring):
+    indexcomma = timestring.rfind(",") # there is comma-separated something?
+    if (indexcomma > 0):
+        timestring = timestring[:indexcomma]
+
+    # remove dot at end if any
+    if (timestring.endswith(".")):
+        timestring = timestring[:len(timestring)-1]
 
     if (len(timestring) == 10):
         if (timestring.find('.') > 0): 
@@ -1286,10 +1293,6 @@ def parseinceptionfromfinna(finnarecord):
                     timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
                     
-                    # remove dot at end if any
-                    if (timestamp.endswith(".")):
-                        timestamp = timestamp[:len(timestamp)-1]
-                        
                     indexend = timestamp.rfind(" ")
                     if (indexend >= 0):
                         timestamp = timestamp[indexend:]
@@ -1304,10 +1307,6 @@ def parseinceptionfromfinna(finnarecord):
                     timestamp = timestamp.replace("\n", " ")
                     timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
-                    
-                    # remove dot at end if any
-                    if (timestamp.endswith(".")):
-                        timestamp = timestamp[:len(timestamp)-1]
                     
                     indexend = timestamp.rfind(" ")
                     if (indexend >= 0):
@@ -1324,10 +1323,6 @@ def parseinceptionfromfinna(finnarecord):
                     timestamp = timestamp.replace("\n", " ")
                     timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
-                    
-                    # remove dot at end if any
-                    if (timestamp.endswith(".")):
-                        timestamp = timestamp[:len(timestamp)-1]
                     
                     indexend = timestamp.rfind(" ")
                     if (indexend >= 0):
@@ -1633,6 +1628,14 @@ def getlinkedpages(pywikibot, commonssite, linkpage):
 
     return pages
 
+# simply to aid in debuggimg
+def getpagesfixedlist(pywikibot, commonssite):
+    pages = list()
+    fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
+    pages.append(fp)
+    return pages
+
+
 # brute force check if wikibase exists for structured data:
 # need to add it manually for now if it doesn't
 def doessdcbaseexist(page):
@@ -1701,6 +1704,9 @@ d_institutionqcode["Suomen käsityön museo"] = "Q18346792"
 d_institutionqcode["Aalto-yliopiston arkisto"] = "Q300980"
 d_institutionqcode["Kokemäen maatalousmuseo"] = "Q11872136"
 d_institutionqcode["Suomen maatalousmuseo Sarka"] = "Q11895074"
+d_institutionqcode["Maaseudun sivistysliitto"] = "Q11880431"
+d_institutionqcode["Ilomantsin museosäätiö"] = "Q121266098"
+d_institutionqcode["Lapin maakuntamuseo"] = "Q18346675"
 
 
 # qcode of collections -> label
@@ -1772,6 +1778,7 @@ d_labeltoqcode["Hugo Simbergin valokuvat"] = "Q123523516"
 d_labeltoqcode["I K Inha"] = "Q123555486"
 d_labeltoqcode["Collianderin kokoelma"] = "Q123694615"
 d_labeltoqcode["Heikki Y. Rissasen kokoelma"] = "Q123699187"
+d_labeltoqcode["Jaakko Julkusen kokoelma"] = "Q123746517"
 
 d_labeltoqcode["Wiipuri-kokoelma"] = "Q123523357"
 d_labeltoqcode["Wiipuri-museon kokoelma"] = "Q123523357"
@@ -1782,6 +1789,9 @@ d_labeltoqcode["Rafael Olins fotosamling"] = "Q123563819"
 d_labeltoqcode["Kuurojen museo"] = "Q58685161"
 d_labeltoqcode["Vankilamuseon kokoelma"] = "Q123699925"
 d_labeltoqcode["TKA Kanninen"] = "Q123700007"
+d_labeltoqcode["Turun linnan kuvakokoelma"] = "Q123734837"
+d_labeltoqcode["Valokuvat ITE Uusimaaseutu"] = "Q123746149"
+d_labeltoqcode["Ilomantsin valokuva-arkisto"] = "Q123749213"
 
 
 # Accessing wikidata properties and items
@@ -1895,7 +1905,13 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Foresters from Finland")
 #pages = getcatpages(pywikibot, commonssite, "Category:Politicians of Finland in 1984")
 
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Kuvasiskot", 2)
+# for testing only
+#pages = getpagesfixedlist(pywikibot, commonssite)
+
+
+
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Hildur Larsson", True)
 
 
 cachedb = CachedImageData() 
@@ -2311,8 +2327,10 @@ for page in pages:
 
         commonssite.addClaim(wditem, source_claim)
 
-    #if claimsForSource == True:
-        #print("DEBUG: adding to existing")
+    if claimsForSource == True:
+        print("DEBUG: should add to existing")
+        #print("DEBUG: json:", inc_claim.toJSON())
+        
         #wdrepo = wikidata_site.data_repository()
 
         #item_internet = pywikibot.ItemPage(wdrepo, 'Q74228490')  # file available on the internet
