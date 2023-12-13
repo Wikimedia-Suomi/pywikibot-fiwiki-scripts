@@ -144,64 +144,6 @@ def get_finna_record(finnaid, quoteid=True):
 
 # ----- /FinnaData
 
-def fng_api_parameter(name, value):
-   return "&" + urllib.parse.quote_plus(name) + "=" + urllib.parse.quote_plus(value)
-
-## TODO: need to authentication token for a search
-##
-#https://www.kansallisgalleria.fi/api/v1/search
-def get_kansallisgalleria_record(objectid, quoteid=True):
-    objectid = trimlr(objectid)
-
-    # TODO: fetch API key 
-    apikeystr = ""
-    
-    if (quoteid == True):
-        quotedobjectid = urllib.parse.quote_plus(objectid)
-    else:
-        quotedobjectid = objectid
-       
-    print("DEBUG: fetching record with id:", quotedobjectid, ", for id:", objectid)
-
-    # TODO: needs authentication token
-
-    url="https://www.kansallisgalleria.fi/api/v1/search?objectId=" +  quotedobjectid + "&apiKey=" + apikeystr
-    url+= fng_api_parameter('field[]', 'objectId')
-    url+= fng_api_parameter('field[]', 'title')
-    url+= fng_api_parameter('field[]', 'inventoryNumber')
-
-
-    try:
-        headers={'x-api-key': apikeystr}
-        response = requests.get(url, headers=headers)
-        
-        rj = response.json()
-
-        # likely missing authentication token / api key
-        if "message" in rj:
-            message = rj['message']
-            print("WARN: message", message)
-            return None
-
-        return rj
-    except:
-        print("Kansallisgalleria API query failed: " + url)
-        return None
-
-# just list of objects -> just for testing access
-# (limited amount)
-def get_kansallisgalleria_objects():
-    #print("DEBUG: fetching objects")
-
-    url="https://www.kansallisgalleria.fi/api/v1/objects"
-
-    try:
-        response = requests.get(url)
-        return response.json()
-    except:
-        print("Kansallisgalleria API query failed: " + url)
-        return None
-
 # Perceptual hashing 
 # http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
 # difference hashing
@@ -2205,14 +2147,6 @@ for page in pages:
             print("DEBUG: found objectid: ", kgtid, " for inventory id: ", fngacc)
         else:
             print("DEBUG: no objectid by inventory id", fngacc)
-
-    #if (len(kgtid) > 0):
-        # TODO: need authentication somehow
-        #fngdata = get_kansallisgalleria_record(kgtid)
-        #if (fngdata != None):
-            #print("fng data: ", fngdata)
-        #else:
-            #print("no fng data for id: ", kgtid)
 
 
     if (len(finnaid) == 0 and len(finnarecordid) == 0):
