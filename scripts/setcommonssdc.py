@@ -61,7 +61,6 @@ def get_finna_ids(page):
 def finna_api_parameter(name, value):
    return "&" + urllib.parse.quote_plus(name) + "=" + urllib.parse.quote_plus(value)
 
-
 # Get finna API record with most of the information
 # Finna API documentation
 # * https://api.finna.fi
@@ -144,6 +143,64 @@ def get_finna_record(finnaid, quoteid=True):
         return None
 
 # ----- /FinnaData
+
+def fng_api_parameter(name, value):
+   return "&" + urllib.parse.quote_plus(name) + "=" + urllib.parse.quote_plus(value)
+
+## TODO: need to authentication token for a search
+##
+#https://www.kansallisgalleria.fi/api/v1/search
+def get_kansallisgalleria_record(objectid, quoteid=True):
+    objectid = trimlr(objectid)
+
+    # TODO: fetch API key 
+    apikeystr = ""
+    
+    if (quoteid == True):
+        quotedobjectid = urllib.parse.quote_plus(objectid)
+    else:
+        quotedobjectid = objectid
+       
+    print("DEBUG: fetching record with id:", quotedobjectid, ", for id:", objectid)
+
+    # TODO: needs authentication token
+
+    url="https://www.kansallisgalleria.fi/api/v1/search?objectId=" +  quotedobjectid + "&apiKey=" + apikeystr
+    url+= fng_api_parameter('field[]', 'objectId')
+    url+= fng_api_parameter('field[]', 'title')
+    url+= fng_api_parameter('field[]', 'inventoryNumber')
+
+
+    try:
+        headers={'x-api-key': apikeystr}
+        response = requests.get(url, headers=headers)
+        
+        rj = response.json()
+
+        # likely missing authentication token / api key
+        if "message" in rj:
+            message = rj['message']
+            print("WARN: message", message)
+            return None
+
+        return rj
+    except:
+        print("Kansallisgalleria API query failed: " + url)
+        return None
+
+# just list of objects -> just for testing access
+# (limited amount)
+def get_kansallisgalleria_objects():
+    #print("DEBUG: fetching objects")
+
+    url="https://www.kansallisgalleria.fi/api/v1/objects"
+
+    try:
+        response = requests.get(url)
+        return response.json()
+    except:
+        print("Kansallisgalleria API query failed: " + url)
+        return None
 
 # Perceptual hashing 
 # http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
@@ -285,6 +342,68 @@ class CachedImageData:
             self.updatecache(url, plen, pval, dlen, dval, ts)
 
 # ----- /CachedImageData
+
+# -------- CachedFngData
+class CachedFngData:
+    def opencachedb(self):
+        # created if it doesn't yet exist
+        self.conn = sqlite3.connect("pwbfngcache.db")
+        cur = self.conn.cursor()
+        cur.execute("CREATE TABLE IF NOT EXISTS fngcache(objectid, invnum)")
+
+    def addtocache(self, objectid, invnum):
+
+        sqlq = "INSERT INTO fngcache(objectid, invnum) VALUES ('"+ str(objectid) + "', '"+ str(invnum) + "')"
+
+        cur = self.conn.cursor()
+        cur.execute(sqlq)
+        self.conn.commit()
+
+    def findbyid(self, objectid):
+        sqlq = "SELECT objectid, invnum FROM fngcache WHERE objectid = '" + str(objectid) + "'"
+        
+        cur = self.conn.cursor()
+        res = cur.execute(sqlq)
+        rset = res.fetchall()
+        
+        #if (len(rset) == 0):
+            #return None
+        if (len(rset) > 1):
+            # too many found
+            return None
+        for row in rset:
+            #print(row)
+            dt = dict()
+            dt['objectid'] = row[0]
+            dt['invnum'] = row[1]
+            #print(dt)
+            return dt
+
+        return None
+
+    def findbyacc(self, invnum):
+        sqlq = "SELECT objectid, invnum FROM fngcache WHERE invnum = '" + str(invnum) + "'"
+        
+        cur = self.conn.cursor()
+        res = cur.execute(sqlq)
+        rset = res.fetchall()
+        
+        #if (len(rset) == 0):
+            #return None
+        if (len(rset) > 1):
+            # too many found
+            return None
+        for row in rset:
+            #print(row)
+            dt = dict()
+            dt['objectid'] = row[0]
+            dt['invnum'] = row[1]
+            #print(dt)
+            return dt
+
+        return None
+
+# ----- /CachedFngData
 
 
 # ----- CommonsMediaInfo
@@ -1524,6 +1643,43 @@ def getAccessionFromCommonsTemplate(template):
         return template.get("id")
     return None
 
+# The template artwork has field "references"
+def getReferencesFromCommonsTemplate(template):
+    if template.has("References"):
+        return template.get("References")
+    if template.has("references"):
+        return template.get("references")
+    return None
+
+# The template artwork has field "references", where data might be coming from wikidata 
+# instead of being in page. This means there's need to access wikidata-site
+# properties:
+# catalog code (P528), described at URL (P973), described by source (P1343),
+def getUrlsFromCommonsReferences(wikidata_site, page_text, claims):
+    wikicode = mwparserfromhell.parse(page_text)
+    templatelist = wikicode.filter_templates()
+
+    for template in wikicode.filter_templates():
+        # at least three different templates have been used..
+        if (isSupportedCommonsTemplate(template) == True):
+            refpar = getReferencesFromCommonsTemplate(template)
+            if (refpar != None):
+                srcvalue = str(refpar.value)
+                srcurls = geturlsfromsource(srcvalue)
+                if (len(srcurls) > 0):
+                    #print("DEBUG found urls in references")
+                    return srcurls
+            #else:
+                #print("DEBUG: no references par in template")
+                
+                
+    # TODO: if there aren't "hard-coded" references
+    # try to look for them in wikidata properties
+    
+    #print("DEBUG: no urls found in template")
+    return None
+
+
 # find source urls from template(s) in commons-page
 def getsourceurlfrompagetemplate(page_text):
     wikicode = mwparserfromhell.parse(page_text)
@@ -1540,10 +1696,10 @@ def getsourceurlfrompagetemplate(page_text):
             par = getSourceFromCommonsTemplate(template)
             if (par != None):
                 srcvalue = str(par.value)
-
                 srcurls = geturlsfromsource(srcvalue)
                 if (len(srcurls) > 0):
                     return srcurls
+
             #else:
                 #print("DEBUG: no source par in template")
         #else:
@@ -1551,6 +1707,7 @@ def getsourceurlfrompagetemplate(page_text):
 
     #print("DEBUG: no urls found in template")
     return None
+
 
 def isSupportedMimetype(strmime):
     if (strmime.find("audio") >= 0 
@@ -1631,8 +1788,11 @@ def getlinkedpages(pywikibot, commonssite, linkpage):
 # simply to aid in debuggimg
 def getpagesfixedlist(pywikibot, commonssite):
     pages = list()
-    fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
-    pages.append(fp)
+    #fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
+
+    # objectId = 624337
+    #fp = pywikibot.FilePage(commonssite,"File:Helene Schjerfbeck (1862-1946)- The Convalescent - Toipilas - Konvalescenten (32721924996).jpg")
+    #pages.append(fp)
     return pages
 
 
@@ -1911,11 +2071,15 @@ commonssite.login()
 
 
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Hildur Larsson", True)
+pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Vilho A. Uomala")
 
 
 cachedb = CachedImageData() 
 cachedb.opencachedb()
+
+fngcache = CachedFngData() 
+fngcache.opencachedb()
+
 
 rowcount = 0
 #rowlimit = 10
@@ -1999,9 +2163,19 @@ for page in pages:
         print("DEBUG: no urls found in templates of " + page.title())
         continue
 
+    # TODO: for artworks, template has "references" field,
+    # but values might be coming from wikidata and not in source data
+    # -> need a different method to parse this
+
+    refurls = getUrlsFromCommonsReferences(wikidata_site, page.text, claims)
+    if (refurls != None):
+        print("DEBUG: found urls in references for " + page.title())
+
     kkid = ""
     finnaid = ""
     finnarecordid = ""
+    fngacc = ""
+    kgtid = ""
     for srcvalue in srcurls:
         if (srcvalue.find("elonet.finna.fi") > 0):
             # elonet-service differs
@@ -2022,6 +2196,24 @@ for page in pages:
             # try old-style/download id
             if (finnarecordid == ""):
                 finnaid = getlinksourceid(srcvalue)
+
+    if (len(kgtid) == 0 and len(fngacc) > 0):
+        #print("DEBUG: searching objectid by inventory id", fngacc)
+        fngid = fngcache.findbyacc(fngacc)
+        if (fngid != None):
+            kgtid = fngid['objectid']
+            print("DEBUG: found objectid: ", kgtid, " for inventory id: ", fngacc)
+        else:
+            print("DEBUG: no objectid by inventory id", fngacc)
+
+    #if (len(kgtid) > 0):
+        # TODO: need authentication somehow
+        #fngdata = get_kansallisgalleria_record(kgtid)
+        #if (fngdata != None):
+            #print("fng data: ", fngdata)
+        #else:
+            #print("no fng data for id: ", kgtid)
+
 
     if (len(finnaid) == 0 and len(finnarecordid) == 0):
         print("no finna id and no finna record found")
