@@ -569,7 +569,9 @@ def findurlbeginfromsource(source, begin):
 # it may be mixed with wiki-markup and html as well:
 # try to locate where url ends from that soup
 def findurlendfromsource(source, indexbegin=0):
-    indexend = len(source)-1
+    #print("DEBUG: source is: [" + source + "]")
+    
+    indexend = len(source)
 
     i = indexbegin
     while i < indexend:
@@ -606,6 +608,7 @@ def findurlendfromsource(source, indexbegin=0):
             indexend = i
         i += 1
 
+    #print("DEBUG: source has url: [" + source[indexbegin:indexend] + "]")
     return indexend
 
 # commons source may have human readable stuff in it,
@@ -623,7 +626,7 @@ def geturlsfromsource(source):
             
         indexend = findurlendfromsource(source, index)
         url = source[index:indexend]
-        #print("DEBUG: source has url: " + url)
+        print("DEBUG: source has url: " + url)
         urllist.append(url)
         index = indexend
 
@@ -1734,7 +1737,10 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     # objectId = 624337
     #fp = pywikibot.FilePage(commonssite,"File:Helene Schjerfbeck (1862-1946)- The Convalescent - Toipilas - Konvalescenten (32721924996).jpg")
-    #pages.append(fp)
+    
+    #fp = pywikibot.FilePage(commonssite, 'File:Tuuli-Merikoski-1991.jpg')
+    #fp = pywikibot.FilePage(commonssite, 'File:Tulppaani nurmialueella Suvilahdessa by Sakari Kiuru 2020.tiff')
+    pages.append(fp)
     return pages
 
 
@@ -1894,7 +1900,10 @@ d_labeltoqcode["TKA Kanninen"] = "Q123700007"
 d_labeltoqcode["Turun linnan kuvakokoelma"] = "Q123734837"
 d_labeltoqcode["Valokuvat ITE Uusimaaseutu"] = "Q123746149"
 d_labeltoqcode["Ilomantsin valokuva-arkisto"] = "Q123749213"
-
+d_labeltoqcode["Runebergbibliotekets bildsamling"] = "Q123915494"
+d_labeltoqcode["István Ráczin kokoelma"] = "Q123964511"
+d_labeltoqcode["Melissa Hanhirova - Helsinki Pride kokoelma"] = "Q107388083"
+d_labeltoqcode["Kai Honkasen kokoelma"] = "Q123976124"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1991,7 +2000,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Journalists from Finland", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Paavo Poutiainen", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
 
 # many are from valokuvataiteenmuseo via flickr
@@ -2011,9 +2020,12 @@ commonssite.login()
 #pages = getpagesfixedlist(pywikibot, commonssite)
 
 
+#pages = getcatpages(pywikibot, commonssite, "Category:Melissa Hanhirova - Helsinki Pride collection")
+pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries", True)
 
 
-pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Vilho A. Uomala")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1950s")
+
 
 
 cachedb = CachedImageData() 
