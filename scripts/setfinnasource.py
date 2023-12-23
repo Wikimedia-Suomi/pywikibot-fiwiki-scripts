@@ -190,7 +190,7 @@ def findurlbeginfromsource(source, begin):
 # it may be mixed with wiki-markup and html as well:
 # try to locate where url ends from that soup
 def findurlendfromsource(source, indexbegin=0):
-    indexend = len(source)-1
+    indexend = len(source)
 
     i = indexbegin
     while i < indexend:
@@ -967,9 +967,9 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Hugo Simberg")
 
-#pages = getcatpages(pywikibot, commonssite, "Photographs by Karl Emil Ståhlberg")
+pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1950s")
 
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 
