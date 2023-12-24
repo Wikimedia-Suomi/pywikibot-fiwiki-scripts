@@ -1023,6 +1023,9 @@ def addCopyrightstatusToSdc(pywikibot, wikidata_site, license, statusqcode, sour
         print("DEBUG: not supported license:", license)
         return None
 
+    #P6216 = Q88088423 (copyright status = tekijänoikeuden suojaama, mutta tekijänoikeuden omistaja on asettanut sen public domainiin )
+    #P275 = Q98592850 (copyright license = tekijänoikeuden omistaja on julkaissut teoksen public domainiin )
+
     # PDM or CC0 -> we can determine these
     #if (statusqcode == "Q88088423" or statusqcode == "Q99263261"):
 
@@ -1061,14 +1064,6 @@ def isCopyrightStatusInSDC(statements, statusqcode, sourceurl):
         # no status marked in SDC
         print("DEBUG: no copyright status in SDC")
         return False
-
-    #P6216 = Q88088423 (copyright status = tekijänoikeuden suojaama, mutta tekijänoikeuden omistaja on asettanut sen public domainiin )
-    #P275 = Q98592850 (copyright license = tekijänoikeuden omistaja on julkaissut teoksen public domainiin )
-
-    #statusqcode = "Q50423863"
-    #if (status == False):
-        #statusqcode = "Q88088423"
-        # also could be: Q99263261 (with CC0)
 
     claimlist = statements["P6216"]
     for claim in claimlist:
@@ -1366,41 +1361,54 @@ def timestringtodatetime(timestring):
     if (timestring.endswith(".")):
         timestring = timestring[:len(timestring)-1]
 
-    if (len(timestring) == 10):
-        if (timestring.find('.') > 0): 
-            dt = datetime.strptime(timestring, '%d.%m.%Y')
-            fdt = FinnaTimestamp()
-            fdt.setDate(dt.year, dt.month, dt.day)
-            return fdt
-        if (timestring.find('-') > 0): 
-            dt = datetime.strptime(timestring, '%Y-%m-%d')
-            fdt = FinnaTimestamp()
-            fdt.setDate(dt.year, dt.month, dt.day)
-            return fdt
-
-    # plain year in string?
-    if (timestring.isnumeric() == True):
-        if (len(timestring) == 6):
-            fdt = FinnaTimestamp()
-            # there is year and month like "189605"
-            yeara = int(timestring[:4])
-            montha = int(timestring[4:6])
-            # in some cases, there is another order
-            monthb = int(timestring[:2])
-            yearb = int(timestring[2:6])
-            
-            if (montha > 0 and montha < 13 and yeara < 2050 and yeara > 1300):
-                fdt.setYearMonth(yeara, montha)
+    try:
+        # two digits for day and month, four digits for year
+        if (len(timestring) == 10):
+            if (timestring.find('.') > 0): 
+                dt = datetime.strptime(timestring, '%d.%m.%Y')
+                fdt = FinnaTimestamp()
+                fdt.setDate(dt.year, dt.month, dt.day)
                 return fdt
-            if (monthb > 0 and monthb < 13 and yearb < 2050 and yearb > 1300):
-                fdt.setYearMonth(yearb, monthb)
+            if (timestring.find('-') > 0): 
+                dt = datetime.strptime(timestring, '%Y-%m-%d')
+                fdt = FinnaTimestamp()
+                fdt.setDate(dt.year, dt.month, dt.day)
+                return fdt
+        
+        # single digit for day/month?
+        if (len(timestring) == 9 or len(timestring) == 8):
+            if (timestring.find('.') > 0): 
+                dt = datetime.strptime(timestring, '%d.%m.%Y')
+                fdt = FinnaTimestamp()
+                fdt.setDate(dt.year, dt.month, dt.day)
                 return fdt
 
-        if (len(timestring) == 4):
-            num = int(timestring)
-            fdt = FinnaTimestamp()
-            fdt.setYear(num)
-            return fdt
+        # plain year in string?
+        if (timestring.isnumeric() == True):
+            if (len(timestring) == 6):
+                fdt = FinnaTimestamp()
+                # there is year and month like "189605"
+                yeara = int(timestring[:4])
+                montha = int(timestring[4:6])
+                # in some cases, there is another order
+                monthb = int(timestring[:2])
+                yearb = int(timestring[2:6])
+                
+                if (montha > 0 and montha < 13 and yeara < 2050 and yeara > 1300):
+                    fdt.setYearMonth(yeara, montha)
+                    return fdt
+                if (monthb > 0 and monthb < 13 and yearb < 2050 and yearb > 1300):
+                    fdt.setYearMonth(yearb, monthb)
+                    return fdt
+
+            if (len(timestring) == 4):
+                num = int(timestring)
+                fdt = FinnaTimestamp()
+                fdt.setYear(num)
+                return fdt
+    except:
+        print("failed to parse timestamp")
+        return None
     
     print("DEBUG: cannot use timestring", timestring)
     return None
@@ -1653,6 +1661,7 @@ def determineCopyrightStatus(finnarecord):
         # tekijänoikeuden suojaama, mutta tekijänoikeuden omistaja on asettanut sen public domainiin
         return "Q88088423"
     if (copyrightlicense == "CC0"):
+        # might be same as PDM: Q88088423
         # ei tunnettuja tekijänoikeusrajoituksia
         return "Q99263261"
     
@@ -1919,7 +1928,7 @@ d_institutionqcode["Suomen maatalousmuseo Sarka"] = "Q11895074"
 d_institutionqcode["Maaseudun sivistysliitto"] = "Q11880431"
 d_institutionqcode["Ilomantsin museosäätiö"] = "Q121266098"
 d_institutionqcode["Lapin maakuntamuseo"] = "Q18346675"
-
+d_institutionqcode["Uudenkaupungin museo"] = "Q58636637"
 
 # qcode of collections -> label
 #
@@ -2011,6 +2020,9 @@ d_labeltoqcode["Kai Honkasen kokoelma"] = "Q123976124"
 d_labeltoqcode["Niilo Tuuran kokoelma"] = "Q123982549"
 d_labeltoqcode["Collanin kokoelma"] = "Q123982572"
 d_labeltoqcode["Göran Schildts arkiv"] = "Q123986127"
+d_labeltoqcode["VSO-kokoelma"] = "Q123989767"
+d_labeltoqcode["Ugin museon valokuvakokoelma"] = "Q123989773"
+
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -2148,7 +2160,10 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
 
 
-pages = getcatpages(pywikibot, commonssite, "Magnus von Wright")
+#pages = getcatpages(pywikibot, commonssite, "Magnus von Wright")
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Uusikaupunki", 2)
+
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Helge Heinonen")
 
 
 
