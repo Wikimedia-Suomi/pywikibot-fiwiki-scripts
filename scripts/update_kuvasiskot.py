@@ -160,6 +160,31 @@ def getImagesExtended(finnarecord):
     # at least one entry exists
     return imagesExtended[0]
 
+# try to determine if image is copyrighted:
+# note the comments, this can get complicated..
+def determineCopyrightStatus(finnarecord):
+    if (finnarecord == None):
+        # can't determine -> safer to assume it is
+        # Q50423863
+        return True
+    
+    imagesExtended = getImagesExtended(finnarecord)
+    if (imagesExtended == None):
+        # can't determine -> safer to assume it is
+        # Q50423863
+        return True
+
+    copyrightlicense = imagesExtended['rights']['copyright']
+    if (copyrightlicense == "PDM"):
+        # not copyrighted: copyright has been waived by releasing into PD
+        return False
+    
+    # otherwise.. it's complicated, we need to know when it was taken,
+    # if it is artwork or not, is the photographer alive and if not for long..
+    # -> safer to just assume it is
+    # Q50423863
+    return True
+
 # Perceptual hashing 
 # http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
 # difference hashing
@@ -602,7 +627,16 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Kauppakatu (Tampere)")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Finland in the 1930s")
-pages = getcatpages(pywikibot, commonssite, "Category:Britta Wikström")
+#pages = getcatpages(pywikibot, commonssite, "Category:Britta Wikström")
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Carl Jacob Gardberg", True)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Paavo Poutiainen", 1)
+
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1950s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1930s")
+
+
+pages = getcatpages(pywikibot, commonssite, "Paavo Cajander")
 
 
 rowcount = 0

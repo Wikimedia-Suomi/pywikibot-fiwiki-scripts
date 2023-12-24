@@ -1012,6 +1012,78 @@ def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
     
     return lic_claim
 
+def addCopyrightstatusToSdc(pywikibot, wikidata_site, license, statusqcode, sourceurl):
+    if (len(statusqcode) == 0):
+        print("DEBUG: empty copyright status")
+        return None
+    
+    # verify we support this license
+    if (isSupportedFinnaLicense(license) == False):
+        print("DEBUG: not supported license:", license)
+        return None
+
+    # PDM or CC0 -> we can determine these
+    #if (statusqcode == "Q88088423" or statusqcode == "Q99263261"):
+
+    # not copyrighted: copyright has been waived by releasing into PD
+    # tekijänoikeuden suojaama, mutta tekijänoikeuden omistaja on asettanut sen public domainiin
+    if (statusqcode != "Q88088423" or license != "PDM"):
+        # for now, only mark if it was explicitly waived
+        # otherwise it might get complicated..
+        print("DEBUG: skipping copyright status:", statusqcode ,"license:", license)
+        return None
+    if (statusqcode != "Q88088423"):
+        print("DEBUG: not supported status:", statusqcode)
+        return None
+    
+    cs_claim = pywikibot.Claim(wikidata_site, "P6216") # property ID for "copyright status"
+    qualifier_targetcs = pywikibot.ItemPage(wikidata_site, statusqcode)
+    cs_claim.setTarget(qualifier_targetcs)
+    
+    # note: this add qualifer but we want "reference" type
+    qualifier_url = pywikibot.Claim(wikidata_site, 'P854')  # property ID for source URL (reference url)
+    qualifier_url.setTarget(sourceurl)
+    cs_claim.addSource(qualifier_url, summary='Adding reference URL qualifier')
+    # is there "addreference()"?
+
+    print("DEBUG: adding copyright status:", statusqcode ,"license:", license)
+    return cs_claim
+
+# check if same status exists
+# there are various complications in determining copyright status,
+# only if it has been marked that copyright has been waived we can be confident
+def isCopyrightStatusInSDC(statements, statusqcode, sourceurl):
+    if (len(statusqcode) == 0):
+        #print("DEBUG: no status given")
+        return False
+    if "P6216" not in statements:
+        # no status marked in SDC
+        print("DEBUG: no copyright status in SDC")
+        return False
+
+    #P6216 = Q88088423 (copyright status = tekijänoikeuden suojaama, mutta tekijänoikeuden omistaja on asettanut sen public domainiin )
+    #P275 = Q98592850 (copyright license = tekijänoikeuden omistaja on julkaissut teoksen public domainiin )
+
+    #statusqcode = "Q50423863"
+    #if (status == False):
+        #statusqcode = "Q88088423"
+        # also could be: Q99263261 (with CC0)
+
+    claimlist = statements["P6216"]
+    for claim in claimlist:
+        target = claim.getTarget()
+        targetqcode = getqcodefromwikidatalink(target)
+        #if (targetqcode == getQcodeForLicense(license)): # not our license
+        if (targetqcode == statusqcode): 
+            print("DEBUG: exact status code found:" + targetqcode)
+            return True
+
+    # just ignore adding for now, we need more checks that value we've got is usable,
+    # see problems related to determining this..
+    #print("DEBUG: status exists, ignoring for now")
+    return False
+
+
 def isFinnaIdInStatements(statements, newid):
     if "P9478" not in statements:
         return False
@@ -1557,6 +1629,37 @@ def getFinnaLicense(imagesExtended):
     # should be CC BY 4.0 or Public domain/CC0
     return imagesExtended['rights']['copyright']
 
+# try to determine if image is copyrighted:
+# note the comments, this can get complicated..
+# there are various complications in determining copyright status,
+# only if it has been marked that copyright has been waived we can be confident
+def determineCopyrightStatus(finnarecord):
+    if (finnarecord == None):
+        # can't determine -> safer to assume it is?
+        return ""
+
+    #P6216 = Q88088423 (copyright status = tekijänoikeuden suojaama, mutta tekijänoikeuden omistaja on asettanut sen public domainiin )
+    #P275 = Q98592850 (copyright license = tekijänoikeuden omistaja on julkaissut teoksen public domainiin )
+    
+    imagesExtended = getImagesExtended(finnarecord)
+    if (imagesExtended == None):
+        # can't determine -> safer to assume it is
+        return ""
+
+    copyrightlicense = getFinnaLicense(imagesExtended)
+    if (copyrightlicense == "PDM"):
+        # not copyrighted: copyright has been waived by releasing into PD
+        # tekijänoikeuden suojaama, mutta tekijänoikeuden omistaja on asettanut sen public domainiin
+        return "Q88088423"
+    if (copyrightlicense == "CC0"):
+        # ei tunnettuja tekijänoikeusrajoituksia
+        return "Q99263261"
+    
+    # otherwise.. it's complicated, we need to know when it was taken,
+    # if it is artwork or not, is the photographer alive and if not for long..
+    # -> safer to just assume it is
+    return "Q50423863"
+
 def isSupportedCommonsTemplate(template):
     #print("DEBUG commons template: ", template.name)
     name = template.name.lower()
@@ -1904,6 +2007,9 @@ d_labeltoqcode["Runebergbibliotekets bildsamling"] = "Q123915494"
 d_labeltoqcode["István Ráczin kokoelma"] = "Q123964511"
 d_labeltoqcode["Melissa Hanhirova - Helsinki Pride kokoelma"] = "Q107388083"
 d_labeltoqcode["Kai Honkasen kokoelma"] = "Q123976124"
+d_labeltoqcode["Niilo Tuuran kokoelma"] = "Q123982549"
+d_labeltoqcode["Collanin kokoelma"] = "Q123982572"
+d_labeltoqcode["Göran Schildts arkiv"] = "Q123986127"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -1922,7 +2028,6 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
 
-#pages = getcatpages(pywikibot, commonssite, "People of Finland in the 1980s", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Archaeology in Finland")
 #pages = getcatpages(pywikibot, commonssite, "Category:Painters from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
@@ -1960,7 +2065,8 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Opera of Finland", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
-#Category:Cities in Finland by decade
+pages = getpagesrecurse(pywikibot, commonssite, "Category:Cities in Finland by decade", 2)
+
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Economy of Finland", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 2)
@@ -2020,11 +2126,25 @@ commonssite.login()
 #pages = getpagesfixedlist(pywikibot, commonssite)
 
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Melissa Hanhirova - Helsinki Pride collection")
-pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
 
 
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1960s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finistère in the 1960s")
+
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1900s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1910s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1920s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1930s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1940s")
 #pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1950s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1960s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1970s")
+
+
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Hydroelectric power plants in Finland", True)
+#pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
 
 
 
@@ -2532,6 +2652,15 @@ for page in pages:
                 #print("license source not found in statements")
             #else:
                 #print("license source found in statements, OK")
+                
+        statusqcode = determineCopyrightStatus(finna_record)
+        if (statusqcode != ""):
+            if (isCopyrightStatusInSDC(claims, statusqcode, sourceurl) == False):
+                print("status", statusqcode ," is missing or not same in statements for license", copyrightlicense)
+                #cs_claim = addCopyrightstatusToSdc(pywikibot, wikidata_site, copyrightlicense, statusqcode, sourceurl)
+                #if (cs_claim != None):
+                    #commonssite.addClaim(wditem, cs_claim)
+                    #print("status code", statusqcode ," added to statements for license", copyrightlicense)
 
     # subjects / "kuvausaika 08.01.2016" -> inception
     inceptiondt = parseinceptionfromfinna(finna_record)
