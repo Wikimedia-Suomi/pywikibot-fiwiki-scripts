@@ -668,9 +668,10 @@ def getfngaccessionnumberfromurl(source):
     source = stripid(source)
     
     # replace + with spaces etc.
-    source = urllib.unquote(source)
+    source = urllib.parse.unquote(source)
     source = source.replace("-", " ")
     source = source.replace("+", " ")
+    print("DEBUG: accession number from fng-url: " + source)
     return source
 
 # parse objectid from new-style link
@@ -2065,7 +2066,7 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Opera of Finland", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Cities in Finland by decade", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Cities in Finland by decade", 2)
 
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Economy of Finland", 2)
@@ -2145,6 +2146,9 @@ pages = getpagesrecurse(pywikibot, commonssite, "Category:Cities in Finland by d
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Hydroelectric power plants in Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
+
+
+pages = getcatpages(pywikibot, commonssite, "Magnus von Wright")
 
 
 
