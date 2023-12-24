@@ -1355,6 +1355,11 @@ def parsemetaidfromfinnapage(finnaurl):
 def timestringtodatetime(timestring):
     indexcomma = timestring.rfind(",") # there is comma-separated something?
     if (indexcomma > 0):
+        #print("DEBUG: removing comma from timestring:", timestring)
+        timestring = timestring[:indexcomma]
+    indexcomma = timestring.find(",") # there is comma-separated something?
+    if (indexcomma > 0):
+        #print("DEBUG: removing comma from timestring:", timestring)
         timestring = timestring[:indexcomma]
 
     # remove dot at end if any
@@ -1437,6 +1442,10 @@ def parseinceptionfromfinna(finnarecord):
                     timestamp = timestamp.replace("\n", " ")
                     timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
+
+                    # something human-readable after a timestamp?
+                    if (timestamp.find(",") > 0):
+                        timestamp = leftfrom(timestamp, ",")
                     
                     indexend = timestamp.rfind(" ")
                     if (indexend >= 0):
@@ -1452,6 +1461,10 @@ def parseinceptionfromfinna(finnarecord):
                     timestamp = timestamp.replace("\n", " ")
                     timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
+
+                    # something human-readable after a timestamp?
+                    if (timestamp.find(",") > 0):
+                        timestamp = leftfrom(timestamp, ",")
                     
                     indexend = timestamp.rfind(" ")
                     if (indexend >= 0):
@@ -1468,6 +1481,10 @@ def parseinceptionfromfinna(finnarecord):
                     timestamp = timestamp.replace("\n", " ")
                     timestamp = timestamp.replace("\t", " ")
                     timestamp = trimlr(timestamp)
+
+                    # something human-readable after a timestamp?
+                    if (timestamp.find(",") > 0):
+                        timestamp = leftfrom(timestamp, ",")
                     
                     indexend = timestamp.rfind(" ")
                     if (indexend >= 0):
@@ -2161,9 +2178,9 @@ commonssite.login()
 
 
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright")
-pages = getpagesrecurse(pywikibot, commonssite, "Category:Uusikaupunki", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Uusikaupunki", 2)
 
-#pages = getcatpages(pywikibot, commonssite, "Photographs by Helge Heinonen")
+pages = getcatpages(pywikibot, commonssite, "Photographs by U. A. Saarinen")
 
 
 
