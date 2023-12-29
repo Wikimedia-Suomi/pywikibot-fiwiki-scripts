@@ -172,37 +172,62 @@ def checkorder(text,before,after):
     # abnormal: the one supposed to be earlier is later..
     return 1
 
+def getpagesrecurse(pywikibot, site, maincat, depth=1):
+    #final_pages = list()
+    cat = pywikibot.Category(site, maincat)
+    pages = list(cat.articles(recurse=depth))
+    return pages
+
+def getpagesfrompetscan(pywikibot, site, psid, limit=1000):
+    pages = list()
+
+    # property: takso, artikkelissa taksonomiamalline (/kasvit, /eläimet)
+    url = "https://petscan.wmflabs.org/?psid=" + str(psid)
+    url += "&format=json"
+    url += "&output_limit=" + str(limit)
+    response = urlopen(url)
+    data_json = json.loads(response.read())
+    if (data_json == None):
+        print("No data")
+        return None
+    if (len(data_json) == 0):
+        print("empty data")
+        return None
+
+    for row in data_json['*'][0]['a']['*']:
+        page = pywikibot.Page(site, row['title'])
+        pages.append(page)
+
+    return pages
+
+
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
-# property: takso, artikkelissa taksonomiamalline (/kasvit, /eläimet)
-url = "https://petscan.wmflabs.org/?psid=25123221"
-url += "&format=json"
-url += "&output_limit=1000"
-response = urlopen(url)
-data_json = json.loads(response.read())
+pages = getpagesfrompetscan(pywikibot, site, 25123221)
+
 
 rivinro = 1
 
-for row in data_json['*'][0]['a']['*']:
-    page=pywikibot.Page(site, row['title'])
+for page in pages:
+    #page=pywikibot.Page(site, row['title'])
     oldtext=page.text
 
-    print(" ////////", rivinro, ": [ " + row['title'] + " ] ////////")
+    print(" ////////", rivinro, ": [ " + page.title() + " ] ////////")
     rivinro += 1
     if (oldtext.find("{{bots") > 0 or oldtext.find("{{nobots") > 0):
-        print("Skipping " + row['title'] + " - bot-restricted.")
+        print("Skipping " + page.title() + " - bot-restricted.")
         continue
     
     if (oldtext.find("{{Taksopalkki") > 0 or oldtext.find("{{taksopalkki") > 0):
-        print("Skipping " + row['title'] + " - taksopalkki already added.")
+        print("Skipping " + page.title() + " - taksopalkki already added.")
         continue
 
     if (checkorder(oldtext, "{{Käännös", "{{Tynkä") == 1):
-        print("Skipping " + row['title'] + " - Tynkä and Käännös in wrong order.")
+        print("Skipping " + page.title() + " - Tynkä and Käännös in wrong order.")
         continue
     if (checkorder(oldtext, "{{Viitteet", "{{Käännös") == 1):
-        print("Skipping " + row['title'] + " - Käännös and Viitteet in wrong order.")
+        print("Skipping " + page.title() + " - Käännös and Viitteet in wrong order.")
         continue
 
     temptext = addnewline(oldtext)
@@ -225,7 +250,7 @@ for row in data_json['*'][0]['a']['*']:
         temptext = insertnostub(temptext)
 
     if oldtext == temptext:
-        print("Skipping. " + row['title'] + " - old and new are equal.")
+        print("Skipping. " + page.title() + " - old and new are equal.")
         continue
 
     pywikibot.info('----')

@@ -213,65 +213,88 @@ def locateentries(text):
     #return sorted(items.items())
     return itemsout
 
+def getpagesrecurse(pywikibot, site, maincat, depth=1):
+    #final_pages = list()
+    cat = pywikibot.Category(site, maincat)
+    pages = list(cat.articles(recurse=depth))
+    return pages
+
+def getpagesfrompetscan(pywikibot, site, psid, limit=1000):
+    pages = list()
+
+    url = "https://petscan.wmflabs.org/?psid=" + str(psid)
+    url += "&format=json"
+    url += "&output_limit=" + str(limit)
+    response = urlopen(url)
+    data_json = json.loads(response.read())
+    if (data_json == None):
+        print("No data")
+        return None
+    if (len(data_json) == 0):
+        print("empty data")
+        return None
+
+    for row in data_json['*'][0]['a']['*']:
+        page = pywikibot.Page(site, row['title'])
+        pages.append(page)
+
+    return pages
+
+
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
 # haku auktoriteettitunnisteiden luettelossa olevilla
-
 # scopus url = "https://petscan.wmflabs.org/?psid=24596657"
-url = "https://petscan.wmflabs.org/?psid=25029822"
-url += "&format=json"
-url += "&output_limit=1000"
-response = urlopen(url)
-data_json = json.loads(response.read())
+pages = getpagesfrompetscan(pywikibot, site, 26611402)
 
 rivinro = 1
 
-for row in data_json['*'][0]['a']['*']:
-    page=pywikibot.Page(site, row['title'])
+for page in pages:
+    #page=pywikibot.Page(site, row['title'])
     oldtext=page.text
     
-    print(" ////////", rivinro, ": [ " + row['title'] + " ] ////////")
+    print(" ////////", rivinro, ": [ " + page.title() + " ] ////////")
     rivinro += 1
     if (oldtext.find("#OHJAUS") >= 0 or oldtext.find("#REDIRECT") >= 0):
-        print("Skipping " + row['title'] + " - redirect-page.")
+        print("Skipping " + page.title() + " - redirect-page.")
         continue
     if (oldtext.find("{{bots") > 0 or oldtext.find("{{nobots") > 0):
-        print("Skipping " + row['title'] + " - bot-restricted.")
+        print("Skipping " + page.title() + " - bot-restricted.")
         continue
         
     # someone has marked the page as being under editing -> don't modify now
     if (oldtext.find("{{Työstetään") > 0 or oldtext.find("{{työstetään") > 0):
-        print("Skipping " + row['title'] + " - editing in progress.")
+        print("Skipping " + page.title() + " - editing in progress.")
         continue
     
     if (oldtext.find("{{Auktoriteettitunnisteet") > 0 or oldtext.find("{{auktoriteettitunnisteet") > 0):
-        print("Skipping " + row['title'] + " - auktoriteetit already added.")
+        print("Skipping " + page.title() + " - auktoriteetit already added.")
         continue
 
     if (checkorder(oldtext, "{{Viitteet", "{{Käännös") == 1):
-        print("Skipping " + row['title'] + " - Käännös and Viitteet in wrong order.")
+        print("Skipping " + page.title() + " - Käännös and Viitteet in wrong order.")
         continue
     if (checkorder(oldtext, "{{Viitteet", "{{Tynkä") == 1):
-        print("Skipping " + row['title'] + " - Tynkä and Viitteet in wrong order.")
+        print("Skipping " + page.title() + " - Tynkä and Viitteet in wrong order.")
         continue
     if (checkorder(oldtext, "{{Wikiaineisto", "{{Tynkä") == 1):
-        print("Skipping " + row['title'] + " - Wikiaineisto and Tynkä in wrong order.")
+        print("Skipping " + page.title() + " - Wikiaineisto and Tynkä in wrong order.")
         continue
     if (checkorder(oldtext, "{{Commonscat", "{{Käännös") == 1):
-        print("Skipping " + row['title'] + " - Commonscat and Käännös in wrong order.")
+        print("Skipping " + page.title() + " - Commonscat and Käännös in wrong order.")
         continue
     if (checkorder(oldtext, "{{Commons", "{{Tynkä") == 1):
-        print("Skipping " + row['title'] + " - Commons and Tynkä in wrong order.")
+        print("Skipping " + page.title() + " - Commons and Tynkä in wrong order.")
         continue
     if (checkorder(oldtext, "{{Edeltäjä-seuraaja", "[[Luokka:") == 1):
-        print("Skipping " + row['title'] + " - Edeltäjä-seuraaja and Luokka in wrong order.")
+        print("Skipping " + page.title() + " - Edeltäjä-seuraaja and Luokka in wrong order.")
         continue
 
     reftup = findrefs(oldtext)
     sorttup = findsorts(oldtext)
     if (reftup[0] > 0 and sorttup[0] > 0 and sorttup[0] < reftup[0]):
-        print("Skipping " + row['title'] + " - " + reftup[1] + " and " + sorttup[1] + " in wrong order.")
+        print("Skipping " + page.title() + " - " + reftup[1] + " and " + sorttup[1] + " in wrong order.")
         continue
 
         
@@ -294,12 +317,12 @@ for row in data_json['*'][0]['a']['*']:
             temptext = insertabovetemplate(temptext,topmostval)
 
     if oldtext == temptext:
-        print("Skipping. " + row['title'] + " - old and new are equal.")
+        print("Skipping. " + page.title() + " - old and new are equal.")
         continue
 
     # something is missing in the page so we don't detect this earlier -> check it now
     if (checkorder(temptext, "{{Commons", "{{Auktoriteettitunnisteet") == 1):
-        print("Skipping " + row['title'] + " - Commons in wrong order.")
+        print("Skipping " + page.title() + " - Commons in wrong order.")
         continue
 
     pywikibot.info('----')
