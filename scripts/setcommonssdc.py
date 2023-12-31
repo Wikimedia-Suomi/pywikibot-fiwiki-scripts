@@ -1687,6 +1687,91 @@ def determineCopyrightStatus(finnarecord):
     # -> safer to just assume it is
     return "Q50423863"
 
+# in the case where structured data is missing from commons-page,
+# force creating it early so that rest of the operations can work (adding/checking data).
+# otherwise all operations will just fail.
+def fixMissingSdcData(pywikibot, wikidata_site, commonssite, file_info, page):
+    #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
+    # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
+    # repo == site == commonssite
+    if (doessdcbaseexist(page) == False):
+        print("Wikibase item does not yet exist for: " + page.title() )
+        
+        wditem = page.data_item()  # Get the data item associated with the page
+        sdcdata = wditem.get_data_for_new_entity() # get new sdc item
+        
+        ## add something like P1163 (mime-type) to force creation of sdc-data
+        print("adding mime-type: " + str(file_info.mime))
+        mime_claim = addmimetypetosdc(pywikibot, wikidata_site, file_info.mime)
+        commonssite.addClaim(wditem, mime_claim)
+
+        #file_info.mime == 'image/jpeg'
+        #addSdcCaption(commonssite, file_media_identifier, "fi", "testing")
+        
+        # alternate method
+        #addSdcMimetype(commonssite, file_media_identifier, str(file_info.mime))
+
+        if (doessdcbaseexist(page) == False):
+            print("ERROR: Failed adding Wikibase item for: " + page.title() )
+            #exit(1)
+            # failed to create sdc data for some reason and still missing
+            return False
+        #continue
+    
+    # exists alraedy or created successfully -> ok
+    return True
+
+# in some cases, all relevant information is in wikidata-item
+# instead of in commons page in a template:
+# try to lookup the wikidata-items to locate possible inventory number / object id
+#
+# properties:
+# catalog code (P528), described at URL (P973), described by source (P1343),
+def getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, page, qcodes):
+    
+    if (len(qcodes) > 1):
+        print("WARN: more than one qcode")
+    
+    itemqcode = qcodes[0]
+    
+    wdrepo = wikidata_site.data_repository()
+
+    #artwork_item = pywikibot.ItemPage(wdrepo, 'Q20771282')
+    artwork_item = pywikibot.ItemPage(wdrepo, itemqcode)
+    awdata = artwork_item.get()
+
+    #print("DEBUG:", str(artwork_item), str(awdata))
+
+    #for claim in awdata:
+        #target = claim.getTarget()
+        #print("DEBUG: tatget", str(target))
+
+    #if "statements" in awdata:
+        #claims = awdata['statements']  # claims are just one step from dataproperties down
+        #for claim in claims:
+            #target = claim.getTarget()
+            #print("DEBUG: tatget", str(target))
+
+
+# handle adding kansallisgalleria id to structured data:
+# if there is old-style accession number add new style object id as well
+# so that current links will work
+def addKansallisgalleriaIdToSdcData(pywikibot, wikidata_site, commonssite, page, kgobjectid):
+
+    wditem = page.data_item()  # Get the data item associated with the page
+    sdcdata = wditem.get() # all the properties in json-format
+    if "statements" not in sdcdata:
+        print("No statements found for claims: " + page.title())
+        return False
+    #wdrepo = wikidata_site.data_repository()
+    claims = sdcdata['statements']  # claims are just one step from dataproperties down
+
+    if (isKansallisgalleriateosInStatements(claims, kgobjectid) == False):
+        f_claim = addkansallisgalleriateostosdc(pywikibot, wikidata_site, kgobjectid)
+        if (f_claim != None):
+            commonssite.addClaim(wditem, f_claim)
+
+
 def isSupportedCommonsTemplate(template):
     #print("DEBUG commons template: ", template.name)
     name = template.name.lower()
@@ -1725,6 +1810,14 @@ def getReferencesFromCommonsTemplate(template):
     if template.has("references"):
         return template.get("references")
     return None
+
+def getWikidataParamFromCommonsTemplate(template):
+    if template.has("Wikidata"):
+        return template.get("Wikidata")
+    if template.has("wikidata"):
+        return template.get("wikidata")
+    return None
+
 
 # The template artwork has field "references", where data might be coming from wikidata 
 # instead of being in page. This means there's need to access wikidata-site
@@ -1782,6 +1875,29 @@ def getsourceurlfrompagetemplate(page_text):
 
     #print("DEBUG: no urls found in template")
     return None
+
+# get wikidata codes related to commons page
+def getwikidatacodefrompagetemplate(page):
+
+    wikidatacodes = list() # wikidata qcodes from template/page
+    
+    wikicode = mwparserfromhell.parse(page.text)
+    templatelist = wikicode.filter_templates()
+
+    for template in wikicode.filter_templates():
+        if (isSupportedCommonsTemplate(template) == True):
+
+            wdpar = getWikidataParamFromCommonsTemplate(template)
+            if (wdpar != None):
+                qcode = str(wdpar.value)
+                qcode = trimlr(qcode)
+                wikidatacodes.append(qcode)
+
+    if (len(wikidatacodes) == 0):
+        print("DEBUG: no qcodes found in template", page.title())
+    else:
+        print("DEBUG: qcodes found in template", wikidatacodes)
+    return wikidatacodes
 
 
 def isSupportedMimetype(strmime):
@@ -1868,6 +1984,10 @@ def getpagesfixedlist(pywikibot, commonssite):
     # objectId = 624337
     #fp = pywikibot.FilePage(commonssite,"File:Helene Schjerfbeck (1862-1946)- The Convalescent - Toipilas - Konvalescenten (32721924996).jpg")
     
+    # wikidata Q20771282 accession number A I 36:4
+    fp = pywikibot.FilePage(commonssite, 'File:Magnus von Wright - Katajanokka, luonnos - A I 36-4 - Finnish National Gallery.jpg')
+    
+    
     #fp = pywikibot.FilePage(commonssite, 'File:Tuuli-Merikoski-1991.jpg')
     #fp = pywikibot.FilePage(commonssite, 'File:Tulppaani nurmialueella Suvilahdessa by Sakari Kiuru 2020.tiff')
     pages.append(fp)
@@ -1946,6 +2066,7 @@ d_institutionqcode["Maaseudun sivistysliitto"] = "Q11880431"
 d_institutionqcode["Ilomantsin museosäätiö"] = "Q121266098"
 d_institutionqcode["Lapin maakuntamuseo"] = "Q18346675"
 d_institutionqcode["Uudenkaupungin museo"] = "Q58636637"
+d_institutionqcode["Kuopion kulttuurihistoriallinen museo"] = "Q58636575"
 
 # qcode of collections -> label
 #
@@ -1961,6 +2082,9 @@ d_labeltoqcode["Rakennushistorian kuvakokoelma"] = "Q123308774"
 d_labeltoqcode["Lentokuva Hannu Vallaksen kokoelma"] = "Q123311165"
 d_labeltoqcode["Antellin kokoelmat"] = "Q123313922"
 d_labeltoqcode["Antellin kokoelma"] = "Q123313922"
+
+d_labeltoqcode["Scan-Foton ilmakuvakokoelma"] = "Q123458587"
+d_labeltoqcode["Scan-Foto"] = "Q123458587"
 
 d_labeltoqcode["Börje Sandbergin kokoelma"] = "Q123357635"
 d_labeltoqcode["Enckellin kokoelma"] = "Q123357692"
@@ -2008,6 +2132,8 @@ d_labeltoqcode["Östnyland Borgåbladet"] = "Q123508541"
 d_labeltoqcode["Satakunnan Kansan kuva-arkisto"] = "Q123508726"
 d_labeltoqcode["Suomen Lähetysseura ry:n kuvakokoelma"] = "Q123508491"
 d_labeltoqcode["Hyvinkään kaupunginmuseon kokoelma"] = "Q123508767"
+d_labeltoqcode["Hyvinkään kaupunginmuseon valokuvakokoelma"] = "Q123508767"
+
 d_labeltoqcode["Sote-kokoelma"] = "Q123508776"
 d_labeltoqcode["VR:n kuvakokoelma"] = "Q123508783"
 d_labeltoqcode["Suomen Rautatiemuseon kuvakokoelma"] = "Q123508786"
@@ -2039,6 +2165,7 @@ d_labeltoqcode["Collanin kokoelma"] = "Q123982572"
 d_labeltoqcode["Göran Schildts arkiv"] = "Q123986127"
 d_labeltoqcode["VSO-kokoelma"] = "Q123989767"
 d_labeltoqcode["Ugin museon valokuvakokoelma"] = "Q123989773"
+d_labeltoqcode["Keijo Laajiston kokoelma"] = "Q123991088"
 
 
 # Accessing wikidata properties and items
@@ -2063,11 +2190,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:Continuation War", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Photographs by photographer from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:People of Finland by year", True)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by year", 3)
-
 #pages = getcatpages(pywikibot, commonssite, "Category:History of Finland", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:History of Karelia", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
@@ -2082,43 +2204,13 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in World War II", 3)
 #pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
 #pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
-#pages = getcatpages(pywikibot, commonssite, "Category:Miss Finland winners", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Monuments and memorials in Helsinki", True)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Events in Finland by year", 3)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Culture of Finland", 4)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Musicians from Finland", 3)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Artists from Finland", 3)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Opera of Finland", 3)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland by occupation", 2)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Cities in Finland by decade", 2)
-
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Economy of Finland", 2)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Companies of Finland", 2)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Politics of Finland", 2)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Shipyards in Finland", 2)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Designers from Finland", 2)
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Writers from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Architects from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Artists from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Teachers from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Musicians from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Composers from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Conductors from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Journalists from Finland", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Salon Strindberg & Atelier Universal")
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
@@ -2136,7 +2228,6 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Paavo Poutiainen", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
 
 # many are from valokuvataiteenmuseo via flickr
@@ -2149,11 +2240,8 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Foresters from Finland")
-#pages = getcatpages(pywikibot, commonssite, "Category:Politicians of Finland in 1984")
-
 # for testing only
-#pages = getpagesfixedlist(pywikibot, commonssite)
+pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
@@ -2172,15 +2260,11 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1970s")
 
 
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Hydroelectric power plants in Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
-
-
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright")
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Uusikaupunki", 2)
 
-pages = getcatpages(pywikibot, commonssite, "Photographs by U. A. Saarinen")
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in the 1950s", 1)
+
 
 
 
@@ -2230,32 +2314,12 @@ for page in pages:
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
-    # repo == site == commonssite
-    if (doessdcbaseexist(page) == False):
-        print("Wikibase item does not yet exist for: " + page.title() )
-        
-        wditem = page.data_item()  # Get the data item associated with the page
-        sdcdata = wditem.get_data_for_new_entity() # get new sdc item
-        
-        ## add something like P1163 (mime-type) to force creation of sdc-data
-        print("adding mime-type: " + str(file_info.mime))
-        mime_claim = addmimetypetosdc(pywikibot, wikidata_site, file_info.mime)
-        commonssite.addClaim(wditem, mime_claim)
-
-        #file_info.mime == 'image/jpeg'
-        #addSdcCaption(commonssite, file_media_identifier, "fi", "testing")
-        
-        # alternate method
-        #addSdcMimetype(commonssite, file_media_identifier, str(file_info.mime))
-
-        if (doessdcbaseexist(page) == False):
-            print("ERROR: Failed adding Wikibase item for: " + page.title() )
-            exit(1)
-        #continue
+    if (fixMissingSdcData(pywikibot, wikidata_site, commonssite, file_info, page) == False):
+        print("ERROR: Failed adding Wikibase item for: " + page.title() )
+        exit(1)
         
     wditem = page.data_item()  # Get the data item associated with the page
     sdcdata = wditem.get() # all the properties in json-format
-    
     if "statements" not in sdcdata:
         print("No statements found for claims: " + page.title())
         continue
@@ -2263,6 +2327,12 @@ for page in pages:
     claims = sdcdata['statements']  # claims are just one step from dataproperties down
 
     print("Wikibase statements found for: " + page.title() )
+
+    # if there are qcodes for item in wikidata -> find those from page
+    wikidatacodes = getwikidatacodefrompagetemplate(page)
+    if (wikidatacodes != None):
+        print("DEBUG: found qcodes in tempate for " + page.title())
+        getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, page, wikidatacodes)
 
     # find source urls in template(s) in commons-page
     srcurls = getsourceurlfrompagetemplate(page.text)
@@ -2286,6 +2356,7 @@ for page in pages:
     finnarecordid = ""
     fngacc = ""
     kgtid = ""
+
     for srcvalue in srcurls:
         if (srcvalue.find("elonet.finna.fi") > 0):
             # elonet-service differs
@@ -2316,6 +2387,12 @@ for page in pages:
         else:
             print("DEBUG: no objectid by inventory id", fngacc)
 
+    if (len(kgtid) > 0):
+        if (addKansallisgalleriaIdToSdcData(pywikibot, wikidata_site, commonssite, page, kgtid) == False):
+            print("WARN: failed adding kansallisgalleria id", page.title())
+        
+        # skip the rest as that requires finna id and finna record
+        continue
 
     if (len(finnaid) == 0 and len(finnarecordid) == 0):
         print("no finna id and no finna record found")
