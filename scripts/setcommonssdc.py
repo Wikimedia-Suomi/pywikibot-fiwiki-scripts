@@ -1728,6 +1728,11 @@ def fixMissingSdcData(pywikibot, wikidata_site, commonssite, file_info, page):
 # properties:
 # catalog code (P528), described at URL (P973), described by source (P1343),
 def getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, page, qcodes):
+
+    if (qcodes == None):
+        return False
+    if (len(qcodes) == 0):
+        return False
     
     if (len(qcodes) > 1):
         print("WARN: more than one qcode")
@@ -1751,7 +1756,7 @@ def getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, page, qcodes):
         #for claim in claims:
             #target = claim.getTarget()
             #print("DEBUG: tatget", str(target))
-
+    return True
 
 # handle adding kansallisgalleria id to structured data:
 # if there is old-style accession number add new style object id as well
@@ -1891,7 +1896,8 @@ def getwikidatacodefrompagetemplate(page):
             if (wdpar != None):
                 qcode = str(wdpar.value)
                 qcode = trimlr(qcode)
-                wikidatacodes.append(qcode)
+                if (len(qcode) > 1): # at least Q and some number
+                    wikidatacodes.append(qcode)
 
     if (len(wikidatacodes) == 0):
         print("DEBUG: no qcodes found in template", page.title())
@@ -2166,7 +2172,7 @@ d_labeltoqcode["Göran Schildts arkiv"] = "Q123986127"
 d_labeltoqcode["VSO-kokoelma"] = "Q123989767"
 d_labeltoqcode["Ugin museon valokuvakokoelma"] = "Q123989773"
 d_labeltoqcode["Keijo Laajiston kokoelma"] = "Q123991088"
-
+d_labeltoqcode["Heikki Innasen kokoelma"] = "Q124061515"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -2241,7 +2247,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
 # for testing only
-pages = getpagesfixedlist(pywikibot, commonssite)
+#pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
@@ -2263,7 +2269,7 @@ pages = getpagesfixedlist(pywikibot, commonssite)
 #pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright")
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in the 1950s", 1)
+pages = getpagesrecurse(pywikibot, commonssite, "Ruisrock", 1)
 
 
 
@@ -2330,9 +2336,9 @@ for page in pages:
 
     # if there are qcodes for item in wikidata -> find those from page
     wikidatacodes = getwikidatacodefrompagetemplate(page)
-    if (wikidatacodes != None):
+    if (len(wikidatacodes) > 0):
         print("DEBUG: found qcodes in tempate for " + page.title())
-        getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, page, wikidatacodes)
+        #getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, page, wikidatacodes)
 
     # find source urls in template(s) in commons-page
     srcurls = getsourceurlfrompagetemplate(page.text)
