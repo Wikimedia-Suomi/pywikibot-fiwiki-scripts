@@ -151,6 +151,26 @@ def getrecordid(oldsource):
     oldsource = oldsource[indexid+strlen:]
     return stripid(oldsource)
 
+# example: http://sa-kuva.fi/neo2?tem=...&idx=143399&...
+# in this example, we can use 143399 to construct accession number like sa-kuva.sa-kuva-143399
+def getindexfromsakuvaurl(saurl):
+    indexid = saurl.find("sa-kuva.fi/")
+    if (indexid < 0):
+        # no right domain
+        return ""
+    
+    strlen = len("idx=")
+    indexid = saurl.find("idx=")
+    if (indexid < 0):
+        return ""
+    indexid = indexid + strlen
+    indexend = saurl.find("&", indexid)
+    if (indexend < 0):
+        indexend = len(saurl)-1
+    
+    saurl = saurl[indexid:indexend]
+    return stripid(saurl)
+
 # commons source information
 def findurlbeginfromsource(source, begin):
     # just skip it
@@ -306,6 +326,22 @@ def getidfromeuropeanaurl(source):
         musketti = "musketti." + mid
         return musketti
     return "" # failed parsing
+
+# if there is sa-kuva url we may be able to find
+# suitable id for constructing finna-id with it
+def getfinnaidfromsaurl(source):
+    if (source.find("sa-kuva.fi") < 0):
+        # not found?
+        return ""
+
+    # TODO: testing, might have conflicting id?
+    # url does not have index, can happen but can't parse..
+    saindex = getindexfromsakuvaurl(source)
+    if (len(saindex) == 0):
+        return ""
+
+    finnaid = "sa-kuva.sa-kuva-" + saindex
+    return finnaid
 
 # if there's garbage in id, strip to where it ends
 def leftfrom(string, char):
@@ -967,7 +1003,10 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Hugo Simberg")
 
-pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1950s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1940s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1950s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1960s")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finistère in the 1960s")
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
@@ -978,7 +1017,16 @@ pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finl
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
  
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
- 
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:1963 in Helsinki", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:People of Finland in 1963", 0)
+
+#pages = getcatpages(pywikibot, commonssite, "Barösund")
+#pages = getcatpages(pywikibot, commonssite, "SA-kuva", True)
+
+pages = getcatpages(pywikibot, commonssite, "1952 Summer Olympics swimmers", True)
+
+
 
 rowcount = 0
 #rowlimit = 10

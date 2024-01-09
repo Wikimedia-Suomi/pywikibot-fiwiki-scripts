@@ -1171,6 +1171,29 @@ def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
     mime_claim.setTarget(mimetype)
     return mime_claim
 
+# add creator (artwork)
+# input: creator q-code
+#
+def addcreatortostatements(pywikibot, wikidata_site, creator):
+    # property ID for "creator" (artwork)
+    cr_claim = pywikibot.Claim(wikidata_site, 'P170')
+    qualifier_targetcr = pywikibot.ItemPage(wikidata_site, creator)
+    cr_claim.setTarget(qualifier_targetcr)
+    return cr_claim
+
+# get creator q-code from wikidata
+# from inverse of creator (Q78522641, instead of P170)
+#def getcreatorfrominversewditem(pywikibot, wikidata_site, wditem):
+
+# add author (written work)
+# input: author q-code
+#def addauthortostatements(pywikibot, wikidata_site, author):
+    # property ID for "author" (writer)
+#    au_claim = pywikibot.Claim(wikidata_site, 'P50')
+#    qualifier_targetau = pywikibot.ItemPage(wikidata_site, author)
+#    au_claim.setTarget(qualifier_targetau)
+#    return au_claim
+
 # note: we need "WbTime" which is not a standard datetime
 def getwbdate(incdate):
     if (incdate.year != 0 and incdate.month != 0 and incdate.day != 0):
@@ -1931,7 +1954,6 @@ def isblockedimage(page):
     if (pagename.find("Sotavirkailija Kari Suomalainen.jpg") >= 0):
         return True
 
-
     # no blocking currently here
     return False
 
@@ -1991,7 +2013,7 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fp = pywikibot.FilePage(commonssite,"File:Helene Schjerfbeck (1862-1946)- The Convalescent - Toipilas - Konvalescenten (32721924996).jpg")
     
     # wikidata Q20771282 accession number A I 36:4
-    fp = pywikibot.FilePage(commonssite, 'File:Magnus von Wright - Katajanokka, luonnos - A I 36-4 - Finnish National Gallery.jpg')
+    #fp = pywikibot.FilePage(commonssite, 'File:Magnus von Wright - Katajanokka, luonnos - A I 36-4 - Finnish National Gallery.jpg')
     
     
     #fp = pywikibot.FilePage(commonssite, 'File:Tuuli-Merikoski-1991.jpg')
@@ -2073,6 +2095,7 @@ d_institutionqcode["Ilomantsin museosäätiö"] = "Q121266098"
 d_institutionqcode["Lapin maakuntamuseo"] = "Q18346675"
 d_institutionqcode["Uudenkaupungin museo"] = "Q58636637"
 d_institutionqcode["Kuopion kulttuurihistoriallinen museo"] = "Q58636575"
+d_institutionqcode["Varkauden museot"] = "Q58636646"
 
 # qcode of collections -> label
 #
@@ -2107,6 +2130,7 @@ d_labeltoqcode["Lauri Sorvojan kokoelma"] = "Q123397451"
 d_labeltoqcode["Matti Tapolan kokoelma"] = "Q123398725"
 d_labeltoqcode["Hannu Lindroosin kokoelma"] = "Q123398791"
 d_labeltoqcode["Helge Heinosen kokoelma"] = "Q123398858"
+d_labeltoqcode["Helge W. Heinosen kokoelma"] = "Q123398858"
 d_labeltoqcode["Valokuvaamo Jäniksen kokoelma"] = "Q123396641"
 
 d_labeltoqcode["Yleisetnografinen kuvakokoelma"] = "Q122414127"
@@ -2173,6 +2197,10 @@ d_labeltoqcode["VSO-kokoelma"] = "Q123989767"
 d_labeltoqcode["Ugin museon valokuvakokoelma"] = "Q123989773"
 d_labeltoqcode["Keijo Laajiston kokoelma"] = "Q123991088"
 d_labeltoqcode["Heikki Innasen kokoelma"] = "Q124061515"
+d_labeltoqcode["Meritalon museon valokuvakokoelma"] = "Q124088603"
+d_labeltoqcode["Artur Faltinin kokoelma"] = "Q124124102"
+d_labeltoqcode["Tapio Kautovaaran kokoelma"] = "Q124157066"
+d_labeltoqcode["Anna-Liisa Nupponen"] = "Q124157465"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -2267,11 +2295,21 @@ commonssite.login()
 
 
 #pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
-#pages = getcatpages(pywikibot, commonssite, "Magnus von Wright")
+#pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
+#pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Ruisrock", 1)
+#pages = getcatpages(pywikibot, commonssite, "Artur Faltin", True)
 
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Hugo Sundström", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Karl Mitterhusen", 0)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Bertel Okkola", 0)
+
+#pages = getcatpages(pywikibot, commonssite, "SA-kuva", True)
+#pages = getcatpages(pywikibot, commonssite, "1952 Summer Olympics swimmers", True)
+
+pages = getcatpages(pywikibot, commonssite, "Politicians of Finland in 1943")
 
 
 cachedb = CachedImageData() 
@@ -2537,6 +2575,7 @@ for page in pages:
         if (commons_image == None):
             print("WARN: Failed to download commons-image: " + page.title() )
             continue
+        print("DEBUG: commons image bands", commons_image.getbands())
         
         commonshash = getimagehash(commons_image)
         
@@ -2561,6 +2600,7 @@ for page in pages:
             if (commons_image == None):
                 print("WARN: Failed to download commons-image: " + page.title() )
                 continue
+            print("DEBUG: commons image bands", commons_image.getbands())
             
             commonshash = getimagehash(commons_image)
             cachedb.addorupdate(commons_image_url, 
@@ -2586,6 +2626,7 @@ for page in pages:
             if (finna_image == None):
                 print("WARN: Failed to download finna-image: " + page.title() )
                 continue
+            print("DEBUG: finna image bands", finna_image.getbands(), finna_image_url)
             
             finnahash = getimagehash(finna_image)
             # same lengths for p and d hash
@@ -2619,6 +2660,7 @@ for page in pages:
                 if (finna_image == None):
                     print("WARN: Failed to download finna-image: " + page.title() )
                     continue
+                print("DEBUG: finna image bands", finna_image.getbands(), finna_image_url)
                     
                 finnahash = getimagehash(finna_image)
                 # same lengths for p and d hash
