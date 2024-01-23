@@ -36,6 +36,9 @@ def quoteFinnaId(finnaid):
     # %25C3%2596TA%2B112 -> undo mangling
     #finnaid = finnaid.replace("%25C3%2596", "%C3%96")
 
+    finnaid = finnaid.replace("å", "%C3%A5")
+
+
     # %252F -> undo mangling
     finnaid = finnaid.replace("%252F", "%2F")
 
@@ -1003,11 +1006,6 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Photographs by Hugo Simberg")
 
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1940s")
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1950s")
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1960s")
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finistère in the 1960s")
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
@@ -1024,8 +1022,10 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Barösund")
 #pages = getcatpages(pywikibot, commonssite, "SA-kuva", True)
 
-pages = getcatpages(pywikibot, commonssite, "1952 Summer Olympics swimmers", True)
+#pages = getcatpages(pywikibot, commonssite, "1952 Summer Olympics swimmers", True)
+#pages = getcatpages(pywikibot, commonssite, "Files from the Finnish Museum of Photography")
 
+pages = getcatpages(pywikibot, commonssite, "Photographs by Hugo Simberg")
 
 
 rowcount = 0
@@ -1146,7 +1146,8 @@ for page in pages:
                         continue
                     if (len(newsourceid) == 0 and len(finnaidAcc) > 0):
                         print("DEBUG: no id found in source, using id from accession: ", finnaidAcc)
-                        newsourceid = finnaidAcc
+                        newsourceid = quoteFinnaId(finnaidAcc)
+                        #newsourceid = finnaidAcc
                     if (len(newsourceid) == 0 and len(finnaAccFromName) > 0 and isFlickrSource == True):
                         print("DEBUG: no id found in source, using id from filename: ", finnaAccFromName)
                         newsourceid = finnaAccFromName

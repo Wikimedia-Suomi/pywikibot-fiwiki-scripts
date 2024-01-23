@@ -80,21 +80,28 @@ def get_finna_record(finnaid, quoteid=True):
     if (finnaid.startswith("fmp.") == True and finnaid.find("%2F") > 0):
         quoteid = False
     # already quoted, don't mangle again
-    if (finnaid.startswith("sls.") == True and finnaid.find("%25") > 0):
+    if (finnaid.startswith("sls.") == True and (finnaid.find("%25") > 0 or finnaid.find("%C3") > 0)):
+        quoteid = False
+    if (finnaid.startswith("fng_simberg.") == True and (finnaid.find("%25") > 0 or finnaid.find("%C3") > 0)):
         quoteid = False
 
     if (finnaid.find("/") > 0):
         quoteid = True
     
     if (quoteid == True):
+        print("DEBUG: quoting id:", finnaid)
         quotedfinnaid = urllib.parse.quote_plus(finnaid)
     else:
         quotedfinnaid = finnaid
+        print("DEBUG: skipping quoting id:", finnaid)
 
     if (quotedfinnaid.find("Ö") > 0):
         quotedfinnaid = quotedfinnaid.replace("Ö", "%C3%96")
         #quotedfinnaid = quotedfinnaid.replace("Ö", "%25C3%2596")
         #quotedfinnaid = urllib.parse.quote_plus(quotedfinnaid)
+
+    if (quotedfinnaid.find("å") > 0):
+        quotedfinnaid = quotedfinnaid.replace("å", "%C3%A5")
 
     if (quotedfinnaid.find("+") > 0):
         quotedfinnaid = quotedfinnaid.replace("+", "%2B")
@@ -2067,6 +2074,8 @@ d_institutionqcode["Sinebrychoffin taidemuseo"] = "Q1393952"
 d_institutionqcode["Tekniikan museo"] = "Q5549583"
 d_institutionqcode["Museokeskus Vapriikki"] = "Q18346706"
 d_institutionqcode["Helsingin kaupunginmuseo"] = "Q2031357"
+#d_institutionqcode["HKM"] = "Q2031357"
+
 d_institutionqcode["Vantaan kaupunginmuseo"] = "Q26723704"
 d_institutionqcode["Keravan museopalvelut"] = "Q121266100"
 d_institutionqcode["Turun museokeskus"] = "Q18346797"
@@ -2083,6 +2092,7 @@ d_institutionqcode["Helsingin yliopistomuseo"] = "Q3329065"
 d_institutionqcode["Suomen Rautatiemuseo"] = "Q1138355"
 d_institutionqcode["Salon historiallinen museo"] = "Q56403058"
 d_institutionqcode["Etelä-Karjalan museo"] = "Q18346681"
+d_institutionqcode["Pohjois-Karjalan museo"] = "Q11888467"
 d_institutionqcode["Kymenlaakson museo"] = "Q18346674"
 d_institutionqcode["Pielisen museo"] = "Q11887930"
 d_institutionqcode["Forssan museo"] = "Q23040125"
@@ -2096,6 +2106,9 @@ d_institutionqcode["Lapin maakuntamuseo"] = "Q18346675"
 d_institutionqcode["Uudenkaupungin museo"] = "Q58636637"
 d_institutionqcode["Kuopion kulttuurihistoriallinen museo"] = "Q58636575"
 d_institutionqcode["Varkauden museot"] = "Q58636646"
+d_institutionqcode["Keski-Suomen museo"] = "Q11871078"
+d_institutionqcode["Postimuseo"] = "Q5492225"
+
 
 # qcode of collections -> label
 #
@@ -2201,6 +2214,15 @@ d_labeltoqcode["Meritalon museon valokuvakokoelma"] = "Q124088603"
 d_labeltoqcode["Artur Faltinin kokoelma"] = "Q124124102"
 d_labeltoqcode["Tapio Kautovaaran kokoelma"] = "Q124157066"
 d_labeltoqcode["Anna-Liisa Nupponen"] = "Q124157465"
+d_labeltoqcode["Urpo Häyrisen kokoelma"] = "Q124254475"
+
+d_labeltoqcode["Yleinen merivartiokokoelma"] = "Q124288898"
+d_labeltoqcode["Postimuseon kokoelmat"] = "Q124288911"
+d_labeltoqcode["Mobilia kuvat"] = "Q124325340"
+d_labeltoqcode["Karjalan Liiton kokoelma"] = "Q124289082"
+d_labeltoqcode["Helsingin kaupunginmuseon kuvakokoelma"] = "Q124299286"
+d_labeltoqcode["HKM Valokuva"] = "Q124299286"
+
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -2218,11 +2240,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency")
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Archaeology in Finland")
-#pages = getcatpages(pywikibot, commonssite, "Category:Painters from Finland", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Winter War", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:Continuation War", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:History of Finland", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:History of Karelia", 2)
@@ -2261,6 +2278,7 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
 
@@ -2281,35 +2299,13 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
 
 
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1960s")
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finistère in the 1960s")
-
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1900s")
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1910s")
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1920s")
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1930s")
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1940s")
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1950s")
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1960s")
-#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1970s")
-
-
 #pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
 #pages = getcatpages(pywikibot, commonssite, "Artur Faltin", True)
 
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Hugo Sundström", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Karl Mitterhusen", 0)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Bertel Okkola", 0)
-
-#pages = getcatpages(pywikibot, commonssite, "SA-kuva", True)
-#pages = getcatpages(pywikibot, commonssite, "1952 Summer Olympics swimmers", True)
-
-pages = getcatpages(pywikibot, commonssite, "Politicians of Finland in 1943")
+pages = getcatpages(pywikibot, commonssite, "Photographs by Hugo Simberg")
 
 
 cachedb = CachedImageData() 
