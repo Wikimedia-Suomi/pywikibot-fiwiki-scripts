@@ -80,7 +80,7 @@ def get_finna_record(finnaid, quoteid=True):
     if (finnaid.startswith("fmp.") == True and finnaid.find("%2F") > 0):
         quoteid = False
     # already quoted, don't mangle again
-    if (finnaid.startswith("sls.") == True and (finnaid.find("%25") > 0 or finnaid.find("%C3") > 0)):
+    if (finnaid.startswith("sls.") == True and finnaid.find("%25") > 0):
         quoteid = False
     if (finnaid.startswith("fng_simberg.") == True and (finnaid.find("%25") > 0 or finnaid.find("%C3") > 0)):
         quoteid = False
@@ -778,9 +778,9 @@ def getqcodefromwikidatalink(target):
     return targetqcode
     
 # parse claims or statements from commons SDC
-def getcollectiontargetqcode(statements, collections):
+def getcollectiontargetqcode(statements, collectionsqcodes):
     if "P195" not in statements:
-        return collections
+        return collectionsqcodes
     
     claimlist = statements["P195"]
     for claim in claimlist:
@@ -792,8 +792,8 @@ def getcollectiontargetqcode(statements, collections):
 
         # no need to add if SDC-data already has a target
         # -> remove from collections to add
-        if (targetqcode in collections):
-            collections.remove(targetqcode)
+        if (targetqcode in collectionsqcodes):
+            collectionsqcodes.remove(targetqcode)
 
         # TODO: finish comparison to wikidata:
         # -might belong to multiple collections -> multiple entries
@@ -809,7 +809,7 @@ def getcollectiontargetqcode(statements, collections):
     #print("final collections are: " + str(collections))
 
     # return list of those to be added
-    return collections
+    return collectionsqcodes
 
 # helper to find publisher information in statements
 def isQcodeInClaimQualifiers(claim, qcode, prop):
@@ -1141,6 +1141,27 @@ def addfinnaidtostatements(pywikibot, wikidata_site, finnaid):
     
     finna_claim.setTarget(finnaunquoted)
     return finna_claim
+
+# check if perceptual hash exists in sdc data
+def isPerceptualHashInSdcData(statements, hashval):
+    if "P9310" not in statements:
+        return False
+
+    claimlist = statements["P9310"]
+    for claim in claimlist:
+        target = claim.getTarget()
+        if (target == hashval):
+            # exact match found: no need to add same hash again
+            return True
+    return True # TEST: just skip if there is value, even if it isn't the same
+    #return False # check, do we add another if hashes have different length/different value?
+
+# set perceptual hash value to sdc data in commons
+def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval):
+    # property ID P9310 for "pHash checksum"
+    p_claim = pywikibot.Claim(wikidata_site, 'P9310')
+    p_claim.setTarget(hashval)
+    return p_claim
 
 # kgtid should be plain number, same as objectId in object data
 def isKansallisgalleriateosInStatements(statements, kgobjectid):
@@ -1806,7 +1827,6 @@ def addKansallisgalleriaIdToSdcData(pywikibot, wikidata_site, commonssite, page,
         if (f_claim != None):
             commonssite.addClaim(wditem, f_claim)
 
-
 def isSupportedCommonsTemplate(template):
     #print("DEBUG commons template: ", template.name)
     name = template.name.lower()
@@ -2025,6 +2045,11 @@ def getpagesfixedlist(pywikibot, commonssite):
     
     #fp = pywikibot.FilePage(commonssite, 'File:Tuuli-Merikoski-1991.jpg')
     #fp = pywikibot.FilePage(commonssite, 'File:Tulppaani nurmialueella Suvilahdessa by Sakari Kiuru 2020.tiff')
+    
+    
+    # TEST: joka-category and phash to sdc data
+    fp = pywikibot.FilePage(commonssite, 'File:Miss-Suomi-1965.jpg')
+    
     pages.append(fp)
     return pages
 
@@ -2050,6 +2075,30 @@ def getfilepage(pywikibot, page):
         print("WARN: failed to retrieve filepage: " + page.title())
 
     return None
+
+# add categories for each collection to the commons-page if they don't yet exist.
+# lookup text by qcode (parsed from finna record)
+#
+def addCategoriesToCommons(pywikibot, page, categories, collectiontocategory):
+    tmptext = page.text
+
+    for catq in categories:
+        if catq in collectiontocategory:
+            cattext = collectiontocategory[catq]
+            
+            if (tmptext.find(cattext) < 0):
+                tmp = "[[Category:" + cattext + "]]\n"
+                if tmptext.endswith("\n"):
+                    tmptext += tmp
+                else:
+                    tmptext += "\n"
+                    tmptext += tmp
+
+    summary='Adding categories'
+    pywikibot.info('Edit summary: {}'.format(summary))
+
+    page.text = tmptext
+    page.save(summary)
 
 
 # ------ main()
@@ -2107,6 +2156,8 @@ d_institutionqcode["Uudenkaupungin museo"] = "Q58636637"
 d_institutionqcode["Kuopion kulttuurihistoriallinen museo"] = "Q58636575"
 d_institutionqcode["Varkauden museot"] = "Q58636646"
 d_institutionqcode["Keski-Suomen museo"] = "Q11871078"
+d_institutionqcode["Nurmeksen museo"] = "Q18661027"
+d_institutionqcode["Lahden museot"] = "Q115322278"
 d_institutionqcode["Postimuseo"] = "Q5492225"
 
 
@@ -2224,6 +2275,12 @@ d_labeltoqcode["Helsingin kaupunginmuseon kuvakokoelma"] = "Q124299286"
 d_labeltoqcode["HKM Valokuva"] = "Q124299286"
 
 
+# collection qcode (after parsing) to commons-category
+#
+d_collectionqtocategory = dict()
+d_collectionqtocategory["Q113292201"] = "JOKA Press Photo Archive"
+
+
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
 
@@ -2265,7 +2322,7 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
-#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
@@ -2303,9 +2360,15 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Artur Faltin", True)
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Hugo Simberg")
 
-pages = getcatpages(pywikibot, commonssite, "Photographs by Hugo Simberg")
+#pages = getcatpages(pywikibot, commonssite, "Mayors of Finland")
+#pages = getcatpages(pywikibot, commonssite, "Aino Sibelius")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Ina Roos")
+
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Merja Wesander")
+
+
 
 
 cachedb = CachedImageData() 
@@ -2525,7 +2588,8 @@ for page in pages:
     collectionqcodes = getCollectionsFromRecord(finna_record, finnaid, d_labeltoqcode)
     if (len(collectionqcodes) == 0):
         print("No collections for: " + finnaid)
-
+    else:
+        print("Collections qcodes found:", str(collectionqcodes))
 
     # TODO: add caption to sdc?
     #finna_title = finna_record['records'][0]['title']
@@ -2834,7 +2898,8 @@ for page in pages:
 
 
     # check SDC and try match with finna list collectionqcodes
-    collectionstoadd = getcollectiontargetqcode(claims, collectionqcodes)
+    # note: give copy to getcollectiontargetqcode() so we can reuse the list
+    collectionstoadd = getcollectiontargetqcode(claims, collectionqcodes.copy())
     if (len(collectionstoadd) > 0):
         print("adding statements for collections: " + str(collectionstoadd))
 
@@ -2855,6 +2920,16 @@ for page in pages:
         commonssite.addClaim(wditem, finna_claim)
     else:
         print("id found, not adding again", finnaid)
+
+    if (isPerceptualHashInSdcData(claims, tpcom['phashval']) == False):
+        print("adding phash to statements for: ", finnaid)
+        hashclaim = addPerceptualHashToSdcData(pywikibot, wikidata_site, tpcom['phashval'])
+        commonssite.addClaim(wditem, hashclaim)
+
+    if (len(collectionqcodes) > 0):
+        print("Adding page categories for: " + finnaid)
+        addCategoriesToCommons(pywikibot, page, collectionqcodes, d_collectionqtocategory)
+
 
     #pywikibot.info('----')
     #pywikibot.showDiff(oldtext, newtext,2)
