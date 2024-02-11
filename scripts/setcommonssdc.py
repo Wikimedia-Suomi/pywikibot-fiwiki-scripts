@@ -1161,7 +1161,84 @@ def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval):
     # property ID P9310 for "pHash checksum"
     p_claim = pywikibot.Claim(wikidata_site, 'P9310')
     p_claim.setTarget(hashval)
+    
+    # determination method: P459
+    # Q104884110 - ImageHash perceptual hash
+    # P348 - software version identifier
+    # P571 - inception
+    # P2048 - height
+    # P2049 - width
+    # hashlen?
+
+    det_quali = pywikibot.Claim(wikidata_site, 'P459')  # determination method
+    qualifier_targetimagehash = pywikibot.ItemPage(wikidata_site, "Q104884110")
+    det_quali.setTarget(qualifier_targetimagehash)
+    p_claim.addSource(det_quali, summary='Adding reference URL qualifier')
+
     return p_claim
+
+# TODO: add missing qualifier to phash property in sdc data
+# for now, just checking if it exists: pywikibot api does not really support this with SDC data
+# -> need another way as usual
+def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval):
+    if "P9310" not in statements:
+        return None
+
+    #matchfound = False
+    claimlist = statements["P9310"]
+    for claim in claimlist:
+        target = claim.getTarget()
+        if (target != hashval):
+            # no match: skip
+            continue
+
+        #print("hashvalue match found", hashval)
+
+        # ok, hash should match, continue checking for qualifiers
+        sourcelist = claim.getSources()
+        for source in sourcelist:
+            for key, value in source.items():
+                if key == "P459":
+                    #print("property for determination method found", value)
+                    for v in value: # v is another claim..
+                        vtarget = v.getTarget()
+                        targetqcode = getqcodefromwikidatalink(vtarget)
+                        #print("target", targetqcode)
+                        if (targetqcode == "Q104884110"):
+                            #matchfound = True
+                            print("found target for ImageHash ", targetqcode ,", hash", hashval)
+                            return None
+    
+        # so, hash match, no qualifier found ->
+        # add missing qualifier
+        #p_claim = pywikibot.Claim(wikidata_site, 'P9310')
+        #qualifier_targetimagehash = pywikibot.ItemPage(wikidata_site, "Q104884110")
+        #claim.setSource(qualifier_targetimagehash)
+        #p_claim.addSource(claim, summary='Adding reference URL qualifier')
+        #return claim
+
+
+    
+    # property ID P9310 for "pHash checksum"
+    #p_claim = pywikibot.Claim(wikidata_site, 'P9310')
+    #p_claim.setTarget(hashval)
+    
+    # determination method: P459
+    # Q104884110 - ImageHash perceptual hash
+    # P348 - software version identifier
+    # P571 - inception
+    # P2048 - height
+    # P2049 - width
+    # hashlen?
+
+    #det_quali = pywikibot.Claim(wikidata_site, 'P459')  # determination method
+    #qualifier_targetimagehash = pywikibot.ItemPage(wikidata_site, "Q104884110")
+    #det_quali.setTarget(qualifier_targetimagehash)
+    #p_claim.addSource(det_quali, summary='Adding reference URL qualifier')
+
+    #return p_claim
+    return None
+
 
 # kgtid should be plain number, same as objectId in object data
 def isKansallisgalleriateosInStatements(statements, kgobjectid):
@@ -1254,6 +1331,10 @@ def addinceptiontosdc(pywikibot, wikidata_site, incdate, sourceurl):
     qualifier_url = pywikibot.Claim(wikidata_site, 'P854')  # property ID for source URL (reference url)
     qualifier_url.setTarget(sourceurl)
     inc_claim.addSource(qualifier_url, summary='Adding reference URL qualifier')
+
+    # also, for earliest/latest date of range?
+    # P1319 - earliest date
+    # P1326 - latest date
     
     return inc_claim
 
@@ -1827,6 +1908,7 @@ def addKansallisgalleriaIdToSdcData(pywikibot, wikidata_site, commonssite, page,
         if (f_claim != None):
             commonssite.addClaim(wditem, f_claim)
 
+
 def isSupportedCommonsTemplate(template):
     #print("DEBUG commons template: ", template.name)
     name = template.name.lower()
@@ -2031,6 +2113,12 @@ def getlinkedpages(pywikibot, commonssite, linkpage):
 
     return pages
 
+# different method to parse links
+#
+#def getdumplistpage(pywikibot, commonssite, linkpage):
+    #listpage = pywikibot.Page(commonssite, linkpage)  # The page you're interested in
+
+
 # simply to aid in debuggimg
 def getpagesfixedlist(pywikibot, commonssite):
     pages = list()
@@ -2048,7 +2136,14 @@ def getpagesfixedlist(pywikibot, commonssite):
     
     
     # TEST: joka-category and phash to sdc data
-    fp = pywikibot.FilePage(commonssite, 'File:Miss-Suomi-1965.jpg')
+    #fp = pywikibot.FilePage(commonssite, 'File:Miss-Suomi-1965.jpg')
+    
+    # TEST: file removed?
+    #fp = pywikibot.FilePage(commonssite, 'File:Satu Pentikäinen 1980.jpg')
+
+    #fp = pywikibot.FilePage(commonssite, 'File:Suomen Euroviisukarsinta 1966.tiff')
+    #fp = pywikibot.FilePage(commonssite, 'File:Acre Kari.tif')
+
     
     pages.append(fp)
     return pages
@@ -2071,8 +2166,14 @@ def doessdcbaseexist(page):
 def getfilepage(pywikibot, page):
     try:
         return pywikibot.FilePage(page)
+        #if (filepage.latest_file_info == None):
+            #print("WARN: no info available for filepage")
+        
+        # see that we can access this: if file has been removed throws exception
+        #file_info = filepage.latest_file_info
+        #return filepage
     except:
-        print("WARN: failed to retrieve filepage: " + page.title())
+        print("ERROR: failed to retrieve filepage: " + page.title())
 
     return None
 
@@ -2082,23 +2183,27 @@ def getfilepage(pywikibot, page):
 def addCategoriesToCommons(pywikibot, page, categories, collectiontocategory):
     tmptext = page.text
 
+    catsadded = False
     for catq in categories:
         if catq in collectiontocategory:
             cattext = collectiontocategory[catq]
             
             if (tmptext.find(cattext) < 0):
-                tmp = "[[Category:" + cattext + "]]\n"
-                if tmptext.endswith("\n"):
-                    tmptext += tmp
-                else:
-                    tmptext += "\n"
-                    tmptext += tmp
+                tmp = "[[Category:" + cattext + "]]"
+                if (tmptext.endswith("\n") == False):
+                    tmptext += "\n" # avoid same line when missing linefeed
+                    
+                tmptext += tmp
+                tmptext += "\n"
+                catsadded = True
 
-    summary='Adding categories'
-    pywikibot.info('Edit summary: {}'.format(summary))
+    if (catsadded == True):
+        summary='Adding categories'
+        pywikibot.info('Edit summary: {}'.format(summary))
 
-    page.text = tmptext
-    page.save(summary)
+        page.text = tmptext
+        page.save(summary)
+    return catsadded
 
 
 # ------ main()
@@ -2279,6 +2384,7 @@ d_labeltoqcode["HKM Valokuva"] = "Q124299286"
 #
 d_collectionqtocategory = dict()
 d_collectionqtocategory["Q113292201"] = "JOKA Press Photo Archive"
+d_collectionqtocategory["Q123508786"] = "Collections of the Finnish Railway Museum"
 
 
 # Accessing wikidata properties and items
@@ -2322,7 +2428,7 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
-pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
@@ -2338,6 +2444,8 @@ pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelma
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
+#pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
+#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 
 # many are from valokuvataiteenmuseo via flickr
 # many from fng via flickr
@@ -2353,22 +2461,12 @@ pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelma
 #pages = getpagesfixedlist(pywikibot, commonssite)
 
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
-
-
 #pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Photographs by Hugo Simberg")
 
-#pages = getcatpages(pywikibot, commonssite, "Mayors of Finland")
-#pages = getcatpages(pywikibot, commonssite, "Aino Sibelius")
-#pages = getcatpages(pywikibot, commonssite, "Photographs by Ina Roos")
-
-#pages = getcatpages(pywikibot, commonssite, "Photographs by Merja Wesander")
-
-
+pages = getpagesrecurse(pywikibot, commonssite, "Euroviisut", 0)
 
 
 cachedb = CachedImageData() 
@@ -2925,10 +3023,20 @@ for page in pages:
         print("adding phash to statements for: ", finnaid)
         hashclaim = addPerceptualHashToSdcData(pywikibot, wikidata_site, tpcom['phashval'])
         commonssite.addClaim(wditem, hashclaim)
+    else:
+        print("testing phash qualifiers for: ", finnaid)
+        checkPerceptualHashInSdcData(pywikibot, wikidata_site, claims, tpcom['phashval'])
+        # pywikibot really does not support this in SDC data
+        # -> need another way as usual
+        #if (phclaim != None):
+        #    commonssite.addClaim(wditem, phclaim)
 
     if (len(collectionqcodes) > 0):
         print("Adding page categories for: " + finnaid)
-        addCategoriesToCommons(pywikibot, page, collectionqcodes, d_collectionqtocategory)
+        if (addCategoriesToCommons(pywikibot, page, collectionqcodes, d_collectionqtocategory) == True):
+            print("Categories added for: " + finnaid)
+        else:
+            print("No categories to add for: " + finnaid)
 
 
     #pywikibot.info('----')
