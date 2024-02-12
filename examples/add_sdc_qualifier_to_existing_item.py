@@ -1,6 +1,7 @@
 mport pywikibot
 
 # Add qualifier to existing item
+# https://www.wikidata.org/wiki/Wikidata:Pywikibot_-_Python_3_Tutorial/Setting_qualifiers
 def add_qualifier(item, claim, qualifier_prop, qualifier_value):
     wikidata_site = pywikibot.Site("wikidata", "wikidata")
     print(f'Adding qualifier: {qualifier_prop} {qualifier_value} to claim value {claim.getTarget()}')
@@ -10,11 +11,8 @@ def add_qualifier(item, claim, qualifier_prop, qualifier_value):
     qualifier_target = pywikibot.ItemPage(wikidata_site, qualifier_value)
     qualifier.setTarget(qualifier_target)
     
-    # Add qualifier to claim
+    # Add qualifier to claim. This already saves the edit.
     claim.addQualifier(qualifier)
-    
-    # Save the changes
-    item.editEntity({'claims': [claim.toJSON()]})
 
 
 # Return False if qualifier with qualifier_value doesn't exits
