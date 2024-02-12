@@ -1,4 +1,4 @@
-mport pywikibot
+import pywikibot
 
 # Add qualifier to existing item
 # https://www.wikidata.org/wiki/Wikidata:Pywikibot_-_Python_3_Tutorial/Setting_qualifiers
