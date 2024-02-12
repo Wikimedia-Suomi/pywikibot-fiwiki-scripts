@@ -16,7 +16,6 @@ def add_qualifier(item, claim, qualifier_prop, qualifier_value):
 
 
 # Return False if qualifier with qualifier_value doesn't exits
-
 def test_if_qualifier_exists(claim, qualifier_prop, qualifier_value):
     if not claim.qualifiers:
         return False
