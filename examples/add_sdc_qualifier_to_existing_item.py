@@ -2,7 +2,7 @@ import pywikibot
 
 # Add qualifier to existing item
 # https://www.wikidata.org/wiki/Wikidata:Pywikibot_-_Python_3_Tutorial/Setting_qualifiers
-def add_qualifier(item, claim, qualifier_prop, qualifier_value):
+def add_qualifier(claim, qualifier_prop, qualifier_value):
     wikidata_site = pywikibot.Site("wikidata", "wikidata")
     print(f'Adding qualifier: {qualifier_prop} {qualifier_value} to claim value {claim.getTarget()}')
     
@@ -55,5 +55,5 @@ for claim in claims:
     if qualifier_exists:
         print(f'Qualifier: {qualifier_prop} : {qualifier_value} already exists.')
     else:
-        add_qualifier(item, claim, qualifier_prop, qualifier_value)
+        add_qualifier(claim, qualifier_prop, qualifier_value)
  
