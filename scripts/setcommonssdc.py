@@ -1142,6 +1142,12 @@ def addfinnaidtostatements(pywikibot, wikidata_site, finnaid):
     finna_claim.setTarget(finnaunquoted)
     return finna_claim
 
+# pywikibot is bugged in handling conversions from standard formats
+# -> brute force it
+def getwbdatefromdt(dt):
+    #return pywikibot.WbTime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+    return pywikibot.WbTime(dt.year, dt.month, dt.day)
+
 # check if perceptual hash exists in sdc data
 def isPerceptualHashInSdcData(statements, hashval):
     if "P9310" not in statements:
@@ -1152,12 +1158,13 @@ def isPerceptualHashInSdcData(statements, hashval):
         target = claim.getTarget()
         if (target == hashval):
             # exact match found: no need to add same hash again
+            print("phash value match found", hashval)
             return True
     return True # TEST: just skip if there is value, even if it isn't the same
     #return False # check, do we add another if hashes have different length/different value?
 
 # set perceptual hash value to sdc data in commons
-def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval):
+def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval, comhashtime):
     # property ID P9310 for "pHash checksum"
     p_claim = pywikibot.Claim(wikidata_site, 'P9310')
     p_claim.setTarget(hashval)
@@ -1175,50 +1182,102 @@ def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval):
     det_quali.setTarget(qualifier_targetimagehash)
     p_claim.addSource(det_quali, summary='Adding reference URL qualifier')
 
+
+    # note: need "WbTime" which is not a standard datetime
+    wbdate = getwbdatefromdt(comhashtime)
+
+    i_claim = pywikibot.Claim(wikidata_site, 'P571') # inception time
+    i_claim.setTarget(wbdate)
+    p_claim.addQualifier(i_claim)
+
     return p_claim
 
 # TODO: add missing qualifier to phash property in sdc data
 # for now, just checking if it exists: pywikibot api does not really support this with SDC data
 # -> need another way as usual
-def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval):
+def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, comhashtime):
     if "P9310" not in statements:
         return None
 
-    #matchfound = False
-    claimlist = statements["P9310"]
+    hashqfound = False
+    hashtimefound = False
+
+    # note: need "WbTime" which is not a standard datetime
+    wbdate = getwbdatefromdt(comhashtime)
+
+    # method for phash: Imagehash perceptual hash 
+    hash_methodqcode = "Q104884110"
+
+    print("checking for phash and value", hashval)
+
+
+    claimlist = statements["P9310"] # pHash checksum
     for claim in claimlist:
         target = claim.getTarget()
         if (target != hashval):
             # no match: skip
             continue
 
-        #print("hashvalue match found", hashval)
+        print("hashvalue match found", hashval)
+        #print("hashvalue sources: ", claim.getSources())
+        #print("hashvalue qualifiers: ", claim.qualifiers)
+
+        hashqfound = isQcodeInClaimQualifiers(claim, hash_methodqcode, "P459")
+
+        if "P571" in claim.qualifiers:
+            hashtimefound = True
+            foiquali = claim.qualifiers[prop]
+            #print("DEBUG: quali:", str(foiquali), "in prop:", prop)
+            for fclaim in foiquali:
+                ftarget = fclaim.getTarget()
+                if (ftarget == wbdate):
+                    print("exact timestamp for phash found")
 
         # ok, hash should match, continue checking for qualifiers
         sourcelist = claim.getSources()
         for source in sourcelist:
             for key, value in source.items():
-                if key == "P459":
-                    #print("property for determination method found", value)
+                if (key == "P459"):
+                    print("property for hash determination method found", value)
                     for v in value: # v is another claim..
                         vtarget = v.getTarget()
                         targetqcode = getqcodefromwikidatalink(vtarget)
-                        #print("target", targetqcode)
-                        if (targetqcode == "Q104884110"):
-                            #matchfound = True
-                            print("found target for ImageHash ", targetqcode ,", hash", hashval)
-                            return None
+                        print("target for image hash: ", targetqcode)
+                        if (targetqcode == hash_methodqcode):
+                            hashqfound = True
+                            print("found target for ImageHash ", targetqcode ,", hash value ", hashval)
+                        else:
+                            print("DEBUG: tq ", targetqcode)
+
+                elif (key == "P571"):
+                    #print("property for hash inception time found", value)
+                    hashtimefound = True
+                    print("found inception for ImageHash")
+                else:
+                    print("DEBUG: key ", key)
     
         # so, hash match, no qualifier found ->
         # add missing qualifier
-        #p_claim = pywikibot.Claim(wikidata_site, 'P9310')
-        #qualifier_targetimagehash = pywikibot.ItemPage(wikidata_site, "Q104884110")
-        #claim.setSource(qualifier_targetimagehash)
-        #p_claim.addSource(claim, summary='Adding reference URL qualifier')
-        #return claim
+        if (hashqfound == False):
+            print("adding imagehash method to phash")
+            p_claim = pywikibot.Claim(wikidata_site, 'P459')
+            q_targetph = pywikibot.ItemPage(wikidata_site, hash_methodqcode)
+            p_claim.setTarget(q_targetph)
+            claim.addQualifier(p_claim)
+            print("added imagehash method to phash")
+        else:
+            print("phash already has imagehash method")
+
+        if (hashtimefound == False):
+            print("NOTE: should add imagehash inception to phash")
+            i_claim = pywikibot.Claim(wikidata_site, 'P571', is_qualifier=True)
+            i_claim.setTarget(wbdate)
+            claim.addQualifier(i_claim)
+            print("added imagehash inception to phash")
+        else:
+            print("phash already has inception time")
 
 
-    
     # property ID P9310 for "pHash checksum"
     #p_claim = pywikibot.Claim(wikidata_site, 'P9310')
     #p_claim.setTarget(hashval)
@@ -2131,18 +2190,12 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fp = pywikibot.FilePage(commonssite, 'File:Magnus von Wright - Katajanokka, luonnos - A I 36-4 - Finnish National Gallery.jpg')
     
     
-    #fp = pywikibot.FilePage(commonssite, 'File:Tuuli-Merikoski-1991.jpg')
     #fp = pywikibot.FilePage(commonssite, 'File:Tulppaani nurmialueella Suvilahdessa by Sakari Kiuru 2020.tiff')
     
-    
-    # TEST: joka-category and phash to sdc data
-    #fp = pywikibot.FilePage(commonssite, 'File:Miss-Suomi-1965.jpg')
     
     # TEST: file removed?
     #fp = pywikibot.FilePage(commonssite, 'File:Satu Pentikäinen 1980.jpg')
 
-    #fp = pywikibot.FilePage(commonssite, 'File:Suomen Euroviisukarsinta 1966.tiff')
-    #fp = pywikibot.FilePage(commonssite, 'File:Acre Kari.tif')
 
     
     pages.append(fp)
@@ -2466,7 +2519,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
 
-pages = getpagesrecurse(pywikibot, commonssite, "Euroviisut", 0)
+pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Merja Wesander", 0)
 
 
 cachedb = CachedImageData() 
@@ -3019,13 +3072,15 @@ for page in pages:
     else:
         print("id found, not adding again", finnaid)
 
+    #comhashtime = tpcom['timestamp'].replace(tzinfo=timezone.utc)
+    comhashtime = tpcom['timestamp']
     if (isPerceptualHashInSdcData(claims, tpcom['phashval']) == False):
         print("adding phash to statements for: ", finnaid)
-        hashclaim = addPerceptualHashToSdcData(pywikibot, wikidata_site, tpcom['phashval'])
+        hashclaim = addPerceptualHashToSdcData(pywikibot, wikidata_site, tpcom['phashval'], comhashtime)
         commonssite.addClaim(wditem, hashclaim)
     else:
         print("testing phash qualifiers for: ", finnaid)
-        checkPerceptualHashInSdcData(pywikibot, wikidata_site, claims, tpcom['phashval'])
+        checkPerceptualHashInSdcData(pywikibot, wikidata_site, claims, tpcom['phashval'], comhashtime)
         # pywikibot really does not support this in SDC data
         # -> need another way as usual
         #if (phclaim != None):
