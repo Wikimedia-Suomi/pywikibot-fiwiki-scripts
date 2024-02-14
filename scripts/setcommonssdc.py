@@ -1210,7 +1210,7 @@ def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, 
 
     print("checking for phash and value", hashval)
 
-
+    # property ID P9310 for "pHash checksum"
     claimlist = statements["P9310"] # pHash checksum
     for claim in claimlist:
         target = claim.getTarget()
@@ -1226,7 +1226,7 @@ def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, 
 
         if "P571" in claim.qualifiers:
             hashtimefound = True
-            foiquali = claim.qualifiers[prop]
+            foiquali = claim.qualifiers["P571"]
             #print("DEBUG: quali:", str(foiquali), "in prop:", prop)
             for fclaim in foiquali:
                 ftarget = fclaim.getTarget()
@@ -1278,10 +1278,6 @@ def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, 
             print("phash already has inception time")
 
 
-    # property ID P9310 for "pHash checksum"
-    #p_claim = pywikibot.Claim(wikidata_site, 'P9310')
-    #p_claim.setTarget(hashval)
-    
     # determination method: P459
     # Q104884110 - ImageHash perceptual hash
     # P348 - software version identifier
@@ -1289,11 +1285,6 @@ def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, 
     # P2048 - height
     # P2049 - width
     # hashlen?
-
-    #det_quali = pywikibot.Claim(wikidata_site, 'P459')  # determination method
-    #qualifier_targetimagehash = pywikibot.ItemPage(wikidata_site, "Q104884110")
-    #det_quali.setTarget(qualifier_targetimagehash)
-    #p_claim.addSource(det_quali, summary='Adding reference URL qualifier')
 
     #return p_claim
     return None
@@ -2481,7 +2472,7 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
-#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
@@ -2518,8 +2509,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
-
-pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Merja Wesander", 0)
 
 
 cachedb = CachedImageData() 
