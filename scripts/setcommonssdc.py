@@ -986,10 +986,12 @@ def checksourceoperatorpublisher(pywikibot, wikidata_site, statements, operatorq
                             source_found = True
                             print("source url found")
 
-        found_operator = isQcodeInClaimQualifiers(claim, operatorqcode, "P137")
-        found_publisher = isQcodeInClaimQualifiers(claim, publisherqcode, "P123")
+        if (len(operatorqcode) > 0):
+            found_operator = isQcodeInClaimQualifiers(claim, operatorqcode, "P137")
+        if (len(publisherqcode) > 0):
+            found_publisher = isQcodeInClaimQualifiers(claim, publisherqcode, "P123")
 
-        if (found_operator == False):
+        if (found_operator == False and len(operatorqcode) > 0):
             print("adding operator to source")
             op_claim = pywikibot.Claim(wikidata_site, 'P459', is_reference=False, is_qualifier=True)
             q_targetop = pywikibot.ItemPage(wikidata_site, operatorqcode)
@@ -999,7 +1001,7 @@ def checksourceoperatorpublisher(pywikibot, wikidata_site, statements, operatorq
         else:
             print("source already has operator")
             
-        if (found_publisher == False):
+        if (found_publisher == False and len(publisherqcode) > 0):
             print("adding publisher to source")
             pub_claim = pywikibot.Claim(wikidata_site, 'P123', is_reference=False, is_qualifier=True)
             q_targetpub = pywikibot.ItemPage(wikidata_site, publisherqcode)
@@ -1009,7 +1011,7 @@ def checksourceoperatorpublisher(pywikibot, wikidata_site, statements, operatorq
         else:
             print("source already has publisher")
 
-        if (source_found == False):
+        if (source_found == False and len(sourceurl) > 0):
             print("NOTE: should add source url")
             u_claim = pywikibot.Claim(wikidata_site, 'P973', is_reference=False, is_qualifier=True)
             u_claim.setTarget(sourceurl)
@@ -2648,7 +2650,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
@@ -2667,7 +2669,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
 # for testing only
-pages = getpagesfixedlist(pywikibot, commonssite)
+#pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 #pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
