@@ -963,20 +963,28 @@ def islicenseinstatements(statements, license):
     return False
 
 # check if 'P275' is missing 'P854' with reference url
-def checklicensesources(statements, license, sourceurl):
+def checklicensesources(pywikibot, wikidata_site, statements, copyrightlicense, sourceurl):
     if "P275" not in statements:
         print("license property not in statements")
         return False
 
+    licqcode = getQcodeForLicense(license)
+    if (licqcode == ""):
+        return None
+
+    #matchfound = False
+    
     # note: there may be more than on license per item (not equal)
     # so check source is under appropriate license..
     claimlist = statements["P275"]    
     for claim in claimlist:
         target = claim.getTarget()
         targetqcode = getqcodefromwikidatalink(target)
-        if (targetqcode != getQcodeForLicense(license)): # not our license
+        if (targetqcode != licqcode): # not our license
             #print("DEBUG: unsupported license: " + targetqcode)
             continue
+
+        #matchfound = isQcodeInClaimQualifiers(claim, licqcode, "P275")
     
         sourcelist = claim.getSources()
         for source in sourcelist:
@@ -1165,6 +1173,10 @@ def isPerceptualHashInSdcData(statements, hashval):
 
 # set perceptual hash value to sdc data in commons
 def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval, comhashtime):
+
+    # note: need "WbTime" which is not a standard datetime
+    wbdate = getwbdatefromdt(comhashtime)
+
     # property ID P9310 for "pHash checksum"
     p_claim = pywikibot.Claim(wikidata_site, 'P9310')
     p_claim.setTarget(hashval)
@@ -1177,16 +1189,12 @@ def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval, comhashtime):
     # P2049 - width
     # hashlen?
 
-    det_quali = pywikibot.Claim(wikidata_site, 'P459')  # determination method
+    det_quali = pywikibot.Claim(wikidata_site, 'P459', is_qualifier=True)  # determination method
     qualifier_targetimagehash = pywikibot.ItemPage(wikidata_site, "Q104884110")
     det_quali.setTarget(qualifier_targetimagehash)
     p_claim.addSource(det_quali, summary='Adding reference URL qualifier')
 
-
-    # note: need "WbTime" which is not a standard datetime
-    wbdate = getwbdatefromdt(comhashtime)
-
-    i_claim = pywikibot.Claim(wikidata_site, 'P571') # inception time
+    i_claim = pywikibot.Claim(wikidata_site, 'P571', is_qualifier=True) # inception time
     i_claim.setTarget(wbdate)
     p_claim.addQualifier(i_claim)
 
@@ -1260,7 +1268,7 @@ def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, 
         # add missing qualifier
         if (hashqfound == False):
             print("adding imagehash method to phash")
-            p_claim = pywikibot.Claim(wikidata_site, 'P459')
+            p_claim = pywikibot.Claim(wikidata_site, 'P459', is_qualifier=True)
             q_targetph = pywikibot.ItemPage(wikidata_site, hash_methodqcode)
             p_claim.setTarget(q_targetph)
             claim.addQualifier(p_claim)
@@ -1873,32 +1881,47 @@ def determineCopyrightStatus(finnarecord):
 # force creating it early so that rest of the operations can work (adding/checking data).
 # otherwise all operations will just fail.
 def fixMissingSdcData(pywikibot, wikidata_site, commonssite, file_info, page):
-    #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
-    # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
-    # repo == site == commonssite
-    if (doessdcbaseexist(page) == False):
-        print("Wikibase item does not yet exist for: " + page.title() )
-        
-        wditem = page.data_item()  # Get the data item associated with the page
-        sdcdata = wditem.get_data_for_new_entity() # get new sdc item
-        
-        ## add something like P1163 (mime-type) to force creation of sdc-data
-        print("adding mime-type: " + str(file_info.mime))
-        mime_claim = addmimetypetosdc(pywikibot, wikidata_site, file_info.mime)
-        commonssite.addClaim(wditem, mime_claim)
-
-        #file_info.mime == 'image/jpeg'
-        #addSdcCaption(commonssite, file_media_identifier, "fi", "testing")
-        
-        # alternate method
-        #addSdcMimetype(commonssite, file_media_identifier, str(file_info.mime))
-
+    try:
+        #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
+        # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
+        # repo == site == commonssite
         if (doessdcbaseexist(page) == False):
-            print("ERROR: Failed adding Wikibase item for: " + page.title() )
-            #exit(1)
-            # failed to create sdc data for some reason and still missing
-            return False
-        #continue
+            print("Wikibase item does not yet exist for: " + page.title() )
+
+            if not 'mediainfo' in page.latest_revision.slots:
+                print("no mediainfo yet? we can fail on page: " + page.title() )
+
+            try:
+                wditem = page.data_item()  # Get the data item associated with the page
+                sdcdata = wditem.get_data_for_new_entity() # get new sdc item
+            except NoWikibaseEntityError as e:
+                print("pywikibot throws pointless exceptions")
+
+            # try it again if the piece of shit sorted itself
+            wditem = page.data_item()  # Get the data item associated with the page
+            sdcdata = wditem.get_data_for_new_entity() # get new sdc item
+            
+            ## add something like P1163 (mime-type) to force creation of sdc-data
+            print("adding mime-type: " + str(file_info.mime))
+            mime_claim = addmimetypetosdc(pywikibot, wikidata_site, file_info.mime)
+            commonssite.addClaim(wditem, mime_claim)
+
+            #file_info.mime == 'image/jpeg'
+            #addSdcCaption(commonssite, file_media_identifier, "fi", "testing")
+            
+            # alternate method
+            #addSdcMimetype(commonssite, file_media_identifier, str(file_info.mime))
+
+            if (doessdcbaseexist(page) == False):
+                print("ERROR: Failed adding Wikibase item for: " + page.title() )
+                #exit(1)
+                # failed to create sdc data for some reason and still missing
+                return False
+            #continue
+        return True
+    except:
+        print("pywikibot failed")
+        return False
     
     # exists alraedy or created successfully -> ok
     return True
@@ -2188,6 +2211,10 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fp = pywikibot.FilePage(commonssite, 'File:Satu Pentikäinen 1980.jpg')
 
 
+
+    fp = pywikibot.FilePage(commonssite, 'File:Vaasan kaupunginlääkäri, taiteenkerääjä ja -lahjoittaja Karl Hedman.tiff')
+
+
     
     pages.append(fp)
     return pages
@@ -2472,7 +2499,7 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
-pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat.fi')
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelmat2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
@@ -2510,6 +2537,8 @@ pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/kuvakokoelma
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
 
+pages = getcatpages(pywikibot, commonssite, "Physicians from Finland")
+ 
 
 cachedb = CachedImageData() 
 cachedb.opencachedb()
@@ -3009,7 +3038,7 @@ for page in pages:
                 print("license added to statements", copyrightlicense)
         #else:
             #print("license found in statements, OK")
-            #if (checklicensesources(claims, copyrightlicense, sourceurl) == False):
+            #checklicensesources(pywikibot, wikidata_site, claims, copyrightlicense, sourceurl)
                 #print("license source not found in statements")
             #else:
                 #print("license source found in statements, OK")
