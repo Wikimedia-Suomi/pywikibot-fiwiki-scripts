@@ -993,7 +993,7 @@ def checksourceoperatorpublisher(pywikibot, wikidata_site, statements, operatorq
 
         if (found_operator == False and len(operatorqcode) > 0):
             print("adding operator to source")
-            op_claim = pywikibot.Claim(wikidata_site, 'P459', is_reference=False, is_qualifier=True)
+            op_claim = pywikibot.Claim(wikidata_site, 'P137', is_reference=False, is_qualifier=True)
             q_targetop = pywikibot.ItemPage(wikidata_site, operatorqcode)
             op_claim.setTarget(q_targetop)
             claim.addQualifier(op_claim)
@@ -2645,12 +2645,12 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
