@@ -907,6 +907,119 @@ def issourceurlinstatements(statements, descurl):
     #print("did not find descurl: " + str(descurl))
     return descFound
 
+# add:
+# - source of file (finna url)
+# - operator ("National Library of Finland")
+# - publisher ("Finnish Heritage Agency")
+def addsourceoperatorpublisher(pywikibot, wikidata_site, operatorqcode, publisherqcode, sourceurl):
+        
+    # P7482 "source of file" 
+    item_internet = pywikibot.ItemPage(wikidata_site, 'Q74228490')  # file available on the internet
+    source_claim = pywikibot.Claim(wikidata_site, "P7482") # property ID for "source of file"
+    source_claim.setTarget(item_internet)
+
+    # P973 "described at URL"
+    qualifier_url = pywikibot.Claim(wikidata_site, 'P973')  # property ID for "described at URL"
+    qualifier_url.setTarget(sourceurl)
+    source_claim.addQualifier(qualifier_url, summary='Adding described at URL qualifier')
+
+    # P137 "operator"
+    if (len(operatorqcode) > 0):
+        qualifier_operator = pywikibot.Claim(wikidata_site, 'P137')  # property ID for "operator"
+        qualifier_targetop = pywikibot.ItemPage(wikidata_site, operatorqcode)  # National Library of Finland (Kansalliskirjasto)
+        qualifier_operator.setTarget(qualifier_targetop)
+        source_claim.addQualifier(qualifier_operator, summary='Adding operator qualifier')
+
+    # P123 "publisher"
+    if (len(publisherqcode) > 0):
+        # Q3029524 Finnish Heritage Agency (Museovirasto)
+        qualifier_publisher = pywikibot.Claim(wikidata_site, 'P123')  # property ID for "publisher"
+        qualifier_targetpub = pywikibot.ItemPage(wikidata_site, publisherqcode)  # Finnish Heritage Agency (Museovirasto)
+        qualifier_publisher.setTarget(qualifier_targetpub)
+        source_claim.addQualifier(qualifier_publisher, summary='Adding publisher qualifier')
+
+    return source_claim
+
+def checksourceoperatorpublisher(pywikibot, wikidata_site, statements, operatorqcode, publisherqcode, sourceurl):
+    if "P7482" not in statements:
+        print("source of file property not in statements")
+        return None
+
+    source_found = False
+    found_operator = False
+    found_publisher = False
+    
+    claimlist = statements["P7482"]    
+    for claim in claimlist:
+        target = claim.getTarget()
+        targetqcode = getqcodefromwikidatalink(target)
+        if (targetqcode != "Q74228490"): # file available on internet
+            #print("not available on internet") # DEBUG
+            continue
+
+        print("file source found")
+        #print(" sources: ", claim.getSources())
+        #print(" qualifiers: ", claim.qualifiers)
+        
+        # "P7482"
+        #  -> "Q74228490"
+        #  -> "P973", url
+
+        # check for url in qualifiers
+        if "P973" in claim.qualifiers:
+            foiquali = claim.qualifiers["P973"]
+            #print("DEBUG: quali:", str(foiquali), "in prop:", prop)
+            for fclaim in foiquali:
+                ftarget = fclaim.getTarget()
+                if (ftarget == sourceurl):
+                    source_found = True
+                    print("exact source url for file found")
+
+    
+        sourcelist = claim.getSources()
+        for source in sourcelist:
+            for key, value in source.items():
+                if key == "P973":
+                    for v in value: # v is another claim..
+                        vtarget = v.getTarget()
+                        if (vtarget == sourceurl):
+                            source_found = True
+                            print("source url found")
+
+        found_operator = isQcodeInClaimQualifiers(claim, operatorqcode, "P137")
+        found_publisher = isQcodeInClaimQualifiers(claim, publisherqcode, "P123")
+
+        if (found_operator == False):
+            print("adding operator to source")
+            op_claim = pywikibot.Claim(wikidata_site, 'P459', is_reference=False, is_qualifier=True)
+            q_targetop = pywikibot.ItemPage(wikidata_site, operatorqcode)
+            op_claim.setTarget(q_targetop)
+            claim.addQualifier(op_claim)
+            print("added operator to source")
+        else:
+            print("source already has operator")
+            
+        if (found_publisher == False):
+            print("adding publisher to source")
+            pub_claim = pywikibot.Claim(wikidata_site, 'P123', is_reference=False, is_qualifier=True)
+            q_targetpub = pywikibot.ItemPage(wikidata_site, publisherqcode)
+            pub_claim.setTarget(q_targetpub)
+            claim.addQualifier(pub_claim)
+            print("added publisher to source")
+        else:
+            print("source already has publisher")
+
+        if (source_found == False):
+            print("NOTE: should add source url")
+            u_claim = pywikibot.Claim(wikidata_site, 'P973', is_reference=False, is_qualifier=True)
+            u_claim.setTarget(sourceurl)
+            claim.addQualifier(u_claim)
+            print("added source url")
+        else:
+            print("already has source url")
+        
+    return None
+
 # check if license from Finna is something
 # that is also supported in Commons
 def isSupportedFinnaLicense(copyrightlicense):
@@ -1250,8 +1363,10 @@ def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, 
         #print("hashvalue sources: ", claim.getSources())
         #print("hashvalue qualifiers: ", claim.qualifiers)
 
+        # check for method of hash
         hashqfound = isQcodeInClaimQualifiers(claim, hash_methodqcode, "P459")
 
+        # check for timestamp of the hash as well
         if "P571" in claim.qualifiers:
             hashtimefound = True
             foiquali = claim.qualifiers["P571"]
@@ -2233,7 +2348,9 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fp = pywikibot.FilePage(commonssite, 'File:Vaasan kaupunginlääkäri, taiteenkerääjä ja -lahjoittaja Karl Hedman.tiff')
 
     #fp = pywikibot.FilePage(commonssite, 'File:Veikko Vennamo-1970s.jpg')
-    fp = pywikibot.FilePage(commonssite, 'File:Tiny ticket sale kiosk in Seurasaari, Helsinki, Finland, 2023 July.jpg')
+    #fp = pywikibot.FilePage(commonssite, 'File:Tiny ticket sale kiosk in Seurasaari, Helsinki, Finland, 2023 July.jpg')
+
+    fp = pywikibot.FilePage(commonssite, "File:'Kauppakartano' mall in Korso, Vantaa, Finland, 2022.jpg")
 
 
     
@@ -2557,6 +2674,7 @@ pages = getpagesfixedlist(pywikibot, commonssite)
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
+#pages = getcatpages(pywikibot, commonssite, "Atelier Apollo")
 
 
 cachedb = CachedImageData() 
@@ -2967,76 +3085,14 @@ for page in pages:
     # or we get failure if we try to omit existing information
     #
     if claimsForSource == False or (operatorFound == False and descFound == False):
-        # P7482 "source of file" 
-        item_internet = pywikibot.ItemPage(wikidata_site, 'Q74228490')  # file available on the internet
-        source_claim = pywikibot.Claim(wikidata_site, "P7482") # property ID for "source of file"
-        source_claim.setTarget(item_internet)
-
-        # P973 "described at URL"
-        qualifier_url = pywikibot.Claim(wikidata_site, 'P973')  # property ID for "described at URL"
-        qualifier_url.setTarget(sourceurl)
-        source_claim.addQualifier(qualifier_url, summary='Adding described at URL qualifier')
-
-        # P137 "operator"
-        if (len(operatorqcode) > 0):
-            qualifier_operator = pywikibot.Claim(wikidata_site, 'P137')  # property ID for "operator"
-            qualifier_targetop = pywikibot.ItemPage(wikidata_site, operatorqcode)  # National Library of Finland (Kansalliskirjasto)
-            qualifier_operator.setTarget(qualifier_targetop)
-            source_claim.addQualifier(qualifier_operator, summary='Adding operator qualifier')
-
-        # P123 "publisher"
-        if (len(publisherqcode) > 0):
-            # Q3029524 Finnish Heritage Agency (Museovirasto)
-            qualifier_publisher = pywikibot.Claim(wikidata_site, 'P123')  # property ID for "publisher"
-            qualifier_targetpub = pywikibot.ItemPage(wikidata_site, publisherqcode)  # Finnish Heritage Agency (Museovirasto)
-            qualifier_publisher.setTarget(qualifier_targetpub)
-            source_claim.addQualifier(qualifier_publisher, summary='Adding publisher qualifier')
-
-        commonssite.addClaim(wditem, source_claim)
+        source_claim = addsourceoperatorpublisher(pywikibot, wikidata_site, operatorqcode, publisherqcode, sourceurl)
+        if (source_claim != None):
+            commonssite.addClaim(wditem, source_claim)
+            print("added source")
 
     if claimsForSource == True:
         print("DEBUG: should add to existing")
-        #print("DEBUG: json:", inc_claim.toJSON())
-        
-        #wdrepo = wikidata_site.data_repository()
-
-        #item_internet = pywikibot.ItemPage(wdrepo, 'Q74228490')  # file available on the internet
-        #item_internet.get()
-        
-        #print("DEBUG: adding to existing, item found", str(item_internet))
-        #claims_source = item_internet.claims['P7482']  # property ID for "source of file"
-        #claim = claims_source[0]
-        
-        #print("DEBUG: adding to existing, item found", str(item_internet))
-        #claims_desc = item_internet.claims['P973']  # property ID for "described at URL"
-        #claim = claims_desc[0]
-
-        #claim = wditem.claims["P7482"]
-        
-        #print("DEBUG: adding to existing, claim found", str(claim))
-        #if operatorFound == False:
-            #claims_operator = item_internet.claims['P137']
-            #qualifier_op = pywikibot.Claim(wdrepo, 'P137')
-            #qualifier_target = pywikibot.ItemPage(wdrepo, operatorqcode) 
-            #qualifier_op.setTarget(qualifier_target)            
-            #claim.addQualifier(qualifier_op)
-            #print("DEBUG: added operator", operatorqcode)
-
-        #if publisherFound == False:
-            #claims_publisher = item_internet.claims['P123']
-            #qualifier_pub = pywikibot.Claim(wdrepo, 'P123')
-            #qualifier_target = pywikibot.ItemPage(wdrepo, publisherqcode) 
-            #qualifier_pub.setTarget(qualifier_target)            
-            #claim.addQualifier(qualifier_pub)
-
-            #qualifier = pywikibot.Claim(wdrepo, 'P123')
-            #qualifier.setTarget(publisherqcode)
-            #claim.addQualifier(qualifier)
-            #print("DEBUG: added published", publisherqcode)
-
-        #print("DEBUG: added, editing entity")
-        #wdrepo.editEntity({'claims': [claim.toJSON()]})
-        #print("DEBUG: added, entity edited")
+        checksourceoperatorpublisher(pywikibot, wikidata_site, claims, operatorqcode, publisherqcode, sourceurl)
 
     # Test copyright (old field: rights, but request has imageRights?)
     # imageRights = finna_record['records'][0]['imageRights']
