@@ -966,13 +966,13 @@ def islicenseinstatements(statements, license):
 def checklicensesources(pywikibot, wikidata_site, statements, copyrightlicense, sourceurl):
     if "P275" not in statements:
         print("license property not in statements")
-        return False
+        return None
 
-    licqcode = getQcodeForLicense(license)
+    licqcode = getQcodeForLicense(copyrightlicense)
     if (licqcode == ""):
         return None
 
-    #matchfound = False
+    matchfound = False
     
     # note: there may be more than on license per item (not equal)
     # so check source is under appropriate license..
@@ -984,7 +984,18 @@ def checklicensesources(pywikibot, wikidata_site, statements, copyrightlicense, 
             #print("DEBUG: unsupported license: " + targetqcode)
             continue
 
-        #matchfound = isQcodeInClaimQualifiers(claim, licqcode, "P275")
+        print("license qcode found", licqcode)
+
+        # check for url in qualifiers
+        if "P854" in claim.qualifiers:
+            foiquali = claim.qualifiers["P854"]
+            #print("DEBUG: quali:", str(foiquali), "in prop:", prop)
+            for fclaim in foiquali:
+                ftarget = fclaim.getTarget()
+                if (ftarget == sourceurl):
+                    matchfound = True
+                    print("exact source url for license found")
+
     
         sourcelist = claim.getSources()
         for source in sourcelist:
@@ -995,9 +1006,17 @@ def checklicensesources(pywikibot, wikidata_site, statements, copyrightlicense, 
                         if (vtarget == sourceurl):
                             matchfound = True
                             print("license source found")
-                            return True
-        print("license source not found, url: " + sourceurl)
-    return False
+
+        if (matchfound == False):
+            print("NOTE: should add source url to license")
+            u_claim = pywikibot.Claim(wikidata_site, 'P854', is_reference=True, is_qualifier=False)
+            u_claim.setTarget(sourceurl)
+            claim.addSource(u_claim)
+            print("added source url to license")
+        else:
+            print("license already has source url")
+        
+    return None
 
 #P275, license
 #P854, sourceurl
@@ -1192,7 +1211,8 @@ def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval, comhashtime):
     det_quali = pywikibot.Claim(wikidata_site, 'P459', is_qualifier=True)  # determination method
     qualifier_targetimagehash = pywikibot.ItemPage(wikidata_site, "Q104884110")
     det_quali.setTarget(qualifier_targetimagehash)
-    p_claim.addSource(det_quali, summary='Adding reference URL qualifier')
+    #p_claim.addSource(det_quali, summary='Adding reference URL qualifier')
+    p_claim.addQualifier(det_quali, summary='Adding reference URL qualifier')
 
     i_claim = pywikibot.Claim(wikidata_site, 'P571', is_qualifier=True) # inception time
     i_claim.setTarget(wbdate)
@@ -1268,7 +1288,7 @@ def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, 
         # add missing qualifier
         if (hashqfound == False):
             print("adding imagehash method to phash")
-            p_claim = pywikibot.Claim(wikidata_site, 'P459', is_qualifier=True)
+            p_claim = pywikibot.Claim(wikidata_site, 'P459', is_reference=False, is_qualifier=True)
             q_targetph = pywikibot.ItemPage(wikidata_site, hash_methodqcode)
             p_claim.setTarget(q_targetph)
             claim.addQualifier(p_claim)
@@ -1278,7 +1298,7 @@ def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, 
 
         if (hashtimefound == False):
             print("NOTE: should add imagehash inception to phash")
-            i_claim = pywikibot.Claim(wikidata_site, 'P571', is_qualifier=True)
+            i_claim = pywikibot.Claim(wikidata_site, 'P571', is_reference=False, is_qualifier=True)
             i_claim.setTarget(wbdate)
             claim.addQualifier(i_claim)
             print("added imagehash inception to phash")
@@ -2210,9 +2230,10 @@ def getpagesfixedlist(pywikibot, commonssite):
     # TEST: file removed?
     #fp = pywikibot.FilePage(commonssite, 'File:Satu Pentikäinen 1980.jpg')
 
+    #fp = pywikibot.FilePage(commonssite, 'File:Vaasan kaupunginlääkäri, taiteenkerääjä ja -lahjoittaja Karl Hedman.tiff')
 
-
-    fp = pywikibot.FilePage(commonssite, 'File:Vaasan kaupunginlääkäri, taiteenkerääjä ja -lahjoittaja Karl Hedman.tiff')
+    #fp = pywikibot.FilePage(commonssite, 'File:Veikko Vennamo-1970s.jpg')
+    fp = pywikibot.FilePage(commonssite, 'File:Tiny ticket sale kiosk in Seurasaari, Helsinki, Finland, 2023 July.jpg')
 
 
     
@@ -2529,7 +2550,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
 # for testing only
-#pages = getpagesfixedlist(pywikibot, commonssite)
+pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 #pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
@@ -2537,8 +2558,6 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
 
-pages = getcatpages(pywikibot, commonssite, "Physicians from Finland")
- 
 
 cachedb = CachedImageData() 
 cachedb.opencachedb()
@@ -3036,12 +3055,9 @@ for page in pages:
             if (lic_claim != None):
                 commonssite.addClaim(wditem, lic_claim)
                 print("license added to statements", copyrightlicense)
-        #else:
-            #print("license found in statements, OK")
-            #checklicensesources(pywikibot, wikidata_site, claims, copyrightlicense, sourceurl)
-                #print("license source not found in statements")
-            #else:
-                #print("license source found in statements, OK")
+        else:
+            print("testing license sources for: ", finnaid)
+            checklicensesources(pywikibot, wikidata_site, claims, copyrightlicense, sourceurl)
                 
         statusqcode = determineCopyrightStatus(finna_record)
         if (statusqcode != ""):
@@ -3099,10 +3115,6 @@ for page in pages:
     else:
         print("testing phash qualifiers for: ", finnaid)
         checkPerceptualHashInSdcData(pywikibot, wikidata_site, claims, tpcom['phashval'], comhashtime)
-        # pywikibot really does not support this in SDC data
-        # -> need another way as usual
-        #if (phclaim != None):
-        #    commonssite.addClaim(wditem, phclaim)
 
     if (len(collectionqcodes) > 0):
         print("Adding page categories for: " + finnaid)
