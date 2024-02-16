@@ -2028,20 +2028,13 @@ def fixMissingSdcData(pywikibot, wikidata_site, commonssite, file_info, page):
             if not 'mediainfo' in page.latest_revision.slots:
                 print("no mediainfo yet? we can fail on page: " + page.title() )
 
-            try:
-                wditem = page.data_item()  # Get the data item associated with the page
-                sdcdata = wditem.get_data_for_new_entity() # get new sdc item
-            except NoWikibaseEntityError as e:
-                print("pywikibot throws pointless exceptions")
-
-            # try it again if the piece of shit sorted itself
             wditem = page.data_item()  # Get the data item associated with the page
             sdcdata = wditem.get_data_for_new_entity() # get new sdc item
-            
+
             ## add something like P1163 (mime-type) to force creation of sdc-data
             print("adding mime-type: " + str(file_info.mime))
             mime_claim = addmimetypetosdc(pywikibot, wikidata_site, file_info.mime)
-            commonssite.addClaim(wditem, mime_claim)
+            wditem.addClaim(mime_claim)
 
             #file_info.mime == 'image/jpeg'
             #addSdcCaption(commonssite, file_media_identifier, "fi", "testing")
@@ -2491,10 +2484,8 @@ d_labeltoqcode["Rakennushistorian kuvakokoelma"] = "Q123308774"
 d_labeltoqcode["Lentokuva Hannu Vallaksen kokoelma"] = "Q123311165"
 d_labeltoqcode["Antellin kokoelmat"] = "Q123313922"
 d_labeltoqcode["Antellin kokoelma"] = "Q123313922"
-
 d_labeltoqcode["Scan-Foton ilmakuvakokoelma"] = "Q123458587"
 d_labeltoqcode["Scan-Foto"] = "Q123458587"
-
 d_labeltoqcode["Börje Sandbergin kokoelma"] = "Q123357635"
 d_labeltoqcode["Enckellin kokoelma"] = "Q123357692"
 d_labeltoqcode["Karjalaisen osakunnan kokoelma"] = "Q123357711"
@@ -2512,7 +2503,6 @@ d_labeltoqcode["Hannu Lindroosin kokoelma"] = "Q123398791"
 d_labeltoqcode["Helge Heinosen kokoelma"] = "Q123398858"
 d_labeltoqcode["Helge W. Heinosen kokoelma"] = "Q123398858"
 d_labeltoqcode["Valokuvaamo Jäniksen kokoelma"] = "Q123396641"
-
 d_labeltoqcode["Yleisetnografinen kuvakokoelma"] = "Q122414127"
 d_labeltoqcode["Suomalais-ugrilainen kuvakokoelma"] = "Q123358672"
 d_labeltoqcode["Fazerin konserttitoimiston kokoelma"] = "Q123378084"
@@ -2526,7 +2516,6 @@ d_labeltoqcode["Sari Gustafssonin kokoelma"] = "Q123458004"
 d_labeltoqcode["Jukka Kuusiston kokoelma"] = "Q123458213"
 d_labeltoqcode["Veijo Laineen kokoelma"] = "Q123458458"
 d_labeltoqcode["Atte Matilaisen kokoelma"] = "Q123531731"
-
 d_labeltoqcode["Otava"] = "Q123502566"
 d_labeltoqcode["Otavamedia"] = "Q123502645"
 d_labeltoqcode["Kaleva"] = "Q123508471"
@@ -2543,7 +2532,6 @@ d_labeltoqcode["Satakunnan Kansan kuva-arkisto"] = "Q123508726"
 d_labeltoqcode["Suomen Lähetysseura ry:n kuvakokoelma"] = "Q123508491"
 d_labeltoqcode["Hyvinkään kaupunginmuseon kokoelma"] = "Q123508767"
 d_labeltoqcode["Hyvinkään kaupunginmuseon valokuvakokoelma"] = "Q123508767"
-
 d_labeltoqcode["Sote-kokoelma"] = "Q123508776"
 d_labeltoqcode["VR:n kuvakokoelma"] = "Q123508783"
 d_labeltoqcode["Suomen Rautatiemuseon kuvakokoelma"] = "Q123508786"
@@ -2553,7 +2541,6 @@ d_labeltoqcode["I K Inha"] = "Q123555486"
 d_labeltoqcode["Collianderin kokoelma"] = "Q123694615"
 d_labeltoqcode["Heikki Y. Rissasen kokoelma"] = "Q123699187"
 d_labeltoqcode["Jaakko Julkusen kokoelma"] = "Q123746517"
-
 d_labeltoqcode["Wiipuri-kokoelma"] = "Q123523357"
 d_labeltoqcode["Wiipuri-museon kokoelma"] = "Q123523357"
 d_labeltoqcode["Kulutusosuuskuntien Keskusliitto"] = "Q123555033"
@@ -2582,7 +2569,6 @@ d_labeltoqcode["Artur Faltinin kokoelma"] = "Q124124102"
 d_labeltoqcode["Tapio Kautovaaran kokoelma"] = "Q124157066"
 d_labeltoqcode["Anna-Liisa Nupponen"] = "Q124157465"
 d_labeltoqcode["Urpo Häyrisen kokoelma"] = "Q124254475"
-
 d_labeltoqcode["Yleinen merivartiokokoelma"] = "Q124288898"
 d_labeltoqcode["Postimuseon kokoelmat"] = "Q124288911"
 d_labeltoqcode["Mobilia kuvat"] = "Q124325340"
@@ -2645,7 +2631,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
@@ -2676,7 +2662,8 @@ pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1'
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
-#pages = getcatpages(pywikibot, commonssite, "Atelier Apollo")
+
+pages = getcatpages(pywikibot, commonssite, "Atelier Aune")
 
 
 cachedb = CachedImageData() 
