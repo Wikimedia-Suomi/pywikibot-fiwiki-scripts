@@ -2654,35 +2654,20 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
-#pages = getcatpages(pywikibot, commonssite, "Professors of University of Helsinki", True)
-#pages = getcatpages(pywikibot, commonssite, "Archaeologists from Finland", True)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency")
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
-
 #pages = getcatpages(pywikibot, commonssite, "Category:History of Finland", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:History of Karelia", 2)
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
-#pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", True)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Fortresses in Finland", 4)
-
+pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in World War II", 3)
-#pages = getcatpages(pywikibot, commonssite, "Category:Vyborg in the 1930s")
-#pages = getcatpages(pywikibot, commonssite, "Category:Historical images of Vyborg")
-
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Vivica Bandler")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Society of Swedish Literature in Finland", 2)
-
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filelist2')
@@ -2714,9 +2699,7 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 3)
 #pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
-#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 
 # many are from valokuvataiteenmuseo via flickr
 # many from fng via flickr
@@ -2731,16 +2714,11 @@ commonssite.login()
 # for testing only
 #pages = getpagesfixedlist(pywikibot, commonssite)
 
-
 #pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
-
-pages = getpagesrecurse(pywikibot, commonssite, "Riitta Väisänen", 0)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Seppo Konstig", 1)
 
 
 
@@ -2971,46 +2949,8 @@ for page in pages:
     
     print("finna record ok: " + finnaid)
     
-    # note: if there are no collections, don't remove from commons as they may have manual additions
-    collectionqcodes = getCollectionsFromRecord(finna_record, finnaid, d_labeltoqcode)
-    if (len(collectionqcodes) == 0):
-        print("No collections for: " + finnaid)
-    else:
-        print("Collections qcodes found:", str(collectionqcodes))
-
-    # TODO: add caption to sdc?
-    #finna_title = finna_record['records'][0]['title']
-    #addSdcCaption(commonssite, file_media_identifier, "fi", finna_title)
-
-    publisherqcode = getqcodeforfinnapublisher(finna_record, d_institutionqcode)
-    if (len(publisherqcode) == 0):
-        print("WARN: failed to find a publisher in finna for: " + finnaid)
-    else:
-        print("found publisher " + publisherqcode + " in finna for: " + finnaid)
-        if (ispublisherinstatements(claims, publisherqcode) == False):
-            print("publisher " + publisherqcode + " not found in commons for: " + finnaid)
-        else:
-            print("publisher " + publisherqcode + " found in commons for: " + finnaid)
-
-    # TODO: get operator by url domain instead?
-    # if domain is kansallisgalleria -> no finna API available
-    operatorqcode = getqcodeforfinnaoperator(finna_record)
-    if (len(operatorqcode) == 0):
-        print("WARN: failed to find a operator qcode for: " + finnaid)
-
-    # use helper to check that it is correctly formed
-    imagesExtended = getImagesExtended(finna_record)
-    if (imagesExtended == None):
-        print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
-        continue
-
     # TODO! Python throws error if image is larger than 178956970 pixels
     # so we can't handle really large images. Check for those and skip them..
-
-    # 'images' can have array of multiple images, need to select correct one
-    # -> loop through them (they should have just different &index= in them)
-    # and compare with the image in commons
-    imageList = finna_record['records'][0]['images']
 
     # try to find from cache first
     commons_image_url = filepage.get_file_url()
@@ -3059,6 +2999,25 @@ for page in pages:
     if (tpcom['url'] != commons_image_url):
         print("ERROR: commons url mismatch for: " + page.title() )
         exit(1)
+
+    if (isPerceptualHashInSdcData(claims, tpcom['phashval']) == False):
+        print("adding phash to statements for: ", finnaid)
+        hashclaim = addPerceptualHashToSdcData(pywikibot, wikidata_site, tpcom['phashval'], tpcom['timestamp'])
+        commonssite.addClaim(wditem, hashclaim)
+    else:
+        print("testing phash qualifiers for: ", finnaid)
+        checkPerceptualHashInSdcData(pywikibot, wikidata_site, claims, tpcom['phashval'], tpcom['timestamp'])
+
+    # use helper to check that it is correctly formed
+    imagesExtended = getImagesExtended(finna_record)
+    if (imagesExtended == None):
+        print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
+        continue
+
+    # 'images' can have array of multiple images, need to select correct one
+    # -> loop through them (they should have just different &index= in them)
+    # and compare with the image in commons
+    imageList = finna_record['records'][0]['images']
 
     match_found = False
     if (len(imageList) == 1):
@@ -3132,6 +3091,33 @@ for page in pages:
     if (match_found == False):
         print("No matching image found, skipping: " + finnaid)
         continue
+
+    # note: if there are no collections, don't remove from commons as they may have manual additions
+    collectionqcodes = getCollectionsFromRecord(finna_record, finnaid, d_labeltoqcode)
+    if (len(collectionqcodes) == 0):
+        print("No collections for: " + finnaid)
+    else:
+        print("Collections qcodes found:", str(collectionqcodes))
+
+    # TODO: add caption to sdc?
+    #finna_title = finna_record['records'][0]['title']
+    #addSdcCaption(commonssite, file_media_identifier, "fi", finna_title)
+
+    publisherqcode = getqcodeforfinnapublisher(finna_record, d_institutionqcode)
+    if (len(publisherqcode) == 0):
+        print("WARN: failed to find a publisher in finna for: " + finnaid)
+    else:
+        print("found publisher " + publisherqcode + " in finna for: " + finnaid)
+        if (ispublisherinstatements(claims, publisherqcode) == False):
+            print("publisher " + publisherqcode + " not found in commons for: " + finnaid)
+        else:
+            print("publisher " + publisherqcode + " found in commons for: " + finnaid)
+
+    # TODO: get operator by url domain instead?
+    # if domain is kansallisgalleria -> no finna API available
+    operatorqcode = getqcodeforfinnaoperator(finna_record)
+    if (len(operatorqcode) == 0):
+        print("WARN: failed to find a operator qcode for: " + finnaid)
 
     claimsForSource = False
     operatorFound = False
@@ -3242,16 +3228,6 @@ for page in pages:
         commonssite.addClaim(wditem, finna_claim)
     else:
         print("id found, not adding again", finnaid)
-
-    #comhashtime = tpcom['timestamp'].replace(tzinfo=timezone.utc)
-    comhashtime = tpcom['timestamp']
-    if (isPerceptualHashInSdcData(claims, tpcom['phashval']) == False):
-        print("adding phash to statements for: ", finnaid)
-        hashclaim = addPerceptualHashToSdcData(pywikibot, wikidata_site, tpcom['phashval'], comhashtime)
-        commonssite.addClaim(wditem, hashclaim)
-    else:
-        print("testing phash qualifiers for: ", finnaid)
-        checkPerceptualHashInSdcData(pywikibot, wikidata_site, claims, tpcom['phashval'], comhashtime)
 
     if (len(collectionqcodes) > 0):
         print("Adding page categories for: " + finnaid)
