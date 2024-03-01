@@ -2738,7 +2738,7 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Ilmari Raekallio", 0)
+pages = getpagesrecurse(pywikibot, commonssite, "Riitta Väisänen", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Seppo Konstig", 1)
 
@@ -2791,13 +2791,13 @@ for page in pages:
         print("unsupported mime-type: ", strmime, "page:", page.title())
         continue
 
-    print("media id ", str(filepage.pageid) ," has latest change in commons: ", filepage.latest_file_info.timestamp.isoformat())
+    print("media id ", str(filepage.pageid) ," has latest change in commons: ", filepage.latest_file_info.timestamp.isoformat(), " revision change: ", filepage.latest_revision.timestamp.isoformat())
 
     # check when we have processed this 
     cached_info = micache.findfromcache(filepage.pageid)
     if (cached_info != None):
         print("media id ", str(filepage.pageid) ," has cached change : ", cached_info['timestamp'].isoformat())
-        if (filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['timestamp'].replace(tzinfo=timezone.utc)):
+        if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['timestamp'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['timestamp'].isoformat() ," page ", page.title())
             continue
 
@@ -3261,7 +3261,7 @@ for page in pages:
 
     # cache that we have recently processed this page successfully:
     # this isn't perfect but should speed up things a bit due to data transfer latency
-    micache.addorupdate(filepage.pageid, datetime.now())
+    micache.addorupdate(filepage.pageid, datetime.now(timezone.utc))
 
     #pywikibot.info('----')
     #pywikibot.showDiff(oldtext, newtext,2)
