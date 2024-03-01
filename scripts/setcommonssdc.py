@@ -292,6 +292,62 @@ class CachedImageData:
 
 # ----- /CachedImageData
 
+# ----- CachedMediainfo
+# cache some media info from Commons
+class CachedMediainfo:
+    def opencachedb(self):
+        # created if it doesn't yet exist
+        self.conn = sqlite3.connect("pwbmediainfocache.db")
+        cur = self.conn.cursor()
+        cur.execute("CREATE TABLE IF NOT EXISTS mediainfocache(mediaid, timestamp)")
+
+    def addtocache(self, mediaid, ts):
+
+        sqlq = "INSERT INTO mediainfocache(mediaid, timestamp) VALUES ('"+ mediaid + "', '" + ts.isoformat() + "')"
+
+        cur = self.conn.cursor()
+        cur.execute(sqlq)
+        self.conn.commit()
+
+    def updatecache(self, mediaid, ts):
+
+        sqlq = "UPDATE mediainfocache SET timestamp = '" + ts.isoformat() + "' WHERE mediaid = '" + mediaid + "'"
+
+        cur = self.conn.cursor()
+        cur.execute(sqlq)
+        self.conn.commit()
+
+    def findfromcache(self, mediaid):
+        sqlq = "SELECT mediaid, timestamp FROM mediainfocache WHERE mediaid = '" + mediaid + "'"
+        
+        cur = self.conn.cursor()
+        res = cur.execute(sqlq)
+        rset = res.fetchall()
+        
+        #if (len(rset) == 0):
+            #return None
+        if (len(rset) > 1):
+            # too many found
+            return None
+        for row in rset:
+            #print(row)
+            dt = dict()
+            dt['mediaid'] = row[0]
+            dt['timestamp'] = datetime.fromisoformat(row[1])
+            #print(dt)
+            return dt
+
+        return None
+
+    def addorupdate(self, mediaid, ts):
+        tp = self.findfromcache(url)
+        if (tp == None):
+            self.addtocache(mediaid, ts)
+        else:
+            self.updatecache(mediaid, ts)
+
+# ----- /CachedMediainfo
+
 # -------- CachedFngData
 class CachedFngData:
     def opencachedb(self):
@@ -1877,6 +1933,8 @@ def getqcodeforfinnapublisher(finnarecord, institutionqcode):
         finnainstitutions = records['institutions'][0]
         print("found institution in finna record: " + str(finnainstitutions))
 
+    # TODO: might need to check both "value" and "translated" for correct name?
+
     for key, val in finnainstitutions.items():
         #print("val is: " + val)
         if val in institutionqcode:
@@ -2528,6 +2586,7 @@ d_labeltoqcode["Uusi Suomi"] = "Q123508540"
 d_labeltoqcode["Uusi Suomi − Iltalehti"] = "Q123508540"
 d_labeltoqcode["Östnyland"] = "Q123508541"
 d_labeltoqcode["Östnyland Borgåbladet"] = "Q123508541"
+d_labeltoqcode["Västra Nyland"] = "Q124670813"
 d_labeltoqcode["Satakunnan Kansan kuva-arkisto"] = "Q123508726"
 d_labeltoqcode["Suomen Lähetysseura ry:n kuvakokoelma"] = "Q123508491"
 d_labeltoqcode["Hyvinkään kaupunginmuseon kokoelma"] = "Q123508767"
@@ -2569,12 +2628,14 @@ d_labeltoqcode["Artur Faltinin kokoelma"] = "Q124124102"
 d_labeltoqcode["Tapio Kautovaaran kokoelma"] = "Q124157066"
 d_labeltoqcode["Anna-Liisa Nupponen"] = "Q124157465"
 d_labeltoqcode["Urpo Häyrisen kokoelma"] = "Q124254475"
+d_labeltoqcode["Yrjö Yli-Vakkurin kokoelma"] = "Q124608095"
 d_labeltoqcode["Yleinen merivartiokokoelma"] = "Q124288898"
 d_labeltoqcode["Postimuseon kokoelmat"] = "Q124288911"
 d_labeltoqcode["Mobilia kuvat"] = "Q124325340"
 d_labeltoqcode["Karjalan Liiton kokoelma"] = "Q124289082"
 d_labeltoqcode["Helsingin kaupunginmuseon kuvakokoelma"] = "Q124299286"
 d_labeltoqcode["HKM Valokuva"] = "Q124299286"
+d_labeltoqcode["Vilho Uomalan kokoelma"] = "Q124672017"
 
 
 # collection qcode (after parsing) to commons-category
@@ -2630,11 +2691,24 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
+## TEST
+#pages = list()
 
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp5')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp6')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp7')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp8')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp9')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp10')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp11')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp12')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp13')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp14')
+
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
@@ -2662,8 +2736,14 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
+pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 
-pages = getcatpages(pywikibot, commonssite, "Atelier Aune")
+#pages = getpagesrecurse(pywikibot, commonssite, "Olav V of Norway", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Frederik IX of Denmark", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Queen Fabiola of Belgium", 0)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Seppo Konstig", 1)
+
 
 
 cachedb = CachedImageData() 
@@ -2671,6 +2751,10 @@ cachedb.opencachedb()
 
 fngcache = CachedFngData() 
 fngcache.opencachedb()
+
+# some media info for faster handling/less transfers
+micache = CachedMediainfo() 
+micache.opencachedb()
 
 
 rowcount = 0
@@ -2695,6 +2779,7 @@ for page in pages:
         continue
     if filepage.isRedirectPage():
         continue
+
         
     file_media_identifier='M' + str(filepage.pageid)
     file_info = filepage.latest_file_info
@@ -2709,6 +2794,12 @@ for page in pages:
         continue
 
     print("latest change in commons: " + filepage.latest_file_info.timestamp.isoformat())
+
+    # check when we have processed this 
+    cached_info = micache.findfromcache(filepage.pageid)
+    if (filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['timestamp'].replace(tzinfo=timezone.utc)):
+        print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['timestamp'].isoformat() ," page ", page.title())
+        continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -3168,6 +3259,9 @@ for page in pages:
         else:
             print("No categories to add for: " + finnaid)
 
+    # cache that we have recently processed this page successfully:
+    # this isn't perfect but should speed up things a bit due to data transfer latency
+    micache.addorupdate(filepage.pageid, datetime.now())
 
     #pywikibot.info('----')
     #pywikibot.showDiff(oldtext, newtext,2)
