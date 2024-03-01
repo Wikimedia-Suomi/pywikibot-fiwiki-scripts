@@ -233,12 +233,14 @@ def downloadimage(url):
     if (bio.getbuffer().nbytes < 100):
         print("ERROR: less than 100 bytes in buffer")
         return None
-    
-    pil = Image.open(bio)
-    if (pil.tell() < 100):
-        print("ERROR: less than 100 bytes in pillow image")
+    if (bio.tell() < 100):
+        print("ERROR: less than 100 bytes in buffer")
         return None
-    return pil
+    if (sys.getsizeof(bio) < 100):
+        print("ERROR: less than 100 bytes in buffer")
+        return None
+    
+    return Image.open(bio)
 
 # ----- CachedImageData
 class CachedImageData:
