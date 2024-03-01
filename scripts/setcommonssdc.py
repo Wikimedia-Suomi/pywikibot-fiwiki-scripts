@@ -226,12 +226,19 @@ def downloadimage(url):
         print("ERROR: less than 50 bytes for image")
         return None
 
-    f = io.BytesIO(response.content)
-    if (f.readable() == False or f.closed == True):
+    bio = io.BytesIO(response.content)
+    if (bio.readable() == False or bio.closed == True):
         print("ERROR: can't read image from stream")
         return None
+    if (bio.getbuffer().nbytes < 100):
+        print("ERROR: less than 100 bytes in buffer")
+        return None
     
-    return Image.open(f)
+    pil = Image.open(bio)
+    if (pil.tell() < 100):
+        print("ERROR: less than 100 bytes in pillow image")
+        return None
+    return pil
 
 # ----- CachedImageData
 class CachedImageData:
