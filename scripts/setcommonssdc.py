@@ -2663,7 +2663,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
-pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in World War II", 3)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
@@ -2718,7 +2718,7 @@ pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
+pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 
 
 
@@ -2999,6 +2999,13 @@ for page in pages:
     if (tpcom['url'] != commons_image_url):
         print("ERROR: commons url mismatch for: " + page.title() )
         exit(1)
+
+    if ('8000000000000000' == tpcom['phashval']):
+        print("WARN: phash is bogus for: ", finnaid)
+        continue
+    if ('0000000000000000' == tpcom['dhashval']):
+        print("WARN: dhash is bogus for: ", finnaid)
+        continue
 
     if (isPerceptualHashInSdcData(claims, tpcom['phashval']) == False):
         print("adding phash to statements for: ", finnaid)
