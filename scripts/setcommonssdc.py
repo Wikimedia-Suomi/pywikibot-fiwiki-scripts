@@ -303,7 +303,7 @@ class CachedMediainfo:
 
     def addtocache(self, mediaid, ts):
 
-        sqlq = "INSERT INTO mediainfocache(mediaid, timestamp) VALUES ('"+ mediaid + "', '" + ts.isoformat() + "')"
+        sqlq = "INSERT INTO mediainfocache(mediaid, timestamp) VALUES ('" + str(mediaid) + "', '" + ts.isoformat() + "')"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
@@ -311,14 +311,14 @@ class CachedMediainfo:
 
     def updatecache(self, mediaid, ts):
 
-        sqlq = "UPDATE mediainfocache SET timestamp = '" + ts.isoformat() + "' WHERE mediaid = '" + mediaid + "'"
+        sqlq = "UPDATE mediainfocache SET timestamp = '" + ts.isoformat() + "' WHERE mediaid = '" + str(mediaid) + "'"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
         self.conn.commit()
 
     def findfromcache(self, mediaid):
-        sqlq = "SELECT mediaid, timestamp FROM mediainfocache WHERE mediaid = '" + mediaid + "'"
+        sqlq = "SELECT mediaid, timestamp FROM mediainfocache WHERE mediaid = '" + str(mediaid) + "'"
         
         cur = self.conn.cursor()
         res = cur.execute(sqlq)
@@ -340,7 +340,7 @@ class CachedMediainfo:
         return None
 
     def addorupdate(self, mediaid, ts):
-        tp = self.findfromcache(url)
+        tp = self.findfromcache(mediaid)
         if (tp == None):
             self.addtocache(mediaid, ts)
         else:
@@ -2736,11 +2736,9 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Olav V of Norway", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Frederik IX of Denmark", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Queen Fabiola of Belgium", 0)
+pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Ilmari Raekallio", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Seppo Konstig", 1)
 
@@ -2793,13 +2791,15 @@ for page in pages:
         print("unsupported mime-type: ", strmime, "page:", page.title())
         continue
 
-    print("latest change in commons: " + filepage.latest_file_info.timestamp.isoformat())
+    print("media id ", str(filepage.pageid) ," has latest change in commons: ", filepage.latest_file_info.timestamp.isoformat())
 
     # check when we have processed this 
     cached_info = micache.findfromcache(filepage.pageid)
-    if (filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['timestamp'].replace(tzinfo=timezone.utc)):
-        print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['timestamp'].isoformat() ," page ", page.title())
-        continue
+    if (cached_info != None):
+        print("media id ", str(filepage.pageid) ," has cached change : ", cached_info['timestamp'].isoformat())
+        if (filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['timestamp'].replace(tzinfo=timezone.utc)):
+            print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['timestamp'].isoformat() ," page ", page.title())
+            continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
