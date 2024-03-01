@@ -2797,7 +2797,8 @@ for page in pages:
     cached_info = micache.findfromcache(filepage.pageid)
     if (cached_info != None):
         print("media id ", str(filepage.pageid) ," has cached change : ", cached_info['timestamp'].isoformat())
-        if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['timestamp'].replace(tzinfo=timezone.utc)):
+        if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['timestamp'].replace(tzinfo=timezone.utc)
+            and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['timestamp'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['timestamp'].isoformat() ," page ", page.title())
             continue
 
