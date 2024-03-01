@@ -159,6 +159,10 @@ def get_finna_record(finnaid, quoteid=True):
 def getimagehash(img, hashlen=8):
     phash = imagehash.phash(img, hash_size=hashlen)
     dhash = imagehash.dhash(img, hash_size=hashlen)
+
+    # image download has failed or python is broken?
+    if ('8000000000000000' == str(phash) or'0000000000000000' == str(dhash)):
+        return None
     return tuple((hashlen, str(phash), str(dhash)))
 
 # convert string to base 16 integer for calculating difference
@@ -233,12 +237,14 @@ def downloadimage(url):
     if (bio.getbuffer().nbytes < 100):
         print("ERROR: less than 100 bytes in buffer")
         return None
-    if (bio.tell() < 100):
-        print("ERROR: less than 100 bytes in buffer")
-        return None
-    if (sys.getsizeof(bio) < 100):
-        print("ERROR: less than 100 bytes in buffer")
-        return None
+    
+    # need to seek(0, 2) for eof first?
+    #if (bio.tell() < 100):
+        #print("ERROR: tell less than 100 bytes in buffer")
+        #return None
+    #if (sys.getsizeof(bio) < 100):
+        #print("ERROR: sys less than 100 bytes in buffer")
+        #return None
     
     return Image.open(bio)
 
@@ -2406,14 +2412,15 @@ def getpagesfixedlist(pywikibot, commonssite):
     
     # TEST: file removed?
     #fp = pywikibot.FilePage(commonssite, 'File:Satu Pentikäinen 1980.jpg')
-
     #fp = pywikibot.FilePage(commonssite, 'File:Vaasan kaupunginlääkäri, taiteenkerääjä ja -lahjoittaja Karl Hedman.tiff')
-
     #fp = pywikibot.FilePage(commonssite, 'File:Veikko Vennamo-1970s.jpg')
     #fp = pywikibot.FilePage(commonssite, 'File:Tiny ticket sale kiosk in Seurasaari, Helsinki, Finland, 2023 July.jpg')
+    #fp = pywikibot.FilePage(commonssite, "File:'Kauppakartano' mall in Korso, Vantaa, Finland, 2022.jpg")
 
-    fp = pywikibot.FilePage(commonssite, "File:'Kauppakartano' mall in Korso, Vantaa, Finland, 2022.jpg")
+    #fp = pywikibot.FilePage(commonssite, "File:Bikers in Helsinki 1940 (2516C; JOKAHBL3C A51-2).tif")
 
+
+    #fp = pywikibot.FilePage(commonssite, "File:Customers in Elanto grocery store 1951 (2573E; JOKAHBL3D B05-2).tif")
 
     
     pages.append(fp)
@@ -2974,6 +2981,9 @@ for page in pages:
         print("DEBUG: commons image bands", commons_image.getbands())
         
         commonshash = getimagehash(commons_image)
+        if (commonshash == None):
+            print("WARN: Failed to hash commons-image: " + page.title() )
+            continue
         
         # same lengths for p and d hash, keep change time from commons
         cachedb.addorupdate(commons_image_url, 
@@ -2999,6 +3009,9 @@ for page in pages:
             print("DEBUG: commons image bands", commons_image.getbands())
             
             commonshash = getimagehash(commons_image)
+            if (commonshash == None):
+                print("WARN: Failed to hash commons-image: " + page.title() )
+                continue
             cachedb.addorupdate(commons_image_url, 
                                 commonshash[0], commonshash[1], commonshash[0], commonshash[2], 
                                 filepage.latest_file_info.timestamp)
@@ -3010,10 +3023,10 @@ for page in pages:
         exit(1)
 
     if ('8000000000000000' == tpcom['phashval']):
-        print("WARN: phash is bogus for: ", finnaid)
+        print("WARN: phash is bogus for: ", page.title())
         continue
     if ('0000000000000000' == tpcom['dhashval']):
-        print("WARN: dhash is bogus for: ", finnaid)
+        print("WARN: dhash is bogus for: ", page.title())
         continue
 
     if (isPerceptualHashInSdcData(claims, tpcom['phashval']) == False):
@@ -3051,6 +3064,10 @@ for page in pages:
             print("DEBUG: finna image bands", finna_image.getbands(), finna_image_url)
             
             finnahash = getimagehash(finna_image)
+            if (finnahash == None):
+                print("WARN: Failed to hash finna-image: " + page.title() )
+                continue
+            
             # same lengths for p and d hash
             cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now(timezone.utc))
             tpfinna = cachedb.findfromcache(finna_image_url)
@@ -3085,6 +3102,9 @@ for page in pages:
                 print("DEBUG: finna image bands", finna_image.getbands(), finna_image_url)
                     
                 finnahash = getimagehash(finna_image)
+                if (finnahash == None):
+                    print("WARN: Failed to hash finna-image: " + page.title() )
+                    continue
                 # same lengths for p and d hash
                 cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now(timezone.utc))
                 tpfinna = cachedb.findfromcache(finna_image_url)
