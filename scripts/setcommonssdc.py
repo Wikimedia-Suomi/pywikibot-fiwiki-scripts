@@ -1829,7 +1829,7 @@ def parseinceptionfromfinna(finnarecord):
         print("no subjects in finna record")
         return None
     try:
-        subjects = finna_record['records'][0]['subjects']
+        subjects = finnarecord['records'][0]['subjects']
         for subject in subjects:
             for sbstr in subject:
                 index = sbstr.find("kuvausaika")
@@ -1913,7 +1913,7 @@ def parseinceptionyearfromfinna(finnarecord):
         print("no year in finna record")
         return None
     try:
-        year = finna_record['records'][0]['year']
+        year = finnarecord['records'][0]['year']
         year = trimlr(year)
         if (year.isnumeric() == False):
             print("DEBUG: not a numeric year: " + year)
@@ -2422,6 +2422,9 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, "File:Customers in Elanto grocery store 1951 (2573E; JOKAHBL3D B05-2).tif")
 
+    fp = pywikibot.FilePage(commonssite, "The workshop of Veljekset Åström Oy 1934 (JOKAKAL3B-3634).tif")
+
+
     
     pages.append(fp)
     return pages
@@ -2455,25 +2458,64 @@ def getfilepage(pywikibot, page):
 
     return None
 
-# add categories for each collection to the commons-page if they don't yet exist.
-# lookup text by qcode (parsed from finna record)
+# lookup subjects in finna-data that easily map into commons-categories
+# and that we can add to commons-pages
 #
-def addCategoriesToCommons(pywikibot, page, categories, collectiontocategory):
-    tmptext = page.text
+def getcategoriesforsubjects(pywikibot, page, subjecttocategory, finnarecord):
+    if "records" not in finnarecord:
+        print("ERROR: no records in finna record")
+        return None
 
-    catsadded = False
+    records = finnarecord['records'][0]
+    if "subjects" not in records:
+        print("no subjects in finna record")
+        return None
+
+    extracatstoadd = list()
+    
+    subjects = finnarecord['records'][0]['subjects']
+    for subject in subjects:
+        for sbstr in subject:
+            if sbstr in subjecttocategory: # skip unknown tags
+                cattext = subjecttocategory[sbstr]
+                if cattext not in extracatstoadd: # avoid duplicates
+                    extracatstoadd.append(cattext)
+
+    return extracatstoadd
+
+# lookup category names by collection qcodes
+#
+def getcategoriesforcollections(pywikibot, page, categories, collectiontocategory):
+
+    collcatstoadd = list()
+
     for catq in categories:
         if catq in collectiontocategory:
             cattext = collectiontocategory[catq]
+            if cattext not in collcatstoadd: # avoid duplicates
+                collcatstoadd.append(cattext)
+
+    return collcatstoadd
+
+# add categories for each collection to the commons-page if they don't yet exist.
+# lookup text by qcode (parsed from finna record)
+#
+def addCategoriesToCommons(pywikibot, page, categories):
+    tmptext = page.text
+
+    catsadded = False
+    for cattext in categories:
+        tmp = "[[Category:" + cattext + "]]"
+        
+        if (tmptext.find(tmp) < 0):
+            print("DEBUG: adding category: ", tmp)
             
-            if (tmptext.find(cattext) < 0):
-                tmp = "[[Category:" + cattext + "]]"
-                if (tmptext.endswith("\n") == False):
-                    tmptext += "\n" # avoid same line when missing linefeed
-                    
-                tmptext += tmp
-                tmptext += "\n"
-                catsadded = True
+            if (tmptext.endswith("\n") == False):
+                tmptext += "\n" # avoid same line when missing linefeed
+                
+            tmptext += tmp
+            tmptext += "\n"
+            catsadded = True
 
     if (catsadded == True):
         summary='Adding categories'
@@ -2659,6 +2701,16 @@ d_labeltoqcode["Vilho Uomalan kokoelma"] = "Q124672017"
 d_collectionqtocategory = dict()
 d_collectionqtocategory["Q113292201"] = "JOKA Press Photo Archive"
 d_collectionqtocategory["Q123508786"] = "Collections of the Finnish Railway Museum"
+
+
+# subject tags to commons-categories:
+# must be in subjects-list from Finna
+#
+d_subjecttocategory = dict()
+d_subjecttocategory["Osuusliike Elanto"] = "Elanto"
+d_subjecttocategory["Valmet Oy"] = "Valmet"
+d_subjecttocategory["Salora Oy"] = "Salora"
+d_subjecttocategory["Veljekset Åström Oy"] = "Veljekset Åström"
 
 
 # Accessing wikidata properties and items
@@ -3240,7 +3292,6 @@ for page in pages:
     else:
         print("DEBUG: could not parse inception date for: " + finnaid)
 
-
     # check SDC and try match with finna list collectionqcodes
     # note: give copy to getcollectiontargetqcode() so we can reuse the list
     collectionstoadd = getcollectiontargetqcode(claims, collectionqcodes.copy())
@@ -3265,12 +3316,21 @@ for page in pages:
     else:
         print("id found, not adding again", finnaid)
 
-    if (len(collectionqcodes) > 0):
-        print("Adding page categories for: " + finnaid)
-        if (addCategoriesToCommons(pywikibot, page, collectionqcodes, d_collectionqtocategory) == True):
-            print("Categories added for: " + finnaid)
+    collcatstoadd = getcategoriesforcollections(pywikibot, page, collectionqcodes, d_collectionqtocategory)
+    if (len(collcatstoadd) > 0):
+        print("Adding collection categories for: ", finnaid, "categories ", str(collcatstoadd))
+        if (addCategoriesToCommons(pywikibot, page, collcatstoadd) == True):
+            print("Collection categories added for: " + finnaid)
         else:
-            print("No categories to add for: " + finnaid)
+            print("No collection categories added for: " + finnaid)
+
+    extracatstoadd = getcategoriesforsubjects(pywikibot, page, d_subjecttocategory, finna_record)
+    if (len(extracatstoadd) > 0):
+        print("Adding subject categories for: ", finnaid, "categories ", str(extracatstoadd))
+        if (addCategoriesToCommons(pywikibot, page, extracatstoadd) == True):
+            print("Subject categories added for: " + finnaid)
+        else:
+            print("No subject categories added for: " + finnaid)
 
     # cache that we have recently processed this page successfully:
     # this isn't perfect but should speed up things a bit due to data transfer latency
