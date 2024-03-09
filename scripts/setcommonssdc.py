@@ -2701,6 +2701,23 @@ d_labeltoqcode["Vilho Uomalan kokoelma"] = "Q124672017"
 d_collectionqtocategory = dict()
 d_collectionqtocategory["Q113292201"] = "JOKA Press Photo Archive"
 d_collectionqtocategory["Q123508786"] = "Collections of the Finnish Railway Museum"
+d_collectionqtocategory["Q123272489"] = "Media by The Maritime Museum of Finland" # Suomen merimuseon kuvakokoelma
+
+#d_collectionqtocategory["Q107388072"] = "Historical Picture Collection" # Historian kuvakokoelma
+d_collectionqtocategory["Q107388072"] = "Historical Picture Collection of The Finnish Heritage Agency" # Historian kuvakokoelma
+
+#d_collectionqtocategory["Q123308681"] = "Ethnographic Picture Collection" # Kansatieteen kuvakokoelma
+d_collectionqtocategory["Q123308681"] = "Ethnographic Picture Collection of The Finnish Heritage Agency" # Kansatieteen kuvakokoelma
+
+#d_collectionqtocategory["Q123308774"] = "Architectural History Collection" # Rakennushistorian kokoelma
+d_collectionqtocategory["Q123308774"] = "Architectural History Collection of The Finnish Heritage Agency" # Rakennushistorian kokoelma
+
+#d_collectionqtocategory["Q123358672"] = "Finno-Ugric Picture Collection" # Suomalais-ugrilainen kuvakokoelma
+d_collectionqtocategory["Q123358672"] = "Finno-Ugric Picture Collection of The Finnish Heritage Agency" # Suomalais-ugrilainen kuvakokoelma
+
+#d_collectionqtocategory["Q122414127"] = "Ethnographic Collection" # Yleisetnografinen kuvakokoelma
+d_collectionqtocategory["Q122414127"] = "Ethnographic Collection of The Finnish Heritage Agency" # Yleisetnografinen kuvakokoelma
+
 
 
 # subject tags to commons-categories:
@@ -2745,9 +2762,9 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 ## TEST
-#pages = list()
+pages = list()
 
-#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
@@ -2786,7 +2803,11 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
+
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Samuli Paulaharju", 1)
 
 
 
@@ -3324,7 +3345,8 @@ for page in pages:
         else:
             print("No collection categories added for: " + finnaid)
 
-    extracatstoadd = getcategoriesforsubjects(pywikibot, page, d_subjecttocategory, finna_record)
+    extracatstoadd = list() # disabled for now
+    #extracatstoadd = getcategoriesforsubjects(pywikibot, page, d_subjecttocategory, finna_record)
     if (len(extracatstoadd) > 0):
         print("Adding subject categories for: ", finnaid, "categories ", str(extracatstoadd))
         if (addCategoriesToCommons(pywikibot, page, extracatstoadd) == True):
