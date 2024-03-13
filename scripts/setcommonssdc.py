@@ -2051,6 +2051,43 @@ def getImagesExtended(finnarecord):
     # at least one entry exists
     return imagesExtended[0]
 
+# check image metadata if it could be uploaded again with a higher resolution
+#
+def needReupload(file_info, finna_record, imagesExtended):
+    
+    # note! 'original' might point to different image than used above! different server in some cases
+    hires = imagesExtended['highResolution']
+
+    # there is at least one case where this is not available?
+    if "original" not in hires:
+        print("WARN: 'original' not found in hires image: " + finnaid)
+        return False
+            
+    hires = imagesExtended['highResolution']['original'][0]
+    if "data" not in hires:
+        print("WARN: 'data' not found in hires image: " + finnaid)
+        return False
+        
+    # some images don't have size information in the API..
+    if "width" not in hires['data'] or "height" not in hires['data']:
+        # it seems sizes might be missing when image is upscaled and not "original"?
+        # -> verify this
+        # -> skip image for now
+        return False
+    else:
+        # verify finna image really is in better resolution than what is in commons
+        # before uploading
+        finnawidth = int(hires['data']['width']['value'])
+        finnaheight = int(hires['data']['height']['value'])
+    
+    if file_info.width >= finnawidth or file_info.height >= finnaheight:
+        print("Page " + page.title() + " has resolution equal or higher than finna: " + str(finnawidth) + "x" + str(finnaheight))
+        return False
+    
+    # resolution smaller, could re-upload (assuming hashes already match)
+    print("Page " + page.title() + " has larger image available, could re-upload")
+    return True
+
 def getFinnaLicense(imagesExtended):
     # should be CC BY 4.0 or Public domain/CC0
     return imagesExtended['rights']['copyright']
@@ -2448,8 +2485,7 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, "File:Customers in Elanto grocery store 1951 (2573E; JOKAHBL3D B05-2).tif")
 
-    fp = pywikibot.FilePage(commonssite, "The workshop of Veljekset Åström Oy 1934 (JOKAKAL3B-3634).tif")
-
+    #fp = pywikibot.FilePage(commonssite, "The workshop of Veljekset Åström Oy 1934 (JOKAKAL3B-3634).tif")
 
     
     pages.append(fp)
@@ -2832,7 +2868,7 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
+pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
 
 
 
@@ -3231,6 +3267,9 @@ for page in pages:
     if (match_found == False):
         print("No matching image found, skipping: " + finnaid)
         continue
+    
+    if (needReupload(file_info, finna_record, imagesExtended) == True):
+        print("Note: image should be uploaded with higher resolution for: " + finnaid)
 
     # note: if there are no collections, don't remove from commons as they may have manual additions
     collectionqcodes = getCollectionsFromRecord(finna_record, finnaid, d_labeltoqcode)
