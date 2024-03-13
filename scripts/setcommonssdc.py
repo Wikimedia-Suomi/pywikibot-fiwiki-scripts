@@ -2185,65 +2185,96 @@ def addKansallisgalleriaIdToSdcData(pywikibot, wikidata_site, commonssite, page,
             commonssite.addClaim(wditem, f_claim)
 
 
-def isSupportedCommonsTemplate(template):
-    #print("DEBUG commons template: ", template.name)
-    name = template.name.lower()
-    name = leftfrom(name, "\n") # mwparserfromhell is bugged
-    name = trimlr(name)
-    if (name == "information" 
-        or name == "photograph" 
-        or name == "artwork" 
-        or name == "art photo"):
+# ----- CommonsTemplate
+# helper to contain stuff related to commons template parsing,
+# also contain adding information where missing
+class CommonsTemplate:
+    
+    def parseTemplate(self, page_text):
+        self.wikicode = mwparserfromhell.parse(page_text)
+        self.templatelist = self.wikicode.filter_templates()
+
+        # TODO: further checks if we can process this page correctly
+        # note: a page may have multiple templates
         return True
-    #print("DEBUG: not supported template: ", name)
-    return False
 
-def getSourceFromCommonsTemplate(template):
-    if template.has("Source"):
-        return template.get("Source")
-    if template.has("source"):
-        return template.get("source")
-    return None
 
-def getAccessionFromCommonsTemplate(template):
-    if template.has("Accession number"):
-        return template.get("Accession number")
-    if template.has("accession number"):
-        return template.get("accession number")
-    if template.has("Id"):
-        return template.get("Id")
-    if template.has("id"):
-        return template.get("id")
-    return None
+    # add institution text to the template field
+    #def addInstitution(self, institution):
 
-# The template artwork has field "references"
-def getReferencesFromCommonsTemplate(template):
-    if template.has("References"):
-        return template.get("References")
-    if template.has("references"):
-        return template.get("references")
-    return None
+    # add department (collection) text to the template field
+    #def addDepartment(self, department):
 
-def getWikidataParamFromCommonsTemplate(template):
-    if template.has("Wikidata"):
-        return template.get("Wikidata")
-    if template.has("wikidata"):
-        return template.get("wikidata")
-    return None
+    # add author text to the template field
+    #def addAuthor(self, author):
 
+    # add accession number/id text to the template field
+    #def addAccNumber(self, accNumber):
+        # note: may have different names for this field..
+
+    # note: page may have multiple templates
+    def isSupportedCommonsTemplate(self, template):
+        #print("DEBUG commons template: ", template.name)
+        name = template.name.lower()
+        name = leftfrom(name, "\n") # mwparserfromhell is bugged
+        name = trimlr(name)
+        if (name == "information" 
+            or name == "photograph" 
+            or name == "artwork" 
+            or name == "art photo"):
+            return True
+        #print("DEBUG: not supported template: ", name)
+        return False
+
+    # note: page may have multiple templates
+    def getSourceFromCommonsTemplate(self, template):
+        if template.has("Source"):
+            return template.get("Source")
+        if template.has("source"):
+            return template.get("source")
+        return None
+
+    # note: page may have multiple templates
+    def getAccessionFromCommonsTemplate(self, template):
+        if template.has("Accession number"):
+            return template.get("Accession number")
+        if template.has("accession number"):
+            return template.get("accession number")
+        if template.has("Id"):
+            return template.get("Id")
+        if template.has("id"):
+            return template.get("id")
+        return None
+
+    # note: page may have multiple templates
+    # The template artwork has field "references"
+    def getReferencesFromCommonsTemplate(self, template):
+        if template.has("References"):
+            return template.get("References")
+        if template.has("references"):
+            return template.get("references")
+        return None
+
+    # note: page may have multiple templates
+    def getWikidataParamFromCommonsTemplate(self, template):
+        if template.has("Wikidata"):
+            return template.get("Wikidata")
+        if template.has("wikidata"):
+            return template.get("wikidata")
+        return None
+
+# ----- /CommonsTemplate
 
 # The template artwork has field "references", where data might be coming from wikidata 
 # instead of being in page. This means there's need to access wikidata-site
 # properties:
 # catalog code (P528), described at URL (P973), described by source (P1343),
-def getUrlsFromCommonsReferences(wikidata_site, page_text, claims):
-    wikicode = mwparserfromhell.parse(page_text)
-    templatelist = wikicode.filter_templates()
+def getUrlsFromCommonsReferences(ct):
 
-    for template in wikicode.filter_templates():
+    for template in ct.templatelist:
         # at least three different templates have been used..
-        if (isSupportedCommonsTemplate(template) == True):
-            refpar = getReferencesFromCommonsTemplate(template)
+        if (ct.isSupportedCommonsTemplate(template) == True):
+            refpar = ct.getReferencesFromCommonsTemplate(template)
             if (refpar != None):
                 srcvalue = str(refpar.value)
                 srcurls = geturlsfromsource(srcvalue)
@@ -2262,19 +2293,17 @@ def getUrlsFromCommonsReferences(wikidata_site, page_text, claims):
 
 
 # find source urls from template(s) in commons-page
-def getsourceurlfrompagetemplate(page_text):
-    wikicode = mwparserfromhell.parse(page_text)
-    templatelist = wikicode.filter_templates()
+def getsourceurlfrompagetemplate(ct):
 
-    for template in wikicode.filter_templates():
+    for template in ct.templatelist:
         # at least three different templates have been used..
-        if (isSupportedCommonsTemplate(template) == True):
+        if (ct.isSupportedCommonsTemplate(template) == True):
             #paracc = getAccessionFromCommonsTemplate(template)
             #if (paracc != None):
                 #accurls = geturlsfromsource(str(paracc.value))
                 # if accession has finna-url but source doesn't -> try it instead
             
-            par = getSourceFromCommonsTemplate(template)
+            par = ct.getSourceFromCommonsTemplate(template)
             if (par != None):
                 srcvalue = str(par.value)
                 srcurls = geturlsfromsource(srcvalue)
@@ -2290,17 +2319,14 @@ def getsourceurlfrompagetemplate(page_text):
     return None
 
 # get wikidata codes related to commons page
-def getwikidatacodefrompagetemplate(page):
+def getwikidatacodefrompagetemplate(ct):
 
     wikidatacodes = list() # wikidata qcodes from template/page
     
-    wikicode = mwparserfromhell.parse(page.text)
-    templatelist = wikicode.filter_templates()
+    for template in ct.templatelist:
+        if (ct.isSupportedCommonsTemplate(template) == True):
 
-    for template in wikicode.filter_templates():
-        if (isSupportedCommonsTemplate(template) == True):
-
-            wdpar = getWikidataParamFromCommonsTemplate(template)
+            wdpar = ct.getWikidataParamFromCommonsTemplate(template)
             if (wdpar != None):
                 qcode = str(wdpar.value)
                 qcode = trimlr(qcode)
@@ -2762,9 +2788,9 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 ## TEST
-pages = list()
+#pages = list()
 
-pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
@@ -2806,8 +2832,8 @@ pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1
 #pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Samuli Paulaharju", 1)
 
 
 
@@ -2885,14 +2911,19 @@ for page in pages:
 
     print("Wikibase statements found for: " + page.title() )
 
+    # try to parse template in commons-page
+    ct = CommonsTemplate()
+    if (ct.parseTemplate(page.text) == False):
+        print("WARN: problem parsing template(s) in page " + page.title())
+
     # if there are qcodes for item in wikidata -> find those from page
-    wikidatacodes = getwikidatacodefrompagetemplate(page)
+    wikidatacodes = getwikidatacodefrompagetemplate(ct)
     if (len(wikidatacodes) > 0):
         print("DEBUG: found qcodes in tempate for " + page.title())
         #getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, page, wikidatacodes)
 
     # find source urls in template(s) in commons-page
-    srcurls = getsourceurlfrompagetemplate(page.text)
+    srcurls = getsourceurlfrompagetemplate(ct)
     if (srcurls == None):
         print("DEBUG: no urls found in templates of " + page.title())
         continue
@@ -2904,7 +2935,7 @@ for page in pages:
     # but values might be coming from wikidata and not in source data
     # -> need a different method to parse this
 
-    refurls = getUrlsFromCommonsReferences(wikidata_site, page.text, claims)
+    refurls = getUrlsFromCommonsReferences(ct)
     if (refurls != None):
         print("DEBUG: found urls in references for " + page.title())
 
