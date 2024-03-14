@@ -2038,6 +2038,42 @@ def isFinnaRecordOk(finnarecord, finnaid):
     #print("DEBUG: ", finnarecord)
     return True
 
+# get accession number / identifier string from finna
+def getFinnaAccessionIdentifier(finnarecord):
+    records = finnarecord['records'][0]
+    
+    if "identifierString" not in records:
+        print("ERROR: no identifier in finna record" + str(records))
+        return ""
+
+    finnaidentifier = records['identifierString']
+    print("DBEUG: found identifier in finna record: " + str(finnaidentifier))
+    return finnaidentifier
+
+# check if we have normal photographic image
+# (if not artwork, drawing or something else)
+def isFinnaFormatImage(finnarecord):
+    records = finnarecord['records'][0]
+        
+    if "formats" not in records:
+        print("ERROR: no formats in finna record" + str(records))
+        return ""
+    
+    finnaformats = records['formats'][0]['value']
+    print("DBEUG: found formats in finna record: " + str(finnaformats))
+
+    if (finnaformats == "0/Image/"):
+        print("DBEUG: found image format in finna record: " + str(finnaformats))
+        return True
+
+    # translated names
+    if (finnaformats == "Image" or finnaformats == "Kuva" or finnaformats == "Bild"):
+        print("DBEUG: found image format in finna record: " + str(finnaformats))
+        return True
+
+    print("not an image format in finna record: " + str(finnaformats))
+    return False
+
 # helper to check in case of malformed json
 def getImagesExtended(finnarecord):
     if "imagesExtended" not in finnarecord['records'][0]:
@@ -2231,30 +2267,41 @@ class CommonsTemplate:
         self.wikicode = mwparserfromhell.parse(page_text)
         self.templatelist = self.wikicode.filter_templates()
 
+        # reset dirty-flag: have we modified it to warrant saving?
+        self.changed = False
+
         # TODO: further checks if we can process this page correctly
         # note: a page may have multiple templates
         return True
+    
+    def isChanged(self):
+        return self.changed
 
+    # mwparser is has bugs so try to handle them
+    def getTemplateName(self, template):
+        name = leftfrom(template.name, "\n") # mwparserfromhell is bugged
+        name = trimlr(name)
+        return name
 
-    # add institution text to the template field
-    #def addInstitution(self, institution):
-
-    # add department (collection) text to the template field
-    #def addDepartment(self, department):
-
-    # add author text to the template field
-    #def addAuthor(self, author):
-
-    # add accession number/id text to the template field
-    #def addAccNumber(self, accNumber):
-        # note: may have different names for this field..
+    # if template type is "information" it doesn't have all necessary fields
+    # but don't change if it is "artwork" or something else already
+    def fixTemplateType(self, template):
+        name = self.getTemplateName(template)
+        if (name == "Information"):
+            template.name.replace("Information", "Photograph")
+            self.changed = True
+            return True
+        if (name == "information"):
+            template.name.replace("information", "Photograph")
+            self.changed = True
+            return True
+        return False
 
     # note: page may have multiple templates
     def isSupportedCommonsTemplate(self, template):
         #print("DEBUG commons template: ", template.name)
-        name = template.name.lower()
-        name = leftfrom(name, "\n") # mwparserfromhell is bugged
-        name = trimlr(name)
+        name = self.getTemplateName(template)
+        name = name.lower()
         if (name == "information" 
             or name == "photograph" 
             or name == "artwork" 
@@ -2299,6 +2346,31 @@ class CommonsTemplate:
         if template.has("wikidata"):
             return template.get("wikidata")
         return None
+
+    # missing or empty value
+    def isEmptyParamValue(self, par):
+        if (par == None):
+            return True
+        parval = str(par.value)
+        parval = trimlr(parval)
+        if (len(parval) == 0):
+            return True
+        return False
+
+    # add institution text to the template field
+    #def addInstitution(self, institution):
+
+    # add department (collection) text to the template field
+    #def addDepartment(self, department):
+
+    # add author text to the template field
+    #def addAuthor(self, author):
+
+    # add accession number/id text to the template field
+    #def addAccNumber(self, accNumber):
+        # note: may have different names for this field..
+        #par = self.getAccessionFromCommonsTemplate()
+
 
 # ----- /CommonsTemplate
 
@@ -2487,6 +2559,8 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, "The workshop of Veljekset Åström Oy 1934 (JOKAKAL3B-3634).tif")
 
+    fp = pywikibot.FilePage(commonssite, "File:Lennart Fritiof Munck af Fulkila.tif")
+    
     
     pages.append(fp)
     return pages
@@ -2523,7 +2597,7 @@ def getfilepage(pywikibot, page):
 # lookup subjects in finna-data that easily map into commons-categories
 # and that we can add to commons-pages
 #
-def getcategoriesforsubjects(pywikibot, page, subjecttocategory, finnarecord):
+def getcategoriesforsubjects(pywikibot, subjecttocategory, finnarecord):
     if "records" not in finnarecord:
         print("ERROR: no records in finna record")
         return None
@@ -2547,7 +2621,7 @@ def getcategoriesforsubjects(pywikibot, page, subjecttocategory, finnarecord):
 
 # lookup category names by collection qcodes
 #
-def getcategoriesforcollections(pywikibot, page, categories, collectiontocategory):
+def getcategoriesforcollections(pywikibot, categories, collectiontocategory):
 
     collcatstoadd = list()
 
@@ -2562,9 +2636,7 @@ def getcategoriesforcollections(pywikibot, page, categories, collectiontocategor
 # add categories for each collection to the commons-page if they don't yet exist.
 # lookup text by qcode (parsed from finna record)
 #
-def addCategoriesToCommons(pywikibot, page, categories):
-    tmptext = page.text
-
+def addCategoriesToCommons(pywikibot, tmptext, categories):
     catsadded = False
     for cattext in categories:
         tmp = "[[Category:" + cattext + "]]"
@@ -2579,12 +2651,6 @@ def addCategoriesToCommons(pywikibot, page, categories):
             tmptext += "\n"
             catsadded = True
 
-    if (catsadded == True):
-        summary='Adding categories'
-        pywikibot.info('Edit summary: {}'.format(summary))
-
-        page.text = tmptext
-        page.save(summary)
     return catsadded
 
 
@@ -2868,8 +2934,7 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
-
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
 
 
 
@@ -3103,7 +3168,10 @@ for page in pages:
     if (isFinnaRecordOk(finna_record, finnaid) == False):
         continue
     
-    print("finna record ok: " + finnaid)
+    # check what finna reports as identifier
+    finna_accession_id = getFinnaAccessionIdentifier(finna_record)
+    print("finna record ok: ", finnaid, " accession id: ", finna_accession_id)
+    
     
     # TODO! Python throws error if image is larger than 178956970 pixels
     # so we can't handle really large images. Check for those and skip them..
@@ -3407,22 +3475,57 @@ for page in pages:
     else:
         print("id found, not adding again", finnaid)
 
-    collcatstoadd = getcategoriesforcollections(pywikibot, page, collectionqcodes, d_collectionqtocategory)
+    tmptext = oldtext
+    # TODO: try to check if item type in Finna is "photograph" (not "artwork")
+    if (isFinnaFormatImage(finna_record) == True):
+
+        for template in ct.templatelist:
+            # if there is "information" template change it to "photograph"
+            # since we want additional fields there
+            if (ct.isSupportedCommonsTemplate(template) == True):
+                if (ct.fixTemplateType(template) == True):
+                    print("Fixed template type for: " + page.title())
+            #ct_paracc = ct.getAccessionFromCommonsTemplate(template)
+            #if (ct.isEmptyParamValue(ct_paracc) == True):
+                #addaccnumber finna_accession_id
+
+        if (ct.isChanged() == True):
+            tmptext = str(ct.wikicode)
+
+    categoriesadded = False
+    # add commons-categoeris for collections
+    collcatstoadd = getcategoriesforcollections(pywikibot, collectionqcodes, d_collectionqtocategory)
     if (len(collcatstoadd) > 0):
         print("Adding collection categories for: ", finnaid, "categories ", str(collcatstoadd))
-        if (addCategoriesToCommons(pywikibot, page, collcatstoadd) == True):
+        if (addCategoriesToCommons(pywikibot, tmptext, collcatstoadd) == True):
             print("Collection categories added for: " + finnaid)
+            categoriesadded = True
         else:
             print("No collection categories added for: " + finnaid)
 
+    # add commons-categoeris for other tags (subjects)
     extracatstoadd = list() # disabled for now
-    #extracatstoadd = getcategoriesforsubjects(pywikibot, page, d_subjecttocategory, finna_record)
+    #extracatstoadd = getcategoriesforsubjects(pywikibot, d_subjecttocategory, finna_record)
     if (len(extracatstoadd) > 0):
         print("Adding subject categories for: ", finnaid, "categories ", str(extracatstoadd))
-        if (addCategoriesToCommons(pywikibot, page, extracatstoadd) == True):
+        if (addCategoriesToCommons(pywikibot, tmptext, extracatstoadd) == True):
             print("Subject categories added for: " + finnaid)
+            categoriesadded = True
         else:
             print("No subject categories added for: " + finnaid)
+
+    summary = ''
+    if (ct.isChanged() == True):
+        print("Changed wikitext for: " + page.title())
+        summary = 'Fixing template fields'
+    if (categoriesadded == True):
+        summary += 'Adding categories'
+
+    if (oldtext != tmptext and len(summary) > 0):
+        pywikibot.info('Edit summary: {}'.format(summary))
+        page.text = tmptext
+        page.save(summary)
+
 
     # cache that we have recently processed this page successfully:
     # this isn't perfect but should speed up things a bit due to data transfer latency
