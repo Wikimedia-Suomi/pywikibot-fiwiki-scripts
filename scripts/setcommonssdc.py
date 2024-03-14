@@ -2648,6 +2648,7 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, 'File:Antti Kosolan orkesteri Lancastria-laivan kannella.jpg')
     
+    fp = pywikibot.FilePage(commonssite, 'File:Munkkiniemi, Kuusisaari.jpg')
     
     pages.append(fp)
     return pages
@@ -2947,6 +2948,7 @@ d_institutionqtotemplate = dict()
 d_institutionqtotemplate["Q3029524"] = "Finnish Heritage Agency" 
 d_institutionqtotemplate["Q2031357"] = "Helsinki City Museum" 
 d_institutionqtotemplate["Q18346797"] = "Turku Museum Centre" 
+d_institutionqtotemplate["Q26723704"] = "Vantaa City Museum" 
 d_institutionqtotemplate["Q283140"] = "SA-Kuva" 
 
 
@@ -2968,7 +2970,7 @@ commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 
 # for testing only
-#pages = getpagesfixedlist(pywikibot, commonssite)
+pages = getpagesfixedlist(pywikibot, commonssite)
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
