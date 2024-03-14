@@ -1949,6 +1949,7 @@ def getqcodeforfinnapublisher(finnarecord, institutionqcode):
         print("found institution in finna record: " + str(finnainstitutions))
 
     # TODO: might need to check both "value" and "translated" for correct name?
+    # helsinki city museum has "HKM" and "Helsinki City Museum"
 
     for key, val in finnainstitutions.items():
         #print("val is: " + val)
@@ -2064,6 +2065,10 @@ def isFinnaFormatImage(finnarecord):
 
     if (finnaformats == "0/Image/"):
         print("DBEUG: found image format in finna record: " + str(finnaformats))
+        return True
+
+    if (finnaformats == "1/Image/Photo/"):
+        print("DBEUG: found photo format in finna record: " + str(finnaformats))
         return True
 
     # translated names
@@ -2342,21 +2347,22 @@ class CommonsTemplate:
 
     # note: multipiple names, may be "institution", "gallery" or "museum"
     #
-    def getInstitutionFromCommonsTemplate(self, template):
+    def getInstitutionFromCommonsTemplate(self, template, fullsearch=False):
         if template.has("Institution"):
             return template.get("Institution")
         if template.has("institution"):
             return template.get("institution")
 
-        #if template.has("Gallery"):
-            #return template.get("Gallery")
-        #if template.has("gallery"):
-            #return template.get("gallery")
+        if (fullsearch == True):
+            if template.has("Gallery"):
+                return template.get("Gallery")
+            if template.has("gallery"):
+                return template.get("gallery")
 
-        #if template.has("Museum"):
-            #return template.get("Museum")
-        #if template.has("museum"):
-            #return template.get("museum")
+            if template.has("Museum"):
+                return template.get("Museum")
+            if template.has("museum"):
+                return template.get("museum")
         return None
 
     # note: page may have multiple templates
@@ -2397,6 +2403,22 @@ class CommonsTemplate:
     # should have creator-template
     #def addAuthor(self, author):
 
+    # add institution to the template field
+    def addOrSetInstitution(self, template, instVal):
+        par = self.getInstitutionFromCommonsTemplate(template, True)
+        if (par == None):
+            template.add("Institution", instVal)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = instVal
+                self.changed = True
+                return True
+            # if it is not empty, don't do anything
+            # could append but might add duplicates by mistake
+        return False
+
     # add accession number/id text to the template field
     # note: may have different names for this field..
     def addOrSetAccNumber(self, template, accValue):
@@ -2413,6 +2435,7 @@ class CommonsTemplate:
             # if it is not empty, don't do anything
             # could append but might add duplicates by mistake
         return False
+
 
     # call to initialize
     def parseTemplate(self, page_text):
@@ -2615,7 +2638,6 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, "The workshop of Veljekset Åström Oy 1934 (JOKAKAL3B-3634).tif")
 
-    fp = pywikibot.FilePage(commonssite, "File:Voitto Koskenmäki.tif")
     
     
     pages.append(fp)
@@ -2732,6 +2754,7 @@ d_institutionqcode["Sinebrychoffin taidemuseo"] = "Q1393952"
 d_institutionqcode["Tekniikan museo"] = "Q5549583"
 d_institutionqcode["Museokeskus Vapriikki"] = "Q18346706"
 d_institutionqcode["Helsingin kaupunginmuseo"] = "Q2031357"
+d_institutionqcode["Helsinki City Museum"] = "Q2031357"
 #d_institutionqcode["HKM"] = "Q2031357"
 
 d_institutionqcode["Vantaan kaupunginmuseo"] = "Q26723704"
@@ -2907,6 +2930,15 @@ d_collectionqtocategory["Q122414127"] = "Ethnographic Collection of The Finnish 
 #d_collectionqtocategory["Q118976025"] = "Photographs by Kuvasiskot" # Studio Kuvasiskojen kokoelma
 
 
+# institution qcode (after parsing) to commons-template
+# three institutions have the template currently..
+#
+d_institutionqtotemplate = dict()
+d_institutionqtotemplate["Q3029524"] = "Finnish Heritage Agency" 
+d_institutionqtotemplate["Q2031357"] = "Helsinki City Museum" 
+d_institutionqtotemplate["Q283140"] = "SA-Kuva" 
+
+
 # subject tags to commons-categories:
 # must be in subjects-list from Finna
 #
@@ -2994,8 +3026,6 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
-
-pages = getpagesrecurse(pywikibot, commonssite, "Farmers from Finland", 0)
 
 
 
@@ -3548,6 +3578,11 @@ for page in pages:
                     print("Fixed template type for: " + page.title())
                 if (ct.addOrSetAccNumber(template, finna_accession_id) == True):
                     print("Fixed accession number for: " + page.title())
+                    
+                if publisherqcode in d_institutionqtotemplate: # skip unknown tags
+                    institutiontemplate = "{{Institution:" + d_institutionqtotemplate[publisherqcode] + "}}"
+                    if (ct.addOrSetInstitution(template, institutiontemplate) == True):
+                        print("Fixed institution for: " + page.title())
 
         if (ct.isChanged() == True):
             tmptext = str(ct.wikicode)
