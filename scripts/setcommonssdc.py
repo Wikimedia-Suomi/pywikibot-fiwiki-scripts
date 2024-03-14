@@ -2615,7 +2615,7 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, "The workshop of Veljekset Åström Oy 1934 (JOKAKAL3B-3634).tif")
 
-    fp = pywikibot.FilePage(commonssite, "File:Jacob Kavaleff.tif")
+    fp = pywikibot.FilePage(commonssite, "File:Voitto Koskenmäki.tif")
     
     
     pages.append(fp)
@@ -2707,7 +2707,7 @@ def addCategoriesToCommons(pywikibot, tmptext, categories):
             tmptext += "\n"
             catsadded = True
 
-    return catsadded
+    return catsadded, tmptext
 
 
 # ------ main()
@@ -2902,6 +2902,9 @@ d_collectionqtocategory["Q123358672"] = "Finno-Ugric Picture Collection of The F
 #d_collectionqtocategory["Q122414127"] = "Ethnographic Collection" # Yleisetnografinen kuvakokoelma
 d_collectionqtocategory["Q122414127"] = "Ethnographic Collection of The Finnish Heritage Agency" # Yleisetnografinen kuvakokoelma
 
+# note! only add this if not already in one of the subcategories below this one
+# -> TODO: check the hierarchy of categories
+#d_collectionqtocategory["Q118976025"] = "Photographs by Kuvasiskot" # Studio Kuvasiskojen kokoelma
 
 
 # subject tags to commons-categories:
@@ -3554,7 +3557,8 @@ for page in pages:
     collcatstoadd = getcategoriesforcollections(pywikibot, collectionqcodes, d_collectionqtocategory)
     if (len(collcatstoadd) > 0):
         print("Adding collection categories for: ", finnaid, "categories ", str(collcatstoadd))
-        if (addCategoriesToCommons(pywikibot, tmptext, collcatstoadd) == True):
+        res, tmptext = addCategoriesToCommons(pywikibot, tmptext, collcatstoadd) 
+        if (res == True):
             print("Collection categories added for: " + finnaid)
             categoriesadded = True
         else:
@@ -3565,7 +3569,8 @@ for page in pages:
     #extracatstoadd = getcategoriesforsubjects(pywikibot, d_subjecttocategory, finna_record)
     if (len(extracatstoadd) > 0):
         print("Adding subject categories for: ", finnaid, "categories ", str(extracatstoadd))
-        if (addCategoriesToCommons(pywikibot, tmptext, extracatstoadd) == True):
+        res, tmptext = addCategoriesToCommons(pywikibot, tmptext, extracatstoadd)
+        if (res == True):
             print("Subject categories added for: " + finnaid)
             categoriesadded = True
         else:
@@ -3579,6 +3584,7 @@ for page in pages:
         summary += 'Adding categories'
 
     if (oldtext != tmptext and len(summary) > 0):
+        print("Saving with summary: ", summary)
         pywikibot.info('Edit summary: {}'.format(summary))
         page.text = tmptext
         page.save(summary)
