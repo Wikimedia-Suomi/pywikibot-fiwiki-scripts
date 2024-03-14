@@ -2418,7 +2418,7 @@ class CommonsTemplate:
             return True
         else:
             if (self.isEmptyParamValue(par) == True):
-                par.value = instVal
+                par.value = instVal + "\n"
                 self.changed = True
                 return True
             # if it is not empty, don't do anything
@@ -2437,7 +2437,7 @@ class CommonsTemplate:
             return True
         else:
             if (self.isEmptyParamValue(par) == True):
-                par.value = accValue
+                par.value = accValue + "\n"
                 self.changed = True
                 return True
             # if it is not empty, don't do anything
@@ -2968,7 +2968,7 @@ commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 
 # for testing only
-pages = getpagesfixedlist(pywikibot, commonssite)
+#pages = getpagesfixedlist(pywikibot, commonssite)
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
