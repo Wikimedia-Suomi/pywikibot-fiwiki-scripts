@@ -614,10 +614,22 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/sakuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
+#pages = list()
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp3')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp4')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp5')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp6')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp7')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp8')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp9')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp10')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp11')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp12')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp13')
+#pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp14')
+
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
@@ -636,7 +648,19 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Finland in the 1930s")
 
 
-pages = getcatpages(pywikibot, commonssite, "Paavo Cajander")
+#pages = getcatpages(pywikibot, commonssite, "Barösund")
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kari Kankainen", 0)
+
+#pages = getcatpages(pywikibot, commonssite, "Artur Faltin", True)
+
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Hugo Sundström")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Fred Runeberg")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Hugo Sundström")
+
+#pages = getcatpages(pywikibot, commonssite, "Mannerheim Asian expedition")
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
+
+
 
 
 rowcount = 0
@@ -732,6 +756,10 @@ for page in pages:
         finna_image_url = ""
         need_index = False
         match_found = False
+
+        if "highResolution" not in imagesExtended:
+            print("WARN: 'highResolution' not found in imagesExtended, skipping: " + finnaid)
+            continue
         
         # there is at least one case where this is not available?
         # -> save from further comparison by checking early

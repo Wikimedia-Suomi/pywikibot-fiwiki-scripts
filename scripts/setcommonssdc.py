@@ -2095,6 +2095,10 @@ def getImagesExtended(finnarecord):
 # check image metadata if it could be uploaded again with a higher resolution
 #
 def needReupload(file_info, finna_record, imagesExtended):
+
+    if "highResolution" not in imagesExtended:
+        print("WARN: 'highResolution' not found in imagesExtended: " + finnaid)
+        return False
     
     # note! 'original' might point to different image than used above! different server in some cases
     hires = imagesExtended['highResolution']
@@ -2642,6 +2646,7 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, "The workshop of Veljekset Åström Oy 1934 (JOKAKAL3B-3634).tif")
 
+    #fp = pywikibot.FilePage(commonssite, 'File:Antti Kosolan orkesteri Lancastria-laivan kannella.jpg')
     
     
     pages.append(fp)
@@ -2764,6 +2769,7 @@ d_institutionqcode["Helsinki City Museum"] = "Q2031357"
 d_institutionqcode["Vantaan kaupunginmuseo"] = "Q26723704"
 d_institutionqcode["Keravan museopalvelut"] = "Q121266100"
 d_institutionqcode["Turun museokeskus"] = "Q18346797"
+d_institutionqcode["The Museum Centre of Turku"] = "Q18346797"
 d_institutionqcode["Työväenmuseo Werstas"] = "Q11899172"
 d_institutionqcode["Työväen Arkisto"] = "Q11899166"
 d_institutionqcode["Satakunnan Museo"] = "Q6304688"
@@ -2940,6 +2946,7 @@ d_collectionqtocategory["Q122414127"] = "Ethnographic Collection of The Finnish 
 d_institutionqtotemplate = dict()
 d_institutionqtotemplate["Q3029524"] = "Finnish Heritage Agency" 
 d_institutionqtotemplate["Q2031357"] = "Helsinki City Museum" 
+d_institutionqtotemplate["Q18346797"] = "Turku Museum Centre" 
 d_institutionqtotemplate["Q283140"] = "SA-Kuva" 
 
 
@@ -2959,6 +2966,9 @@ wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
 # site = pywikibot.Site("fi", "wikipedia")
 commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
+
+# for testing only
+pages = getpagesfixedlist(pywikibot, commonssite)
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
@@ -3019,9 +3029,6 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-# for testing only
-#pages = getpagesfixedlist(pywikibot, commonssite)
-
 #pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
@@ -3030,6 +3037,8 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Long-range reconnaissance patrols of Finland", 0)
 
 
 
