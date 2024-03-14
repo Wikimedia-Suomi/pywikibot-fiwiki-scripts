@@ -2262,18 +2262,7 @@ def addKansallisgalleriaIdToSdcData(pywikibot, wikidata_site, commonssite, page,
 # helper to contain stuff related to commons template parsing,
 # also contain adding information where missing
 class CommonsTemplate:
-    
-    def parseTemplate(self, page_text):
-        self.wikicode = mwparserfromhell.parse(page_text)
-        self.templatelist = self.wikicode.filter_templates()
-
-        # reset dirty-flag: have we modified it to warrant saving?
-        self.changed = False
-
-        # TODO: further checks if we can process this page correctly
-        # note: a page may have multiple templates
-        return True
-    
+   
     def isChanged(self):
         return self.changed
 
@@ -2310,6 +2299,14 @@ class CommonsTemplate:
         #print("DEBUG: not supported template: ", name)
         return False
 
+    # get first supported template from list of templates
+    # (list may contain other templates contained within as nesting)
+    def getSupportedTemplate(self):
+        for template in self.templatelist:
+            if (self.isSupportedCommonsTemplate(template) == True):
+                return template
+        return None
+
     # note: page may have multiple templates
     def getSourceFromCommonsTemplate(self, template):
         if template.has("Source"):
@@ -2324,10 +2321,42 @@ class CommonsTemplate:
             return template.get("Accession number")
         if template.has("accession number"):
             return template.get("accession number")
+        if template.has("ID"):
+            return template.get("ID")
         if template.has("Id"):
             return template.get("Id")
         if template.has("id"):
             return template.get("id")
+        return None
+
+    def getAuthorFromCommonsTemplate(self, template):
+        if template.has("Author"):
+            return template.get("Author")
+        if template.has("author"):
+            return template.get("author")
+        if template.has("Photographer"):
+            return template.get("Photographer")
+        if template.has("photographer"):
+            return template.get("photographer")
+        return None
+
+    # note: multipiple names, may be "institution", "gallery" or "museum"
+    #
+    def getInstitutionFromCommonsTemplate(self, template):
+        if template.has("Institution"):
+            return template.get("Institution")
+        if template.has("institution"):
+            return template.get("institution")
+
+        #if template.has("Gallery"):
+            #return template.get("Gallery")
+        #if template.has("gallery"):
+            #return template.get("gallery")
+
+        #if template.has("Museum"):
+            #return template.get("Museum")
+        #if template.has("museum"):
+            #return template.get("museum")
         return None
 
     # note: page may have multiple templates
@@ -2358,19 +2387,46 @@ class CommonsTemplate:
         return False
 
     # add institution text to the template field
+    # should have institution-template
     #def addInstitution(self, institution):
 
     # add department (collection) text to the template field
     #def addDepartment(self, department):
 
-    # add author text to the template field
+    # add author text to the template field:
+    # should have creator-template
     #def addAuthor(self, author):
 
     # add accession number/id text to the template field
-    #def addAccNumber(self, accNumber):
-        # note: may have different names for this field..
-        #par = self.getAccessionFromCommonsTemplate()
+    # note: may have different names for this field..
+    def addOrSetAccNumber(self, template, accValue):
+        par = self.getAccessionFromCommonsTemplate(template)
+        if (par == None):
+            template.add("Accession number", accValue)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = accValue
+                self.changed = True
+                return True
+            # if it is not empty, don't do anything
+            # could append but might add duplicates by mistake
+        return False
 
+    # call to initialize
+    def parseTemplate(self, page_text):
+        self.wikicode = mwparserfromhell.parse(page_text)
+        self.templatelist = self.wikicode.filter_templates()
+
+        # reset dirty-flag: have we modified it to warrant saving?
+        self.changed = False
+        
+        #self.template = getSupportedTemplate()
+
+        # TODO: further checks if we can process this page correctly
+        # note: a page may have multiple templates
+        return True
 
 # ----- /CommonsTemplate
 
@@ -2559,7 +2615,7 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, "The workshop of Veljekset Åström Oy 1934 (JOKAKAL3B-3634).tif")
 
-    fp = pywikibot.FilePage(commonssite, "File:Lennart Fritiof Munck af Fulkila.tif")
+    fp = pywikibot.FilePage(commonssite, "File:Jacob Kavaleff.tif")
     
     
     pages.append(fp)
@@ -2935,6 +2991,8 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
+
+pages = getpagesrecurse(pywikibot, commonssite, "Farmers from Finland", 0)
 
 
 
@@ -3485,9 +3543,8 @@ for page in pages:
             if (ct.isSupportedCommonsTemplate(template) == True):
                 if (ct.fixTemplateType(template) == True):
                     print("Fixed template type for: " + page.title())
-            #ct_paracc = ct.getAccessionFromCommonsTemplate(template)
-            #if (ct.isEmptyParamValue(ct_paracc) == True):
-                #addaccnumber finna_accession_id
+                if (ct.addOrSetAccNumber(template, finna_accession_id) == True):
+                    print("Fixed accession number for: " + page.title())
 
         if (ct.isChanged() == True):
             tmptext = str(ct.wikicode)
