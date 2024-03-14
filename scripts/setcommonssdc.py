@@ -2405,6 +2405,8 @@ class CommonsTemplate:
 
     # add institution to the template field
     def addOrSetInstitution(self, template, instVal):
+        if (len(instVal) == 0):
+            return False
         par = self.getInstitutionFromCommonsTemplate(template, True)
         if (par == None):
             template.add("Institution", instVal)
@@ -2422,6 +2424,8 @@ class CommonsTemplate:
     # add accession number/id text to the template field
     # note: may have different names for this field..
     def addOrSetAccNumber(self, template, accValue):
+        if (len(accValue) == 0):
+            return False
         par = self.getAccessionFromCommonsTemplate(template)
         if (par == None):
             template.add("Accession number", accValue)
