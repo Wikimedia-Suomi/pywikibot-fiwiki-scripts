@@ -882,6 +882,14 @@ def getcollectiontargetqcode(statements, collectionsqcodes):
     # return list of those to be added
     return collectionsqcodes
 
+# add collection qcode to sdc data
+def addcollectiontostatements(pywikibot, wikidata_site, collection):
+    # property ID for "collection"
+    coll_claim = pywikibot.Claim(wikidata_site, 'P195')
+    qualifier_targetcoll = pywikibot.ItemPage(wikidata_site, collection)
+    coll_claim.setTarget(qualifier_targetcoll)
+    return coll_claim
+
 # helper to find publisher information in statements
 def isQcodeInClaimQualifiers(claim, qcode, prop):
     if prop not in claim.qualifiers:
@@ -1505,34 +1513,50 @@ def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, 
     #return p_claim
     return None
 
-
-# kgtid should be plain number, same as objectId in object data
-def isKansallisgalleriateosInStatements(statements, kgobjectid):
-    if "P9834" not in statements:
+# generic wrapper to check if given qcode exists for given property
+# in SDC data
+def isQcodeinProperty(statements, pcode, qcode):
+    if pcode not in statements:
         return False
 
-    claimlist = statements["P9834"]
+    claimlist = statements[pcode]
     for claim in claimlist:
         target = claim.getTarget()
-        if (target == kgobjectid):
-            # exact match found: no need to add same ID again
+        targetqcode = getqcodefromwikidatalink(target)
+        if (targetqcode == qcode):
+            # exact match found
+            print("DEBUG: exact qcode found for", pcode ," value ", qcode)
             return True
     return False
 
+# generic wrapper to check if given value string exists for given property
+# in SDC data: don't try to parse as a qcode, just generic value
+def isValueinProperty(statements, pcode, value):
+    if pcode not in statements:
+        return False
+
+    claimlist = statements[pcode]
+    for claim in claimlist:
+        target = claim.getTarget()
+        if (target == value):
+            # exact match found
+            print("DEBUG: exact value found for", pcode ," value ", value)
+            return True
+    return False
+
+# kgtid should be plain number, same as objectId in object data
+def isKansallisgalleriateosInStatements(statements, kgobjectid):
+    return isValueinProperty(statements, "P9834", kgobjectid)
+
+# handle adding kansallisgalleria id to structured data:
+# if there is old-style accession number add new style object id as well
+# so that current links will work
 # kgtid should be plain number, same as objectId in object data
 def addkansallisgalleriateostosdc(pywikibot, wikidata_site, kgobjectid):
     # property ID for "Kansallisgallerian teostunniste" / "Finnish National Gallery artwork ID"
     f_claim = pywikibot.Claim(wikidata_site, 'P9834')
     f_claim.setTarget(kgobjectid)
     return f_claim
-
-# add collection qcode to sdc data
-def addcollectiontostatements(pywikibot, wikidata_site, collection):
-    # property ID for "collection"
-    coll_claim = pywikibot.Claim(wikidata_site, 'P195')
-    qualifier_targetcoll = pywikibot.ItemPage(wikidata_site, collection)
-    coll_claim.setTarget(qualifier_targetcoll)
-    return coll_claim
 
 # add mime-type to sdc data (string)
 def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
@@ -1542,13 +1566,17 @@ def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
     mime_claim.setTarget(mimetype)
     return mime_claim
 
+# check if creator qcode is already in SDC
+def isCreatorinstatements(statements, creatorqcode):
+    return isQcodeinProperty(statements, "P170", creatorqcode)
+
 # add creator (artwork)
 # input: creator q-code
 #
-def addcreatortostatements(pywikibot, wikidata_site, creator):
+def addcreatortostatements(pywikibot, wikidata_site, creatorqcode):
     # property ID for "creator" (artwork)
     cr_claim = pywikibot.Claim(wikidata_site, 'P170')
-    qualifier_targetcr = pywikibot.ItemPage(wikidata_site, creator)
+    qualifier_targetcr = pywikibot.ItemPage(wikidata_site, creatorqcode)
     cr_claim.setTarget(qualifier_targetcr)
     return cr_claim
 
@@ -2281,24 +2309,6 @@ def getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, qcodes):
 
     #return teostunniste, inventaario
     return None
-
-# handle adding kansallisgalleria id to structured data:
-# if there is old-style accession number add new style object id as well
-# so that current links will work
-def addKansallisgalleriaIdToSdcData(pywikibot, wikidata_site, commonssite, page, kgobjectid):
-
-    wditem = page.data_item()  # Get the data item associated with the page
-    sdcdata = wditem.get() # all the properties in json-format
-    if "statements" not in sdcdata:
-        print("No statements found for claims: " + page.title())
-        return False
-    #wdrepo = wikidata_site.data_repository()
-    claims = sdcdata['statements']  # claims are just one step from dataproperties down
-
-    if (isKansallisgalleriateosInStatements(claims, kgobjectid) == False):
-        f_claim = addkansallisgalleriateostosdc(pywikibot, wikidata_site, kgobjectid)
-        if (f_claim != None):
-            commonssite.addClaim(wditem, f_claim)
 
 
 # ----- CommonsTemplate
@@ -3229,15 +3239,23 @@ for page in pages:
 
     if (len(kgtid) > 0):
         
-        if (addKansallisgalleriaIdToSdcData(pywikibot, wikidata_site, commonssite, page, kgtid) == False):
-            print("WARN: failed adding kansallisgalleria id", page.title())
+        if (isKansallisgalleriateosInStatements(claims, kgtid) == False):
+            print("DEBUG: adding kansallisgalleria object id to SDC", kgtid)
+            fo_claim = addkansallisgalleriateostosdc(pywikibot, wikidata_site, kgtid)
+            if (fo_claim != None):
+                wditem.addClaim(fo_claim)
+            else:
+                print("WARN: failed adding kansallisgalleria id", page.title())
+            #if (addKansallisgalleriaIdToSdcData(pywikibot, wikidata_site, commonssite, page, kgtid) == False):
+                #print("WARN: failed adding kansallisgalleria id", page.title())
 
         creatorqcode = getAuthorFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
         if (creatorqcode != None):
-            print("DEBUG: adding creator qcode to SDC", creatorqcode)
-            creatorclaim = addcreatortostatements(pywikibot, wikidata_site, creatorqcode)
-            wditem.addClaim(creatorclaim)
-            #commonssite.addClaim(wditem, f_claim)
+            if (isCreatorinstatements(claims, creatorqcode) == False):
+                print("DEBUG: adding creator qcode to SDC", creatorqcode)
+                creatorclaim = addcreatortostatements(pywikibot, wikidata_site, creatorqcode)
+                wditem.addClaim(creatorclaim)
+                #commonssite.addClaim(wditem, f_claim)
         
         # skip the rest as that requires finna id and finna record
         continue
