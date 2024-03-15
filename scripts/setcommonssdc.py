@@ -2211,42 +2211,76 @@ def fixMissingSdcData(pywikibot, wikidata_site, commonssite, file_info, page):
     # exists alraedy or created successfully -> ok
     return True
 
+def getValueFromWdItem(wikidataitem, pcode):
+    instance_of = wikidataitem.claims.get(pcode, [])
+    for claim in instance_of:
+        target = claim.getTarget()
+        #print("target: ", str(target))
+        return target
+    return None
+
+def getQcodeFromWdItem(wikidataitem, pcode):
+    instance_of = wikidataitem.claims.get(pcode, [])
+    for claim in instance_of:
+        target = claim.getTarget()
+        #print("target: ", str(target))
+        #print("id: ", str(target.id))
+        return target.id
+    return None
+
+# get author qcode for artwork from wikidata:
+# use when artwork qcode is known
+#
+def getAuthorFromWikidata(pywikibot, wikidata_site, qcodes):
+    if (qcodes == None):
+        return None
+    if (len(qcodes) == 0):
+        return None
+    if (len(qcodes) > 1):
+        print("WARN: more than one qcode")
+    
+    itemqcode = qcodes[0]
+    
+    wikidata_item = pywikibot.ItemPage(wikidata_site, itemqcode)
+    if not wikidata_item.exists():
+        print("WARN: qcode", itemqcode, "does not exist in wikidata")
+        return None
+    author = getQcodeFromWdItem(wikidata_item, 'P170')
+    return author
+
 # in some cases, all relevant information is in wikidata-item
 # instead of in commons page in a template:
 # try to lookup the wikidata-items to locate possible inventory number / object id
 #
 # properties:
 # catalog code (P528), described at URL (P973), described by source (P1343),
-def getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, page, qcodes):
-
+def getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, qcodes):
     if (qcodes == None):
-        return False
+        return None
     if (len(qcodes) == 0):
-        return False
-    
+        return None
     if (len(qcodes) > 1):
         print("WARN: more than one qcode")
     
     itemqcode = qcodes[0]
     
-    wdrepo = wikidata_site.data_repository()
+    wikidata_item = pywikibot.ItemPage(wikidata_site, itemqcode)
+    if not wikidata_item.exists():
+        print("WARN: qcode", itemqcode, "does not exist in wikidata")
+        return None
 
-    #artwork_item = pywikibot.ItemPage(wdrepo, 'Q20771282')
-    artwork_item = pywikibot.ItemPage(wdrepo, itemqcode)
-    awdata = artwork_item.get()
+    # try teostunniste first
+    teostunniste = getValueFromWdItem(wikidata_item, 'P9834')
+    
+    # use inventory number to lookup teostunniste if it doesn't yet exist
+    inventaario = getValueFromWdItem(wikidata_item, 'P217')
 
-    #print("DEBUG:", str(artwork_item), str(awdata))
+    #fngid = fngcache.findbyacc(fngacc)
+    #if (fngid != None):
+        #kgtid = fngid['objectid']
 
-    #for claim in awdata:
-        #target = claim.getTarget()
-        #print("DEBUG: tatget", str(target))
-
-    #if "statements" in awdata:
-        #claims = awdata['statements']  # claims are just one step from dataproperties down
-        #for claim in claims:
-            #target = claim.getTarget()
-            #print("DEBUG: tatget", str(target))
-    return True
+    #return teostunniste, inventaario
+    return None
 
 # handle adding kansallisgalleria id to structured data:
 # if there is old-style accession number add new style object id as well
@@ -2514,7 +2548,8 @@ def getsourceurlfrompagetemplate(ct):
     #print("DEBUG: no urls found in template")
     return None
 
-# get wikidata codes related to commons page
+# get wikidata q-codes related to commons page:
+# qcode-field is used for artwork usually
 def getwikidatacodefrompagetemplate(ct):
 
     wikidatacodes = list() # wikidata qcodes from template/page
@@ -2648,7 +2683,11 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, 'File:Antti Kosolan orkesteri Lancastria-laivan kannella.jpg')
     
-    fp = pywikibot.FilePage(commonssite, 'File:Munkkiniemi, Kuusisaari.jpg')
+#    fp = pywikibot.FilePage(commonssite, 'File:Munkkiniemi, Kuusisaari.jpg')
+
+    fp = pywikibot.FilePage(commonssite, 'File:Alvar Cawén - The Convalescent - A IV 4283 - Finnish National Gallery.jpg')
+
+
     
     pages.append(fp)
     return pages
@@ -2949,7 +2988,11 @@ d_institutionqtotemplate["Q3029524"] = "Finnish Heritage Agency"
 d_institutionqtotemplate["Q2031357"] = "Helsinki City Museum" 
 d_institutionqtotemplate["Q18346797"] = "Turku Museum Centre" 
 d_institutionqtotemplate["Q26723704"] = "Vantaa City Museum" 
+d_institutionqtotemplate["Q41776741"] = "Hyvinkää City Museum" 
 d_institutionqtotemplate["Q283140"] = "SA-Kuva" 
+d_institutionqtotemplate["Q769544"] = "Society of Swedish Literature in Finland" 
+d_institutionqtotemplate["Q18346681"] = "South Karelia Museum" 
+
 
 
 # subject tags to commons-categories:
@@ -2969,8 +3012,10 @@ wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
 commonssite = pywikibot.Site("commons", "commons")
 commonssite.login()
 
+
 # for testing only
 pages = getpagesfixedlist(pywikibot, commonssite)
+
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
@@ -3124,10 +3169,10 @@ for page in pages:
         print("WARN: problem parsing template(s) in page " + page.title())
 
     # if there are qcodes for item in wikidata -> find those from page
-    wikidatacodes = getwikidatacodefrompagetemplate(ct)
-    if (len(wikidatacodes) > 0):
+    wikidataqcodes = getwikidatacodefrompagetemplate(ct)
+    if (len(wikidataqcodes) > 0):
         print("DEBUG: found qcodes in tempate for " + page.title())
-        #getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, page, wikidatacodes)
+        #getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
 
     # find source urls in template(s) in commons-page
     srcurls = getsourceurlfrompagetemplate(ct)
@@ -3183,8 +3228,16 @@ for page in pages:
             print("DEBUG: no objectid by inventory id", fngacc)
 
     if (len(kgtid) > 0):
+        
         if (addKansallisgalleriaIdToSdcData(pywikibot, wikidata_site, commonssite, page, kgtid) == False):
             print("WARN: failed adding kansallisgalleria id", page.title())
+
+        creatorqcode = getAuthorFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
+        if (creatorqcode != None):
+            print("DEBUG: adding creator qcode to SDC", creatorqcode)
+            creatorclaim = addcreatortostatements(pywikibot, wikidata_site, creatorqcode)
+            wditem.addClaim(creatorclaim)
+            #commonssite.addClaim(wditem, f_claim)
         
         # skip the rest as that requires finna id and finna record
         continue
