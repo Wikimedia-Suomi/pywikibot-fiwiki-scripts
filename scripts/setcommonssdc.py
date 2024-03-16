@@ -3051,7 +3051,7 @@ commonssite.login()
 
 
 # for testing only
-pages = getpagesfixedlist(pywikibot, commonssite)
+#pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 # get list of pages upto depth of 1 
@@ -3205,6 +3205,9 @@ for page in pages:
     if (ct.parseTemplate(page.text) == False):
         print("WARN: problem parsing template(s) in page " + page.title())
 
+    kg_teostunniste = ""
+    fng_inventaario = ""
+
     # if there are qcodes for item in wikidata -> find those from page
     wikidataqcodes = getwikidatacodefrompagetemplate(ct)
     if (len(wikidataqcodes) > 0):
@@ -3264,6 +3267,15 @@ for page in pages:
             # try old-style/download id
             if (finnarecordid == ""):
                 finnaid = getlinksourceid(srcvalue)
+
+    if (len(fngacc) == 0 and len(fng_inventaario) > 0):
+        print("DEBUG: using inventory number", fng_inventaario ," from wikidata")
+        fngacc = fng_inventaario
+
+    # use what we found from wikidata
+    if (len(kgtid) == 0 and len(kg_teostunniste) > 0):
+        print("DEBUG: using object id", kg_teostunniste ," from wikidata")
+        kgtid = kg_teostunniste
 
     if (len(kgtid) == 0 and len(fngacc) > 0):
         #print("DEBUG: searching objectid by inventory id", fngacc)
