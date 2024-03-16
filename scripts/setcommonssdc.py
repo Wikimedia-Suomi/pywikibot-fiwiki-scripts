@@ -313,13 +313,14 @@ class CachedImageData:
 class CachedMediainfo:
     def opencachedb(self):
         # created if it doesn't yet exist
-        self.conn = sqlite3.connect("pwbmediainfocache.db")
+        #self.conn = sqlite3.connect("pwbmediainfocache.db")
+        self.conn = psycopg2.connect("dbname=wikidb")
         cur = self.conn.cursor()
-        cur.execute("CREATE TABLE IF NOT EXISTS mediainfocache(mediaid, timestamp)")
+        cur.execute("CREATE TABLE IF NOT EXISTS mediainfocache(mediaid integer, recent timestamp)")
 
     def addtocache(self, mediaid, ts):
 
-        sqlq = "INSERT INTO mediainfocache(mediaid, timestamp) VALUES ('" + str(mediaid) + "', '" + ts.isoformat() + "')"
+        sqlq = "INSERT INTO mediainfocache(mediaid, recent) VALUES ('" + str(mediaid) + "', '" + ts.isoformat() + "')"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
@@ -327,18 +328,24 @@ class CachedMediainfo:
 
     def updatecache(self, mediaid, ts):
 
-        sqlq = "UPDATE mediainfocache SET timestamp = '" + ts.isoformat() + "' WHERE mediaid = '" + str(mediaid) + "'"
+        sqlq = "UPDATE mediainfocache SET recent = '" + ts.isoformat() + "' WHERE mediaid = '" + str(mediaid) + "'"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
         self.conn.commit()
 
     def findfromcache(self, mediaid):
-        sqlq = "SELECT mediaid, timestamp FROM mediainfocache WHERE mediaid = '" + str(mediaid) + "'"
+        sqlq = "SELECT mediaid, recent FROM mediainfocache WHERE mediaid = '" + str(mediaid) + "'"
         
         cur = self.conn.cursor()
         res = cur.execute(sqlq)
-        rset = res.fetchall()
+        #if (res == None):
+            #print("DEBUG: no result for query")
+            #return None
+        rset = cur.fetchall()
+        if (rset == None):
+            print("DEBUG: no resultset for query")
+            return None
         
         #if (len(rset) == 0):
             #return None
@@ -349,7 +356,7 @@ class CachedMediainfo:
             #print(row)
             dt = dict()
             dt['mediaid'] = row[0]
-            dt['timestamp'] = datetime.fromisoformat(row[1])
+            dt['recent'] = datetime.fromisoformat(str(row[1]))
             #print(dt)
             return dt
 
@@ -3040,7 +3047,7 @@ commonssite.login()
 
 
 # for testing only
-pages = getpagesfixedlist(pywikibot, commonssite)
+#pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 # get list of pages upto depth of 1 
@@ -3090,7 +3097,7 @@ pages = getpagesfixedlist(pywikibot, commonssite)
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
+pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
 
 # many are from valokuvataiteenmuseo via flickr
 # many from fng via flickr
@@ -3167,10 +3174,10 @@ for page in pages:
     # check when we have processed this 
     cached_info = micache.findfromcache(filepage.pageid)
     if (cached_info != None):
-        print("media id ", str(filepage.pageid) ," has cached change : ", cached_info['timestamp'].isoformat())
-        if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['timestamp'].replace(tzinfo=timezone.utc)
-            and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['timestamp'].replace(tzinfo=timezone.utc)):
-            print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['timestamp'].isoformat() ," page ", page.title())
+        print("media id ", str(filepage.pageid) ," has cached change : ", cached_info['recent'].isoformat())
+        if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
+            and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
+            print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
             continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
@@ -3275,6 +3282,7 @@ for page in pages:
                 wditem.addClaim(creatorclaim)
                 #commonssite.addClaim(wditem, f_claim)
         
+        micache.addorupdate(filepage.pageid, datetime.now(timezone.utc))
         # skip the rest as that requires finna id and finna record
         continue
 
