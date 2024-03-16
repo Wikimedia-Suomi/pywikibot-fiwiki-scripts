@@ -12,6 +12,7 @@ class CachedFngData:
         self.conn = psycopg2.connect("dbname=wikidb")
         cur = self.conn.cursor()
         cur.execute("CREATE TABLE IF NOT EXISTS fngcache(objectid integer, invnum varchar(250))")
+        self.conn.commit()
 
     def addtocache(self, objectid, invnum):
 
@@ -26,9 +27,13 @@ class CachedFngData:
         
         cur = self.conn.cursor()
         res = cur.execute(sqlq)
-        if (res == None):
+        #if (res == None):
+            #print("DEBUG: no result for query")
+            #return None
+        rset = cur.fetchall()
+        if (rset == None):
+            print("DEBUG: no resultset for query")
             return None
-        rset = res.fetchall()
         
         #if (len(rset) == 0):
             #return None
@@ -50,9 +55,13 @@ class CachedFngData:
         
         cur = self.conn.cursor()
         res = cur.execute(sqlq)
-        if (res == None):
+        #if (res == None):
+            #print("DEBUG: no result for query")
+            #return None
+        rset = cur.fetchall()
+        if (rset == None):
+            print("DEBUG: no resultset for query")
             return None
-        rset = res.fetchall()
         
         #if (len(rset) == 0):
             #return None

@@ -27,6 +27,7 @@ from datetime import timezone
 
 import urllib3
 import sqlite3
+import psycopg2
 
 # ----- FinnaData
 
@@ -367,9 +368,11 @@ class CachedMediainfo:
 class CachedFngData:
     def opencachedb(self):
         # created if it doesn't yet exist
-        self.conn = sqlite3.connect("pwbfngcache.db")
+        #self.conn = sqlite3.connect("pwbfngcache.db")
+        self.conn = psycopg2.connect("dbname=wikidb")
         cur = self.conn.cursor()
-        cur.execute("CREATE TABLE IF NOT EXISTS fngcache(objectid, invnum)")
+        #cur.execute("CREATE TABLE IF NOT EXISTS fngcache(objectid, invnum)")
+        cur.execute("CREATE TABLE IF NOT EXISTS fngcache(objectid integer, invnum varchar(250))")
 
     def addtocache(self, objectid, invnum):
 
@@ -384,7 +387,13 @@ class CachedFngData:
         
         cur = self.conn.cursor()
         res = cur.execute(sqlq)
-        rset = res.fetchall()
+        #if (res == None):
+            #print("DEBUG: no result for query")
+            #return None
+        rset = cur.fetchall()
+        if (rset == None):
+            print("DEBUG: no resultset for query")
+            return None
         
         #if (len(rset) == 0):
             #return None
@@ -406,7 +415,14 @@ class CachedFngData:
         
         cur = self.conn.cursor()
         res = cur.execute(sqlq)
-        rset = res.fetchall()
+        #if (res == None):
+            # 
+            #print("DEBUG: no result for query")
+            #return None
+        rset = cur.fetchall()
+        if (rset == None):
+            print("DEBUG: no resultset for query")
+            return None
         
         #if (len(rset) == 0):
             #return None
@@ -3232,12 +3248,14 @@ for page in pages:
         #print("DEBUG: searching objectid by inventory id", fngacc)
         fngid = fngcache.findbyacc(fngacc)
         if (fngid != None):
-            kgtid = fngid['objectid']
+            # change to string as other python methods will need it (sdc)
+            kgtid = str(fngid['objectid'])
             print("DEBUG: found objectid: ", kgtid, " for inventory id: ", fngacc)
         else:
             print("DEBUG: no objectid by inventory id", fngacc)
 
     if (len(kgtid) > 0):
+        #print("DEBUG: kansallisgalleria id found:", kgtid)
         
         if (isKansallisgalleriateosInStatements(claims, kgtid) == False):
             print("DEBUG: adding kansallisgalleria object id to SDC", kgtid)
