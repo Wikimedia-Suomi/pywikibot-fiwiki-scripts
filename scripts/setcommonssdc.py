@@ -1581,14 +1581,6 @@ def addkansallisgalleriateostosdc(pywikibot, wikidata_site, kgobjectid):
     f_claim.setTarget(kgobjectid)
     return f_claim
 
-# add mime-type to sdc data (string)
-def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
-    # property ID for "mime type"
-    mime_claim = pywikibot.Claim(wikidata_site, 'P1163')
-    #qualifier_targetmime = pywikibot.ItemPage(wikidata_site, mimetype)
-    mime_claim.setTarget(mimetype)
-    return mime_claim
-
 # check if creator qcode is already in SDC
 def isCreatorinstatements(statements, creatorqcode):
     return isQcodeinProperty(statements, "P170", creatorqcode)
@@ -1603,9 +1595,14 @@ def addcreatortostatements(pywikibot, wikidata_site, creatorqcode):
     cr_claim.setTarget(qualifier_targetcr)
     return cr_claim
 
-# get creator q-code from wikidata
-# from inverse of creator (Q78522641, instead of P170)
-#def getcreatorfrominversewditem(pywikibot, wikidata_site, wditem):
+# add mime-type to sdc data (string)
+# used to force creation of sdc entry
+def addmimetypetosdc(pywikibot, wikidata_site, mimetype):
+    # property ID for "mime type"
+    mime_claim = pywikibot.Claim(wikidata_site, 'P1163')
+    #qualifier_targetmime = pywikibot.ItemPage(wikidata_site, mimetype)
+    mime_claim.setTarget(mimetype)
+    return mime_claim
 
 # add author (written work)
 # input: author q-code
@@ -2322,16 +2319,20 @@ def getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, qcodes):
 
     # try teostunniste first
     teostunniste = getValueFromWdItem(wikidata_item, 'P9834')
+    if (teostunniste == None):
+        print("DEBUG: teostunniste not found for", itemqcode)
     
     # use inventory number to lookup teostunniste if it doesn't yet exist
     inventaario = getValueFromWdItem(wikidata_item, 'P217')
+    if (inventaario == None):
+        print("DEBUG: inventory number not found for", itemqcode)
 
     #fngid = fngcache.findbyacc(fngacc)
     #if (fngid != None):
         #kgtid = fngid['objectid']
 
-    #return teostunniste, inventaario
-    return None
+    return teostunniste, inventaario
+    #return None
 
 
 # ----- CommonsTemplate
@@ -2715,11 +2716,14 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fp = pywikibot.FilePage(commonssite, "The workshop of Veljekset Åström Oy 1934 (JOKAKAL3B-3634).tif")
 
     #fp = pywikibot.FilePage(commonssite, 'File:Antti Kosolan orkesteri Lancastria-laivan kannella.jpg')
-    
 #    fp = pywikibot.FilePage(commonssite, 'File:Munkkiniemi, Kuusisaari.jpg')
 
-    fp = pywikibot.FilePage(commonssite, 'File:Alvar Cawén - The Convalescent - A IV 4283 - Finnish National Gallery.jpg')
+#    fp = pywikibot.FilePage(commonssite, 'File:Alvar Cawén - The Convalescent - A IV 4283 - Finnish National Gallery.jpg')
 
+
+    #fp = pywikibot.FilePage(commonssite, 'File:Helene Schjerfbeck - Hjördis.jpg')
+    fp = pywikibot.FilePage(commonssite, 'File:Haavoittunut soturi hangella by Helena Schjerfbeck 1880.jpg')
+    
 
     
     pages.append(fp)
@@ -3047,7 +3051,7 @@ commonssite.login()
 
 
 # for testing only
-#pages = getpagesfixedlist(pywikibot, commonssite)
+pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 # get list of pages upto depth of 1 
@@ -3097,7 +3101,7 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
-pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
+#pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
 
 # many are from valokuvataiteenmuseo via flickr
 # many from fng via flickr
@@ -3204,8 +3208,18 @@ for page in pages:
     # if there are qcodes for item in wikidata -> find those from page
     wikidataqcodes = getwikidatacodefrompagetemplate(ct)
     if (len(wikidataqcodes) > 0):
-        print("DEBUG: found qcodes in tempate for " + page.title())
-        #getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
+        print("DEBUG: found qcodes in template for " + page.title())
+        kg_teostunniste, fng_inventaario = getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
+        if (kg_teostunniste == None and fng_inventaario != None):
+            print("DEBUG: inventory number ", fng_inventaario ," found, looking object id for ", page.title())
+            fngid = fngcache.findbyacc(fng_inventaario)
+            if (fngid != None):
+                kg_teostunniste = str(fngid['objectid'])
+                print("DEBUG: found ", kg_teostunniste ," for ", fng_inventaario)
+            else:
+                print("DEBUG: could not find object id for ", fng_inventaario)
+        elif (kg_teostunniste != None):
+            print("DEBUG: object id ", kg_teostunniste ," found for ", page.title())
 
     # find source urls in template(s) in commons-page
     srcurls = getsourceurlfrompagetemplate(ct)
