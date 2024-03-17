@@ -1567,7 +1567,7 @@ def isValueinProperty(statements, pcode, value):
             return True
     return False
 
-# kgtid should be plain number, same as objectId in object data
+# kgobjectid should be plain number, same as objectId in object data
 def isKansallisgalleriateosInStatements(statements, kgobjectid):
     return isValueinProperty(statements, "P9834", kgobjectid)
 
@@ -1576,9 +1576,32 @@ def isKansallisgalleriateosInStatements(statements, kgobjectid):
 # so that current links will work
 # kgtid should be plain number, same as objectId in object data
 def addkansallisgalleriateostosdc(pywikibot, wikidata_site, kgobjectid):
+    if (len(kgobjectid) == 0):
+        return None
     # property ID for "Kansallisgallerian teostunniste" / "Finnish National Gallery artwork ID"
     f_claim = pywikibot.Claim(wikidata_site, 'P9834')
     f_claim.setTarget(kgobjectid)
+    return f_claim
+
+# kginventory should be string
+def isKansallisgalleriaInventorynumberInStatements(statements, kginventory):
+    return isValueinProperty(statements, "P217", kginventory)
+
+# kginventory is a string,
+# collection is a qcode
+def addkansallisgalleriaInventorynumberTosdc(pywikibot, wikidata_site, kginventory, collq):
+    if (len(kginventory) == 0):
+        return None
+    # property ID for "inventaarionumero"
+    f_claim = pywikibot.Claim(wikidata_site, 'P217')
+    f_claim.setTarget(kginventory)
+    
+    if (len(collq) > 0):
+        qualifier_coll = pywikibot.Claim(wikidata_site, 'P195')  # property ID for "collection"
+        qualifier_target = pywikibot.ItemPage(wikidata_site, collq)  # Kansallisgalleria (Q2983474)
+        qualifier_coll.setTarget(qualifier_target)
+        f_claim.addQualifier(qualifier_coll, summary='Adding collection qualifier')
+    
     return f_claim
 
 # check if creator qcode is already in SDC
@@ -1594,6 +1617,23 @@ def addcreatortostatements(pywikibot, wikidata_site, creatorqcode):
     qualifier_targetcr = pywikibot.ItemPage(wikidata_site, creatorqcode)
     cr_claim.setTarget(qualifier_targetcr)
     return cr_claim
+
+# check if collection qcode is already in SDC:
+# used for artwork with gallery collection,
+# not used for finna-pictures
+def isFngCollectioninstatements(statements, collqcode):
+    return isQcodeinProperty(statements, "P195", collqcode)
+
+# add collection (gallery) of artwork
+# not used for finna pictures
+# input: creator q-code
+#
+def addFngCollectiontostatements(pywikibot, wikidata_site, collqcode):
+    # property ID for "creator" (artwork)
+    f_claim = pywikibot.Claim(wikidata_site, 'P195')
+    qualifier_target = pywikibot.ItemPage(wikidata_site, collqcode)
+    f_claim.setTarget(qualifier_target)
+    return f_claim
 
 # add mime-type to sdc data (string)
 # used to force creation of sdc entry
@@ -2295,6 +2335,26 @@ def getAuthorFromWikidata(pywikibot, wikidata_site, qcodes):
         return None
     author = getQcodeFromWdItem(wikidata_item, 'P170')
     return author
+
+# get collection qcode for artwork from wikidata:
+# use when artwork qcode is known
+#
+def getCollectionFromWikidata(pywikibot, wikidata_site, qcodes):
+    if (qcodes == None):
+        return None
+    if (len(qcodes) == 0):
+        return None
+    if (len(qcodes) > 1):
+        print("WARN: more than one qcode")
+    
+    itemqcode = qcodes[0]
+    
+    wikidata_item = pywikibot.ItemPage(wikidata_site, itemqcode)
+    if not wikidata_item.exists():
+        print("WARN: qcode", itemqcode, "does not exist in wikidata")
+        return None
+    collection = getQcodeFromWdItem(wikidata_item, 'P195')
+    return collection
 
 # in some cases, all relevant information is in wikidata-item
 # instead of in commons page in a template:
@@ -3051,7 +3111,7 @@ commonssite.login()
 
 
 # for testing only
-#pages = getpagesfixedlist(pywikibot, commonssite)
+pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 # get list of pages upto depth of 1 
@@ -3123,6 +3183,8 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Long-range reconnaissance patrols of Finland", 0)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Paintings by Helene Schjerfbeck in the Finnish National Gallery", 0)
 
 
 
@@ -3287,8 +3349,24 @@ for page in pages:
         else:
             print("DEBUG: no objectid by inventory id", fngacc)
 
+    # inventory number in commons/wikidata is not matching?
+    if (fngacc != fng_inventaario):
+        print("WARN: inventory number mismatch", fngacc, "", fng_inventaario)
+
+    # id in commons/wikidata is not matching?
+    if (kgtid != kg_teostunniste):
+        print("WARN: object id mismatch", kgtid, "", kg_teostunniste)
+
     if (len(kgtid) > 0):
         #print("DEBUG: kansallisgalleria id found:", kgtid)
+        
+        # should have collection Q2983474 Kansallisgalleria when adding object id
+        collectionqcode = getCollectionFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
+        if (collectionqcode != None):
+            if (isFngCollectioninstatements(claims, collectionqcode) == False):
+                print("DEBUG: adding collection qcode to SDC", collectionqcode)
+                fng_collclaim = addFngCollectiontostatements(pywikibot, wikidata_site, collectionqcode)
+                wditem.addClaim(fng_collclaim)
         
         if (isKansallisgalleriateosInStatements(claims, kgtid) == False):
             print("DEBUG: adding kansallisgalleria object id to SDC", kgtid)
@@ -3300,6 +3378,14 @@ for page in pages:
             #if (addKansallisgalleriaIdToSdcData(pywikibot, wikidata_site, commonssite, page, kgtid) == False):
                 #print("WARN: failed adding kansallisgalleria id", page.title())
 
+        if (isKansallisgalleriaInventorynumberInStatements(claims, fngacc) == False):
+            print("DEBUG: adding kansallisgalleria inventory number to SDC", fngacc)
+            fo_claim = addkansallisgalleriaInventorynumberTosdc(pywikibot, wikidata_site, fngacc, collectionqcode)
+            if (fo_claim != None):
+                wditem.addClaim(fo_claim)
+            else:
+                print("WARN: failed adding kansallisgalleria inventory number", page.title())
+
         creatorqcode = getAuthorFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
         if (creatorqcode != None):
             if (isCreatorinstatements(claims, creatorqcode) == False):
@@ -3307,7 +3393,7 @@ for page in pages:
                 creatorclaim = addcreatortostatements(pywikibot, wikidata_site, creatorqcode)
                 wditem.addClaim(creatorclaim)
                 #commonssite.addClaim(wditem, f_claim)
-        
+                
         micache.addorupdate(filepage.pageid, datetime.now(timezone.utc))
         # skip the rest as that requires finna id and finna record
         continue
