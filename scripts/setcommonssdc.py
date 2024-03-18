@@ -2362,7 +2362,7 @@ def getCollectionFromWikidata(pywikibot, wikidata_site, qcodes):
 #
 # properties:
 # catalog code (P528), described at URL (P973), described by source (P1343),
-def getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, qcodes):
+def getKansallisgalleriaTeostunnisteFromWikidata(pywikibot, wikidata_site, qcodes):
     if (qcodes == None):
         return None
     if (len(qcodes) == 0):
@@ -2382,17 +2382,29 @@ def getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, qcodes):
     if (teostunniste == None):
         print("DEBUG: teostunniste not found for", itemqcode)
     
+    return teostunniste, inventaario
+
+def getKansallisgalleriaInventaarionumeroFromWikidata(pywikibot, wikidata_site, qcodes):
+    if (qcodes == None):
+        return None
+    if (len(qcodes) == 0):
+        return None
+    if (len(qcodes) > 1):
+        print("WARN: more than one qcode")
+    
+    itemqcode = qcodes[0]
+    
+    wikidata_item = pywikibot.ItemPage(wikidata_site, itemqcode)
+    if not wikidata_item.exists():
+        print("WARN: qcode", itemqcode, "does not exist in wikidata")
+        return None
+
     # use inventory number to lookup teostunniste if it doesn't yet exist
     inventaario = getValueFromWdItem(wikidata_item, 'P217')
     if (inventaario == None):
         print("DEBUG: inventory number not found for", itemqcode)
 
-    #fngid = fngcache.findbyacc(fngacc)
-    #if (fngid != None):
-        #kgtid = fngid['objectid']
-
-    return teostunniste, inventaario
-    #return None
+    return inventaario
 
 
 # ----- CommonsTemplate
@@ -3111,7 +3123,7 @@ commonssite.login()
 
 
 # for testing only
-pages = getpagesfixedlist(pywikibot, commonssite)
+#pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 # get list of pages upto depth of 1 
@@ -3177,7 +3189,7 @@ pages = getpagesfixedlist(pywikibot, commonssite)
 #pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
 #pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
+pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
@@ -3222,12 +3234,11 @@ for page in pages:
     if filepage.isRedirectPage():
         continue
 
-        
+    print(" ////////", rowcount, "/", len(pages), ": [ " + page.title() + " ] ////////")
+
     file_media_identifier='M' + str(filepage.pageid)
     file_info = filepage.latest_file_info
-    oldtext=page.text
-
-    print(" ////////", rowcount, "/", len(pages), ": [ " + page.title() + " ] ////////")
+    oldtext = page.text
     
     # there may be other media than images as well
     strmime = str(file_info.mime)
@@ -3257,6 +3268,7 @@ for page in pages:
     if "statements" not in sdcdata:
         print("No statements found for claims: " + page.title())
         continue
+    
     #wdrepo = wikidata_site.data_repository()
     claims = sdcdata['statements']  # claims are just one step from dataproperties down
 
@@ -3274,7 +3286,10 @@ for page in pages:
     wikidataqcodes = getwikidatacodefrompagetemplate(ct)
     if (len(wikidataqcodes) > 0):
         print("DEBUG: found qcodes in template for " + page.title())
-        kg_teostunniste, fng_inventaario = getKansallisgalleriaIdFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
+        
+        kg_teostunniste = getKansallisgalleriaTeostunnisteFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
+        fng_inventaario = getKansallisgalleriaInventaarionumeroFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
+
         if (kg_teostunniste == None and fng_inventaario != None):
             print("DEBUG: inventory number ", fng_inventaario ," found, looking object id for ", page.title())
             fngid = fngcache.findbyacc(fng_inventaario)
@@ -3283,8 +3298,14 @@ for page in pages:
                 print("DEBUG: found ", kg_teostunniste ," for ", fng_inventaario)
             else:
                 print("DEBUG: could not find object id for ", fng_inventaario)
-        elif (kg_teostunniste != None):
-            print("DEBUG: object id ", kg_teostunniste ," found for ", page.title())
+        if (kg_teostunniste != None and fng_inventaario == None):
+            print("DEBUG: object id ", kg_teostunniste ," found, looking inventory number for ", page.title())
+            fnginv = fngcache.findbyid(kg_teostunniste)
+            if (fnginv != None):
+                fng_inventaario = str(fnginv['invnum'])
+                print("DEBUG: found ", fng_inventaario ," for ", kg_teostunniste)
+            else:
+                print("DEBUG: could not find inventory number for ", kg_teostunniste)
 
     # find source urls in template(s) in commons-page
     srcurls = getsourceurlfrompagetemplate(ct)
@@ -3330,6 +3351,27 @@ for page in pages:
             if (finnarecordid == ""):
                 finnaid = getlinksourceid(srcvalue)
 
+    if (len(kgtid) == 0 and len(fngacc) > 0):
+        #print("DEBUG: searching objectid by inventory id", fngacc)
+        fngid = fngcache.findbyacc(fngacc)
+        if (fngid != None):
+            # change to string as other python methods will need it (sdc)
+            kgtid = str(fngid['objectid'])
+            print("DEBUG: found objectid: ", kgtid, " for inventory number: ", fngacc)
+        else:
+            print("DEBUG: no objectid by inventory number", fngacc)
+
+    if (len(kgtid) > 0 and len(fngacc) == 0):
+        #print("DEBUG: searching objectid by inventory id", fngacc)
+        fnginv = fngcache.findbyid(kgtid)
+        if (fnginv != None):
+            # change to string as other python methods will need it (sdc)
+            fngacc = str(fnginv['invnum'])
+            print("DEBUG: found inventory number: ", fngacc, " for object id: ", kgtid)
+        else:
+            print("DEBUG: no inventory number by object id", kgtid)
+
+
     if (len(fngacc) == 0 and len(fng_inventaario) > 0):
         print("DEBUG: using inventory number", fng_inventaario ," from wikidata")
         fngacc = fng_inventaario
@@ -3339,16 +3381,6 @@ for page in pages:
         print("DEBUG: using object id", kg_teostunniste ," from wikidata")
         kgtid = kg_teostunniste
 
-    if (len(kgtid) == 0 and len(fngacc) > 0):
-        #print("DEBUG: searching objectid by inventory id", fngacc)
-        fngid = fngcache.findbyacc(fngacc)
-        if (fngid != None):
-            # change to string as other python methods will need it (sdc)
-            kgtid = str(fngid['objectid'])
-            print("DEBUG: found objectid: ", kgtid, " for inventory id: ", fngacc)
-        else:
-            print("DEBUG: no objectid by inventory id", fngacc)
-
     # inventory number in commons/wikidata is not matching?
     if (fngacc != fng_inventaario):
         print("WARN: inventory number mismatch", fngacc, "", fng_inventaario)
@@ -3357,7 +3389,7 @@ for page in pages:
     if (kgtid != kg_teostunniste):
         print("WARN: object id mismatch", kgtid, "", kg_teostunniste)
 
-    if (len(kgtid) > 0):
+    if (len(kgtid) > 0 and len(fngacc) > 0):
         #print("DEBUG: kansallisgalleria id found:", kgtid)
         
         # should have collection Q2983474 Kansallisgalleria when adding object id
