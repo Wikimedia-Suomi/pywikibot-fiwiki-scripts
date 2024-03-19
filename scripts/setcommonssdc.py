@@ -1698,7 +1698,7 @@ def isKansallisgalleriaInceptionInStatements(statements, inception):
         target = claim.getTarget()
         if (target == inception):
             # exact match found
-            print("DEBUG: exact inception found for", pcode ," value ", inception)
+            print("DEBUG: exact inception found", inception)
             return True
     return foundmatch
 
@@ -3306,7 +3306,7 @@ commonssite.login()
 
 
 # for testing only
-pages = getpagesfixedlist(pywikibot, commonssite)
+#pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 # get list of pages upto depth of 1 
@@ -3354,7 +3354,7 @@ pages = getpagesfixedlist(pywikibot, commonssite)
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
-#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
+pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
@@ -3380,7 +3380,6 @@ pages = getpagesfixedlist(pywikibot, commonssite)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Long-range reconnaissance patrols of Finland", 0)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Paintings by Helene Schjerfbeck in the Finnish National Gallery", 0)
 
 
 
@@ -3439,7 +3438,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            #continue
+            continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
