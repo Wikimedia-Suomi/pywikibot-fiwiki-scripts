@@ -2561,9 +2561,9 @@ def getKansallisgalleriaInventaarionumeroFromWikidata(pywikibot, wikidata_site, 
 #
 def getKansallisgalleriaInceptionFromWikidata(pywikibot, wikidata_site, qcodes):
     if (qcodes == None):
-        return None
+        return False, None
     if (len(qcodes) == 0):
-        return None
+        return False, None
     if (len(qcodes) > 1):
         print("WARN: more than one qcode")
     print("DEBUG: qcodes", str(qcodes))
@@ -2573,7 +2573,7 @@ def getKansallisgalleriaInceptionFromWikidata(pywikibot, wikidata_site, qcodes):
     wikidata_item = pywikibot.ItemPage(wikidata_site, itemqcode)
     if not wikidata_item.exists():
         print("WARN: qcode", itemqcode, "does not exist in wikidata")
-        return None
+        return False, None
 
     foundval = False
     incdt = getValueFromWdItem(wikidata_item, 'P571')
