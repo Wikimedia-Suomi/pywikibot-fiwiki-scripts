@@ -2409,8 +2409,9 @@ def getValueFromWdItem(wikidataitem, pcode):
 
     for claim in instance_of:
         target = claim.getTarget()
-        #print("target: ", str(target))
-        return target
+        if (target != None):
+            #print("target: ", str(target))
+            return target
     return None
 
 def getQcodeFromWdItem(wikidataitem, pcode):
@@ -2423,9 +2424,10 @@ def getQcodeFromWdItem(wikidataitem, pcode):
         
     for claim in instance_of:
         target = claim.getTarget()
-        #print("target: ", str(target))
-        #print("id: ", str(target.id))
-        return target.id
+        if (target != None):
+            #print("target: ", str(target))
+            #print("id: ", str(target.id))
+            return target.id
     return None
 
 # get author qcode for artwork from wikidata:
@@ -3438,7 +3440,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            continue
+            #continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
