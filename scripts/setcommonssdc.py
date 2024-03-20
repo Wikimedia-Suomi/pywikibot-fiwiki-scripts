@@ -1630,6 +1630,16 @@ def addkansallisgalleriateostosdc(pywikibot, wikidata_site, kgobjectid):
     f_claim.setTarget(kgobjectid)
     return f_claim
 
+# get value from sdc for checking
+def getKansallisgalleriateosFromSdc(statements):
+    if "P9834" not in statements:
+        return None
+   
+    claimlist = statements["P9834"]
+    for claim in claimlist:
+        return claim.getTarget()
+    return None
+
 # kginventory should be string
 def isKansallisgalleriaInventorynumberInStatements(statements, kginventory):
     return isValueinProperty(statements, "P217", kginventory)
@@ -3081,6 +3091,15 @@ def addCategoriesToCommons(pywikibot, tmptext, categories):
 
     return catsadded, tmptext
 
+def verifyTeosIdInSdc(claims, page, fngcache):
+    kgteosid = getKansallisgalleriateosFromSdc(claims)
+    if (kgteosid != None):
+        fnginv = fngcache.findbyid(kgteosid)
+        if (fnginv == None):
+            print("WARN: SDC has object id", kgteosid ," which does not exist in database for page", page.title())
+            return False
+    return True
+
 
 # ------ main()
 
@@ -3447,7 +3466,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            continue
+            #continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -3465,6 +3484,10 @@ for page in pages:
     claims = sdcdata['statements']  # claims are just one step from dataproperties down
 
     print("Wikibase statements found for: " + page.title() )
+    
+    if (verifyTeosIdInSdc(claims, page, fngcache) == False):
+        print("WARN: SDC has invalid object id for page", page.title())
+        #exit(1)
 
     # try to parse template in commons-page
     ct = CommonsTemplate()
@@ -3580,13 +3603,24 @@ for page in pages:
     # inventory number in commons/wikidata is not matching?
     if (kg_data.isValidInventaarionumero() == True and fngacc != kg_data.invnum):
         print("WARN: inventory number mismatch", fngacc, "", kg_data.invnum)
+        #fnginv = fngcache.findbyid(kg_data.teostun)
+        #if (fnginv != None):
+            #fngacc = str(fnginv['invnum'])
 
     # id in commons/wikidata is not matching?
     if (kg_data.isValidTeostunniste() == True and kgtid != kg_data.teostun):
         print("WARN: object id mismatch", kgtid, "", kg_data.teostun)
+        #fngid = fngcache.findbyacc(kg_data.invnum)
+        #if (fngid != None):
+            #kgtid = str(fngid['objectid'])
 
     if (len(kgtid) > 0 and len(fngacc) > 0 and wikidataqcodes != None):
         #print("DEBUG: kansallisgalleria id found:", kgtid)
+        if (fngcache.findbyid(kgtid) == None or fngcache.findbyacc(fngacc) == None):
+            print("WARN: db does not have matches for", kgtid, "", fngacc)
+            # may or may not be invalid, some may be missing from the data
+            # and there are inventory numbers with dashes and without them randomly
+            #continue
         
         # should have collection Q2983474 Kansallisgalleria when adding object id
         fng_collectionqcodes = getCollectionsFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
