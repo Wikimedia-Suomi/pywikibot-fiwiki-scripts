@@ -821,6 +821,13 @@ def getkansallisgalleriaidfromurl(source):
     if (indexid < 0):
         return ""
     source = source[indexid+strlen:]
+    
+    # result should be plain number
+    if (source.endswith("\n")):
+        source = source[:len(source)-1]
+    if (source.endswith(".")):
+        source = source[:len(source)-1]
+    # check for some other potential characters
     return stripid(source)
 
 # input: old format "HK"-id, e.g. HK7155:219-65-1
@@ -3440,7 +3447,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            #continue
+            continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
