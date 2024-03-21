@@ -26,7 +26,7 @@ from datetime import timezone
 #import HTTPException
 
 import urllib3
-import sqlite3
+#import sqlite3
 import psycopg2
 
 # ----- FinnaData
@@ -253,13 +253,14 @@ def downloadimage(url):
 class CachedImageData:
     def opencachedb(self):
         # created if it doesn't yet exist
-        self.conn = sqlite3.connect("pwbimagedatacache.db")
+        #self.conn = sqlite3.connect("pwbimagedatacache.db")
+        self.conn = psycopg2.connect("dbname=wikidb")
         cur = self.conn.cursor()
-        cur.execute("CREATE TABLE IF NOT EXISTS imagecache(url, phashlen, phashval, dhashlen, dhashval, timestamp)")
+        cur.execute("CREATE TABLE IF NOT EXISTS imagecache(url varchar(500), phashlen integer, phashval varchar(50), dhashlen integer, dhashval varchar(50), recent timestamp)")
 
     def addtocache(self, url, plen, pval, dlen, dval, ts):
 
-        sqlq = "INSERT INTO imagecache(url, phashlen, phashval, dhashlen, dhashval, timestamp) VALUES ('"+ url + "', "+ str(plen) + ", '"+ pval + "', "+ str(dlen) + ", '"+ dval + "', '" + ts.isoformat() + "')"
+        sqlq = "INSERT INTO imagecache(url, phashlen, phashval, dhashlen, dhashval, recent) VALUES ('"+ url + "', "+ str(plen) + ", '"+ pval + "', "+ str(dlen) + ", '"+ dval + "', '" + ts.isoformat() + "')"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
@@ -267,18 +268,24 @@ class CachedImageData:
 
     def updatecache(self, url, plen, pval, dlen, dval, ts):
 
-        sqlq = "UPDATE imagecache SET phashlen = "+ str(plen) + ", phashval = '"+ pval + "', dhashlen = "+ str(dlen) + ", dhashval = '"+ dval + "', timestamp = '" + ts.isoformat() + "' WHERE url = '" + url + "'"
+        sqlq = "UPDATE imagecache SET phashlen = "+ str(plen) + ", phashval = '"+ pval + "', dhashlen = "+ str(dlen) + ", dhashval = '"+ dval + "', recent = '" + ts.isoformat() + "' WHERE url = '" + url + "'"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
         self.conn.commit()
 
     def findfromcache(self, url):
-        sqlq = "SELECT url, phashlen, phashval, dhashlen, dhashval, timestamp FROM imagecache WHERE url = '" + url + "'"
+        sqlq = "SELECT url, phashlen, phashval, dhashlen, dhashval, recent FROM imagecache WHERE url = '" + url + "'"
         
         cur = self.conn.cursor()
         res = cur.execute(sqlq)
-        rset = res.fetchall()
+        #if (res == None):
+            #print("DEBUG: no result for query")
+            #return None
+        rset = cur.fetchall()
+        if (rset == None):
+            print("DEBUG: no resultset for query")
+            return None
         
         #if (len(rset) == 0):
             #return None
@@ -293,7 +300,7 @@ class CachedImageData:
             dt['phashval'] = row[2]
             dt['dhashlen'] = int(row[3])
             dt['dhashval'] = row[4]
-            dt['timestamp'] = datetime.fromisoformat(row[5])
+            dt['timestamp'] = datetime.fromisoformat(str(row[5]))
             #print(dt)
             return dt
 
@@ -3100,6 +3107,30 @@ def verifyTeosIdInSdc(claims, page, fngcache):
             return False
     return True
 
+# try some sanitizing of the id in case of weird descriptions/bugs
+def checkcleanupfinnaid(finnaid, page):
+    if (len(finnaid) >= 50):
+        print("WARN: finna id in " + page.title() + " is unusually long? bug or garbage in url? ")
+        
+    if (len(finnaid) <= 5):
+        print("WARN: finna id in " + page.title() + " is unusually short? bug or garbage in url? ")
+        
+    # just for logging what is wrong
+    if (finnaid.find("?") > 0 or finnaid.find("&") > 0 or finnaid.find("<") > 0 or finnaid.find(">") > 0 or finnaid.find("#") > 0 or finnaid.find("[") > 0 or finnaid.find("]") > 0 or finnaid.find("{") > 0 or finnaid.find("}") > 0):
+        print("WARN: finna id in " + page.title() + " has unexpected characters, bug or garbage in url? ")
+        
+        # remove strange charaters and stuff after if any
+        finnaid = stripid(finnaid)
+        print("note: finna id in " + page.title() + " is " + finnaid)
+
+    if (finnaid.find("\n") > 0):
+        print("WARN: removing newline from: " + page.title())
+        finnaid = leftfrom(finnaid, "\n")
+        
+    if (finnaid.endswith("\n")):
+        print("WARN: finna id in " + page.title() + " ends with newline ")
+        finnaid = finnaid[:len(finnaid)-1]
+    return finnaid
 
 # ------ main()
 
@@ -3382,7 +3413,7 @@ commonssite.login()
 
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
-pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
@@ -3408,6 +3439,7 @@ pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Long-range reconnaissance patrols of Finland", 0)
 
+pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Safa Hovinen", 0)
 
 
 
@@ -3466,7 +3498,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            #continue
+            continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -3620,7 +3652,17 @@ for page in pages:
             print("WARN: db does not have matches for", kgtid, "", fngacc)
             # may or may not be invalid, some may be missing from the data
             # and there are inventory numbers with dashes and without them randomly
+            # -> we might not have every possible value
             #continue
+        if (fngcache.findbyid(kgtid) != None):
+            accnum = fngcache.findbyid(kgtid)
+            if (accnum != None):
+                tmpacc = str(accnum['invnum'])
+                if (tmpacc != fngacc):
+                    print("WARN: inventory numbers are different", tmpacc ," and ", fngacc)
+                    # maybe we should trust our database
+                    #fngacc = tmpacc
+        
         
         # should have collection Q2983474 Kansallisgalleria when adding object id
         fng_collectionqcodes = getCollectionsFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
@@ -3706,8 +3748,9 @@ for page in pages:
         # urls coming from wikidata instead of in page?
         finna_ids = get_finna_ids(page)
         if (len(finna_ids) >= 1):
-            print("NOTE: " + page.title() + " has external urls but not in expected place")
+            print("NOTE: " + page.title() + " has external urls but not in expected place", str(finna_ids))
             # might have something usable..
+            finnaid = finna_ids[0]
         else:
             print("Could not find a finna id in " + page.title() + ", skipping.")
         continue
@@ -3721,26 +3764,9 @@ for page in pages:
     if (finnaid.find("profium.com") > 0):
         print("WARN: unusable url (redirector) in: " + page.title() + ", id: " + finnaid)
         continue
-        
-    if (len(finnaid) >= 50):
-        print("WARN: finna id in " + page.title() + " is unusually long? bug or garbage in url? ")
-    if (len(finnaid) <= 5):
-        print("WARN: finna id in " + page.title() + " is unusually short? bug or garbage in url? ")
-    if (finnaid.find("?") > 0 or finnaid.find("&") > 0 or finnaid.find("<") > 0 or finnaid.find(">") > 0 or finnaid.find("#") > 0 or finnaid.find("[") > 0 or finnaid.find("]") > 0 or finnaid.find("{") > 0 or finnaid.find("}") > 0):
-        print("WARN: finna id in " + page.title() + " has unexpected characters, bug or garbage in url? ")
-        
-        # remove strange charaters and stuff after if any
-        finnaid = stripid(finnaid)
-        print("note: finna id in " + page.title() + " is " + finnaid)
-
-
-    if (finnaid.find("\n") > 0):
-        print("WARN: removing newline from: " + page.title())
-        finnaid = leftfrom(finnaid, "\n")
-        
-    if (finnaid.endswith("\n")):
-        print("WARN: finna id in " + page.title() + " ends with newline ")
-        finnaid = finnaid[:len(finnaid)-1]
+    
+    # check for potentially unexpected characters after parsing (unusual description or something else)
+    finnaid = checkcleanupfinnaid(finnaid, page)
 
     print("finna ID found: " + finnaid)
     
