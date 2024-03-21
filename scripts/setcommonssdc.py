@@ -2283,6 +2283,11 @@ def isFinnaFormatImage(finnarecord):
         print("DBEUG: found photo format in finna record: " + str(finnaformats))
         return True
 
+    # note, might be "0/PhysicalObject/" for images of physical objects
+    # handle those as photographs as well?
+    
+    # Note, don't modify when "0/WorkOfArt/"
+
     # translated names
     if (finnaformats == "Image" or finnaformats == "Kuva" or finnaformats == "Bild"):
         print("DBEUG: found image format in finna record: " + str(finnaformats))
@@ -3155,7 +3160,8 @@ d_institutionqcode["Tekniikan museo"] = "Q5549583"
 d_institutionqcode["Museokeskus Vapriikki"] = "Q18346706"
 d_institutionqcode["Helsingin kaupunginmuseo"] = "Q2031357"
 d_institutionqcode["Helsinki City Museum"] = "Q2031357"
-#d_institutionqcode["HKM"] = "Q2031357"
+d_institutionqcode["HKM Valokuva"] = "Q2031357"
+d_institutionqcode["HKM"] = "Q2031357"
 
 d_institutionqcode["Vantaan kaupunginmuseo"] = "Q26723704"
 d_institutionqcode["Keravan museopalvelut"] = "Q121266100"
@@ -3411,7 +3417,7 @@ commonssite.login()
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp14')
 
 
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
@@ -3438,8 +3444,6 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Long-range reconnaissance patrols of Finland", 0)
-
-pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Safa Hovinen", 0)
 
 
 
