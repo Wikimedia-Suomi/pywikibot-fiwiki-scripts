@@ -1649,7 +1649,23 @@ def getKansallisgalleriateosFromSdc(statements):
 
 # kginventory should be string
 def isKansallisgalleriaInventorynumberInStatements(statements, kginventory):
-    return isValueinProperty(statements, "P217", kginventory)
+    if "P217" not in statements:
+        return False
+    
+    foundmatch = False
+    claimlist = statements['P217']
+    for claim in claimlist:
+        
+        # skip if there is any inventory:
+        # might need deeper look into different format (with/without dashes)
+        foundmatch = True 
+        
+        target = claim.getTarget()
+        if (target == kginventory):
+            # exact match found
+            print("DEBUG: exact inventory found", kginventory)
+            return True
+    return foundmatch
 
 # kginventory is a string,
 # collection is a qcode
@@ -3417,10 +3433,10 @@ commonssite.login()
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp14')
 
 
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
-#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
+pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
 
@@ -3665,7 +3681,7 @@ for page in pages:
                 if (tmpacc != fngacc):
                     print("WARN: inventory numbers are different", tmpacc ," and ", fngacc)
                     # maybe we should trust our database
-                    #fngacc = tmpacc
+                    fngacc = tmpacc
         
         
         # should have collection Q2983474 Kansallisgalleria when adding object id
