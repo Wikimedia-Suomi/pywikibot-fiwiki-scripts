@@ -2552,6 +2552,11 @@ def reuploadImage(finnaid, file_info, imagesExtended, need_index, file_page, fin
         if (isidentical(local_image, commons_image) == True):
             print("Images are identical files, skipping: " + finnaid)
             return False
+
+        local_hash = getimagehash(local_image)
+        if (local_hash == None):
+            print("WARN: Failed to hash local image: " + finnaid )
+            return False
             
         # verify that the image we have picked above is the same as in earlier step:
         # internal consistency of the API has an error?
@@ -3695,8 +3700,6 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Long-range reconnaissance patrols of Finland", 0)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Daniel Nyblin", 0)
-
 
 
 
@@ -3755,7 +3758,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            #continue
+            continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -4229,11 +4232,11 @@ for page in pages:
     
     if (needReupload(file_info, finna_record, imagesExtended) == True):
         print("Note: image should be uploaded with higher resolution for: " + finnaid)
-        if (reuploadImage(finnaid, file_info, imagesExtended, need_index, filepage, finna_image_url) == True):
-            print("image reuploaded with higher resolution for: ", page.title())
+        #if (reuploadImage(finnaid, file_info, imagesExtended, need_index, filepage, finna_image_url) == True):
+            #print("image reuploaded with higher resolution for: ", page.title())
             # after uploading, recalculate and update hashed
-        else:
-            print("WARN: Could not reupload with higher resolution for: ", page.title())
+        #else:
+            #print("WARN: Could not reupload with higher resolution for: ", page.title())
 
     # note: if there are no collections, don't remove from commons as they may have manual additions
     collectionqcodes = getCollectionsFromRecord(finna_record, finnaid, d_labeltoqcode)
