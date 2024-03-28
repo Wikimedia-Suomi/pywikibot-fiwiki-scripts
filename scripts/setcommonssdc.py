@@ -12,6 +12,7 @@ import urllib.parse
 import re
 import urllib
 import requests
+import hashlib
 import imagehash
 import io
 import os
@@ -217,6 +218,104 @@ def is_same_image(imghash1, imghash2):
     else:
         return False
 
+# old method, need to convert to using above for simplicity
+def is_same_image_old(img1, img2, hashlen=8):
+
+    phash1 = imagehash.phash(img1, hash_size=hashlen)
+    dhash1 = imagehash.dhash(img1, hash_size=hashlen)
+    phash1_int = converthashtoint(str(phash1))
+    dhash1_int = converthashtoint(str(dhash1))
+
+    phash2 = imagehash.phash(img2, hash_size=hashlen)
+    dhash2 = imagehash.dhash(img2, hash_size=hashlen)
+    phash2_int = converthashtoint(str(phash2))
+    dhash2_int = converthashtoint(str(dhash2))
+
+    if (phash1_int == 0 or dhash1_int == 0 or phash2_int == 0 or dhash2_int == 0):
+        print("WARN: zero hash detected, file was not read correctly?")
+        return False
+
+    # Hamming distance difference
+    phash_diff = gethashdiff(phash1_int, phash2_int)
+    dhash_diff = gethashdiff(dhash1_int, dhash2_int)
+
+    # print hamming distance
+    if (phash_diff == 0 and dhash_diff == 0):
+        print("Both images have equal hashes, phash: " + str(phash1) + ", dhash: " + str(dhash1))
+    else:
+        print("Phash diff: " + str(phash_diff) + ", image1: " + str(phash1) + ", image2: " + str(phash2))
+        print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(dhash1) + ", image2: " + str(dhash2))
+
+    # max distance for same is that least one is 0 and second is max 3
+    
+    if phash_diff == 0 and dhash_diff < 4:
+        return True
+    elif phash_diff < 4 and dhash_diff == 0:
+        return True
+    elif (phash_diff + dhash_diff) <= 8:
+        return True
+    else:
+        return False
+
+
+# if image is identical (not just similar) after conversion (avoid reupload)
+def isidentical(img1, img2):
+    shaimg1 = hashlib.sha1()
+    shaimg1.update(img1.tobytes())
+    digest1 = shaimg1.digest()
+
+    shaimg2 = hashlib.sha1()
+    shaimg2.update(img2.tobytes())
+    digest2 = shaimg2.digest()
+
+    print("digest1: " + shaimg1.hexdigest() + " digest2: " + shaimg2.hexdigest())
+    
+    if (digest1 == digest2):
+        return True
+    return False
+
+def convert_tiff_to_jpg(tiff_image):
+    # if image is CMYK/grayscale ("L") might work or not,
+    # might have to abort/use different method with ImageCms module ?
+    # if it is signed 32-bit int ("I") often does not work..
+    bands = tiff_image.getbands()
+    if (len(bands) == 1 and bands[0] == "I"):
+        print("DEBUG: single-band, might not be supported", bands[0])
+        #return None
+    print("DEBUG: image bands", tiff_image.getbands())
+    
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as fp:
+        tiff_image.convert('RGB').save(fp, "JPEG", quality=100)
+    return fp.name    
+
+def convert_tiff_to_png(tiff_image):
+    # if image is CMYK/grayscale ("L") might work or not,
+    # might have to abort/use different method with ImageCms module ?
+    # if it is signed 32-bit int ("I") often does not work..
+    bands = tiff_image.getbands()
+    if (len(bands) == 1 and bands[0] == "I"):
+        print("DEBUG: single-band, might not be supported", bands[0])
+        #return None
+    print("DEBUG: image bands", tiff_image.getbands())
+
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as fp:
+        tiff_image.convert('RGB').save(fp, "PNG", quality=100)
+    return fp.name    
+
+def convert_tiff_to_gif(tiff_image):
+    # if image is CMYK/grayscale ("L") might work or not,
+    # might have to abort/use different method with ImageCms module ?
+    # if it is signed 32-bit int ("I") often does not work..
+    bands = tiff_image.getbands()
+    if (len(bands) == 1 and bands[0] == "I"):
+        print("DEBUG: single-band, might not be supported", bands[0])
+        #return None
+    print("DEBUG: image bands", tiff_image.getbands())
+
+    with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as fp:
+        tiff_image.convert('RGB').save(fp, "GIF", quality=100)
+    return fp.name    
+
 # note: commons at least once has thrown error due to client policy?
 # "Client Error: Forbidden. Please comply with the User-Agent policy"
 # keep an eye out for problems..
@@ -397,6 +496,8 @@ class CachedFngData:
         self.conn.commit()
 
     def findbyid(self, objectid):
+        if (objectid == None):
+            return None
         sqlq = "SELECT objectid, invnum FROM fngcache WHERE objectid = '" + str(objectid) + "'"
         
         cur = self.conn.cursor()
@@ -425,6 +526,8 @@ class CachedFngData:
         return None
 
     def findbyacc(self, invnum):
+        if (invnum == None):
+            return None
         sqlq = "SELECT objectid, invnum FROM fngcache WHERE invnum = '" + str(invnum) + "'"
         
         cur = self.conn.cursor()
@@ -2345,7 +2448,11 @@ def needReupload(file_info, finna_record, imagesExtended):
     if "data" not in hires:
         print("WARN: 'data' not found in hires image: " + finnaid)
         return False
-        
+
+    if "format" not in hires:
+        print("WARN: 'format' not found in hires image: " + finnaid)
+        return False
+
     # some images don't have size information in the API..
     if "width" not in hires['data'] or "height" not in hires['data']:
         # it seems sizes might be missing when image is upscaled and not "original"?
@@ -2365,6 +2472,133 @@ def needReupload(file_info, finna_record, imagesExtended):
     # resolution smaller, could re-upload (assuming hashes already match)
     print("Page " + page.title() + " has larger image available, could re-upload")
     return True
+
+def reuploadImage(finnaid, file_info, imagesExtended, need_index, file_page, finna_image_url):
+
+    finna_record_url = "https://finna.fi/Record/" + finnaid
+
+    # note: mostly validated in above (called earlier)
+    hires = imagesExtended['highResolution']['original'][0]
+    
+    commons_image_url = file_page.get_file_url()
+    commons_image = downloadimage(commons_image_url)
+    if (commons_image == None):
+        print("WARN: Failed to download commons-image: " + commons_image_url )
+        return False
+
+    # Select which file to upload.
+    # Note! 'url' might point to different server than any other url in same data!
+    # -> it might be somehow different image then as well (see 'original' above)
+    local_file=False
+    if hires["format"] == "tif" and file_info.mime == 'image/tiff':
+        if (need_index == False):
+            finna_image_url = hires['url']
+    elif hires["format"] == "tif" and file_info.mime == 'image/jpeg':
+        print("converting image from tiff to jpeg") # log it
+        if (need_index == False):
+            finna_image_url = hires['url']
+        local_image = downloadimage(finna_image_url)
+        if (local_image == None):
+            print("WARN: Failed to download finna-image: " + finna_image_url )
+            return False
+        image_file_name = convert_tiff_to_jpg(local_image)
+        local_file=True    
+    elif hires["format"] == "tif" and file_info.mime == 'image/png':
+        print("converting image from tiff to png") # log it
+        if (need_index == False):
+            finna_image_url = hires['url']
+        local_image = downloadimage(finna_image_url)
+        if (local_image == None):
+            print("WARN: Failed to download finna-image: " + finna_image_url )
+            return False
+        image_file_name = convert_tiff_to_png(local_image)
+        local_file=True    
+    #elif hires["format"] == "tif" and file_info.mime == 'image/gif':
+        #print("converting image from tiff to gif") # log it
+        #if (need_index == False):
+            #finna_image_url = hires['url']
+        #local_image = downloadimage(finna_image_url)
+        #if (local_image == None):
+            #print("WARN: Failed to download finna-image: " + finna_image_url )
+            #continue
+        #image_file_name = convert_tiff_to_gif(local_image)
+        #local_file=True    
+    elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
+        if (need_index == False):
+            finna_image_url = hires['url']
+    elif file_info.mime == 'image/jpeg':
+        if (need_index == False):
+            # this is already same from earlier -> we can remove this
+            finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
+    else:
+        print("Exit: Unhandled mime-type")
+        print(f"File format Commons (MIME type): {file_info.mime}")
+        print(f"File format Finna (MIME type): {hires['format']}")
+        return False
+
+    # can't upload if identical to the one in commons:
+    # compare hash of converted image if necessary,
+    # need to compare full image for both (not thumbnails)
+    if (local_file == False):
+        # get full image before trying to upload:
+        # code above might have switched to another
+        # from multiple different images
+        local_image = downloadimage(finna_image_url)
+        if (local_image == None):
+            print("WARN: Failed to download finna-image: " + finna_image_url )
+            return False
+
+        # if image is identical by sha-hash -> commons won't allow again
+        if (isidentical(local_image, commons_image) == True):
+            print("Images are identical files, skipping: " + finnaid)
+            return False
+            
+        # verify that the image we have picked above is the same as in earlier step:
+        # internal consistency of the API has an error?
+        if (is_same_image_old(local_image, finna_image) == False):
+            print("WARN: Images are NOT same in the API! " + finnaid)
+            print("DEBUG: image bands", local_image.getbands())
+            return False
+        
+        # verify if file in commons is still larger?
+        # metadata in finna is wrong or server sending wrong image?
+        if commons_image.width >= local_image.width or commons_image.height >= local_image.height:
+            print("WARN: image in Finna is not larger than in Commons: " + finnaid)
+            return False
+
+    else:
+        converted_image = Image.open(image_file_name)
+        # if image is identical by sha-hash -> commons won't allow again
+        if (isidentical(converted_image, commons_image) == True):
+            print("Images are identical files, skipping: " + finnaid)
+            return False
+
+        # at least one image fails in conversion, see if there are others
+        if (is_same_image_old(converted_image, commons_image) == False):
+            print("ERROR! Images are NOT same after conversion! " + finnaid)
+            print("DEBUG: image bands", local_image.getbands())
+            return False
+
+        # after conversion, file in commons is still larger?
+        # conversion routine is borked or other error?
+        if file_info.width >= converted_image.width or file_info.height >= converted_image.height:
+            print("WARN: converted image is not larger than in Commons: " + finnaid)
+            return False
+
+    comment = "Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
+    print(comment)
+
+    # Ignore warnigs = True because we update files
+    if (local_file == False):
+        print("uploading from url: " + finna_image_url)
+        file_page.upload(finna_image_url, comment=comment,ignore_warnings=True)
+    if (local_file == True):
+        print("uploading converted local file ")
+        file_page.upload(image_file_name, comment=comment,ignore_warnings=True)
+        os.unlink(image_file_name)
+
+    return True
+
 
 def getFinnaLicense(imagesExtended):
     # should be CC BY 4.0 or Public domain/CC0
@@ -3025,7 +3259,10 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fp = pywikibot.FilePage(commonssite, 'File:Haavoittunut soturi hangella by Helena Schjerfbeck 1880.jpg')
     #fp = pywikibot.FilePage(commonssite, 'File:Akseli Gallen-Kallela -Taos Home in Moonlight.jpg')
 
-    fp = pywikibot.FilePage(commonssite, 'File:Helene Schjerfbeck - The Door - A IV 3680 - Finnish National Gallery.jpg')
+    #fp = pywikibot.FilePage(commonssite, 'File:Helene Schjerfbeck - The Door - A IV 3680 - Finnish National Gallery.jpg')
+
+    fp = pywikibot.FilePage(commonssite, 'File:Axel Gustav Estlander.jpg')
+
 
     
     pages.append(fp)
@@ -3324,6 +3561,7 @@ d_labeltoqcode["Karjalan Liiton kokoelma"] = "Q124289082"
 d_labeltoqcode["Helsingin kaupunginmuseon kuvakokoelma"] = "Q124299286"
 d_labeltoqcode["HKM Valokuva"] = "Q124299286"
 d_labeltoqcode["Vilho Uomalan kokoelma"] = "Q124672017"
+d_labeltoqcode["Pressfoto Zeeland"] = "Q125141028"
 
 
 # collection qcode (after parsing) to commons-category
@@ -3436,7 +3674,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/filesfromip')
 
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
-pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
+#pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
 
@@ -3450,16 +3688,15 @@ pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgal
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-#pages = getcatpages(pywikibot, commonssite, "Alma Skog's Archive")
-#pages = getcatpages(pywikibot, commonssite, "Magnus von Wright", True)
-#pages = getcatpages(pywikibot, commonssite, "Wilhelm von Wright", True)
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Long-range reconnaissance patrols of Finland", 0)
+
+pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Daniel Nyblin", 0)
+
 
 
 
@@ -3518,7 +3755,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            continue
+            #continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -3908,7 +4145,9 @@ for page in pages:
     # and compare with the image in commons
     imageList = finna_record['records'][0]['images']
 
+    finna_image_url = ""
     match_found = False
+    need_index = False
     if (len(imageList) == 1):
     
         finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
@@ -3990,6 +4229,11 @@ for page in pages:
     
     if (needReupload(file_info, finna_record, imagesExtended) == True):
         print("Note: image should be uploaded with higher resolution for: " + finnaid)
+        if (reuploadImage(finnaid, file_info, imagesExtended, need_index, filepage, finna_image_url) == True):
+            print("image reuploaded with higher resolution for: ", page.title())
+            # after uploading, recalculate and update hashed
+        else:
+            print("WARN: Could not reupload with higher resolution for: ", page.title())
 
     # note: if there are no collections, don't remove from commons as they may have manual additions
     collectionqcodes = getCollectionsFromRecord(finna_record, finnaid, d_labeltoqcode)
