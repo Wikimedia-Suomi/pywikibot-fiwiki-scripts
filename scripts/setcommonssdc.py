@@ -890,11 +890,41 @@ def getkuvakokoelmatidfromurl(source):
     if (kkid.endswith("\n")):
         kkid = kkid[:len(kkid)-1]
 
+    # .jpg or something at end? remove from id
     indexlast = kkid.rfind(".", 0, len(source)-1)
     if (indexlast > 0):
-        # .jpg or something at end? remove id
-        kkid = kkid[:indexlast]
+        # if the part after dot is a number -> leave it
+        remainder = kkid[indexlast+1:]
+        if (remainder.isnumeric() == False):
+            # note: in some cases there maybe be a file extension, 
+            # but also there may be a part of the ID in some cases..
+            if (remainder.lower() == "jpg" or remainder.lower() == "jpeg"
+                or remainder.lower() == "png" or remainder.lower() == "tiff" or remainder.lower() == "tif"):
+                # if it is image type extension -> remove it (not part of ID)
+                kkid = kkid[:indexlast]
     return kkid
+
+# just for documentation purposes
+def getidfromeuropeanaurl(source):
+    if (source.find("europeana.eu") < 0):
+        # not found?
+        return ""
+
+    mid = getkuvakokoelmatidfromurl(source)
+    if (len(mid) > 0):
+        # urls may have session/tracking parameters in some cases -> remove trash from end
+        mid = stripid(mid)
+    
+    # should be like M012_HK10000_944
+    # note: in some cases with multiple underscores last on should be changed to dash
+    # such as in HK19321130:115-1877
+    # otherwise underscore to colon works
+    if (len(mid) > 0 and mid.startswith("M012")):
+        mid = mid.replace("_", ":")
+        #musketti = "musketti." + mid[:index] + ":" + mid[index+1:]
+        musketti = "musketti." + mid
+        return musketti
+    return "" # failed parsing
 
 # parse inventory number from old-style link
 # http://kokoelmat.fng.fi/app?si=A-1995-96
@@ -3986,6 +4016,28 @@ for page in pages:
                 print("DEBUG: inception exists, skipping")
         else:
             print("DEBUG: inception not found")
+
+        commons_image_url = filepage.get_file_url()
+        tpcom = cachedb.findfromcache(commons_image_url)
+        if (tpcom == None):
+            # get image from commons for comparison:
+            # try to use same size
+            commons_image = downloadimage(commons_image_url)
+            if (commons_image == None):
+                print("WARN: Failed to download commons-image: " + page.title() )
+                continue
+            print("DEBUG: commons image bands", commons_image.getbands())
+            
+            commonshash = getimagehash(commons_image)
+            if (commonshash == None):
+                print("WARN: Failed to hash commons-image: " + page.title() )
+                continue
+            
+            # same lengths for p and d hash, keep change time from commons
+            cachedb.addorupdate(commons_image_url, 
+                                commonshash[0], commonshash[1], commonshash[0], commonshash[2], 
+                                filepage.latest_file_info.timestamp)
+
 
         micache.addorupdate(filepage.pageid, datetime.now(timezone.utc))
         # skip the rest as that requires finna id and finna record
