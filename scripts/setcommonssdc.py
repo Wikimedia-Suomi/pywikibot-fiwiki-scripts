@@ -926,6 +926,30 @@ def getidfromeuropeanaurl(source):
         return musketti
     return "" # failed parsing
 
+def getidfromeuropeana(source):
+    eusource = parsesourcefromeuropeana(srcvalue)
+    if (len(eusource) < 0):
+        print("Failed to retrieve source from europeana")
+        return "" # failed to parse, don't add anything
+
+    # museovirasto.finna.fi or museovirasto.<id>
+    if (eusource.find("museovirasto") > 0 or eusource.find("finna") > 0):
+        # ok, we might use this as-is
+        indexrec = eusource.find("/Record/")
+        if (indexrec >= 0):
+            indexrec = indexrec + len("/Record/")
+            newid = eusource[indexrec:]
+            newid = stripid(newid)
+            print("Found finna id from europeana: " + newid)
+            return newid
+    
+    # if url has musketti-id: europeana.eu/%/M012..
+    mid = getidfromeuropeanaurl(srcvalue)
+    if (len(mid) <= 0):
+        return "" # failed to parse, don't add anything
+    print("DEBUG: europeana-link had id: " + mid)
+    return mid
+
 # parse inventory number from old-style link
 # http://kokoelmat.fng.fi/app?si=A-1995-96
 # http://kokoelmat.fng.fi/app?si=A+I+223
@@ -1573,33 +1597,43 @@ def getwbdatefromdt(dt):
     #return pywikibot.WbTime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
     return pywikibot.WbTime(dt.year, dt.month, dt.day)
 
-# check if perceptual hash exists in sdc data
-def isPerceptualHashInSdcData(statements, hashval):
-    if "P9310" not in statements:
+def isHashvalueInSdcData(statements, prop, hashval):
+    if prop not in statements:
         return False
 
-    claimlist = statements["P9310"]
+    claimlist = statements[prop]
     for claim in claimlist:
         target = claim.getTarget()
         if (target == hashval):
             # exact match found: no need to add same hash again
-            print("phash value match found", hashval)
+            print("hash value match found", hashval)
             return True
     return True # TEST: just skip if there is value, even if it isn't the same
     #return False # check, do we add another if hashes have different length/different value?
 
+
+# check if perceptual hash exists in sdc data
+def isPerceptualHashInSdcData(statements, hashval):
+    return isHashvalueInSdcData(statements, "P9310", hashval)
+
+# check if difference hash exists in sdc data
+def isDifferenceHashInSdcData(statements, hashval):
+    return isHashvalueInSdcData(statements, "P12563", hashval)
+
 # set perceptual hash value to sdc data in commons
-def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval, comhashtime):
+def addHashvalueToSdcData(pywikibot, wikidata_site, prop, hashval, hash_methodqcode, comhashtime):
 
     # note: need "WbTime" which is not a standard datetime
     wbdate = getwbdatefromdt(comhashtime)
 
     # property ID P9310 for "pHash checksum"
-    p_claim = pywikibot.Claim(wikidata_site, 'P9310')
+    # property ID P12563 for "dHash checksum"
+    p_claim = pywikibot.Claim(wikidata_site, prop)
     p_claim.setTarget(hashval)
     
     # determination method: P459
     # Q104884110 - ImageHash perceptual hash
+    # Q124969714 - Imagehash difference hash
     # P348 - software version identifier
     # P571 - inception
     # P2048 - height
@@ -1607,7 +1641,7 @@ def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval, comhashtime):
     # hashlen?
 
     det_quali = pywikibot.Claim(wikidata_site, 'P459', is_qualifier=True)  # determination method
-    qualifier_targetimagehash = pywikibot.ItemPage(wikidata_site, "Q104884110")
+    qualifier_targetimagehash = pywikibot.ItemPage(wikidata_site, hash_methodqcode)
     det_quali.setTarget(qualifier_targetimagehash)
     #p_claim.addSource(det_quali, summary='Adding reference URL qualifier')
     p_claim.addQualifier(det_quali, summary='Adding reference URL qualifier')
@@ -1618,11 +1652,20 @@ def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval, comhashtime):
 
     return p_claim
 
-# TODO: add missing qualifier to phash property in sdc data
+# set perceptual hash value to sdc data in commons
+def addPerceptualHashToSdcData(pywikibot, wikidata_site, hashval, comhashtime):
+    return addHashvalueToSdcData(pywikibot, wikidata_site, 'P9310', hashval, "Q104884110", comhashtime)
+
+# set difference hash value to sdc data in commons
+def addDifferenceHashToSdcData(pywikibot, wikidata_site, hashval, comhashtime):
+    return addHashvalueToSdcData(pywikibot, wikidata_site, 'P12563', hashval, "Q124969714", comhashtime)
+
+
+# TODO: add missing qualifier to phash/dhash property in sdc data
 # for now, just checking if it exists: pywikibot api does not really support this with SDC data
 # -> need another way as usual
-def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, comhashtime):
-    if "P9310" not in statements:
+def checkHashvalueInSdcData(pywikibot, wikidata_site, statements, prop, hashval, hash_methodqcode, comhashtime):
+    if prop not in statements:
         return None
 
     hashqfound = False
@@ -1631,13 +1674,14 @@ def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, 
     # note: need "WbTime" which is not a standard datetime
     wbdate = getwbdatefromdt(comhashtime)
 
-    # method for phash: Imagehash perceptual hash 
-    hash_methodqcode = "Q104884110"
+    # Q104884110 - Imagehash perceptual hash
+    # Q124969714 - Imagehash difference hash
 
-    print("checking for phash and value", hashval)
+    print("checking for hash and value", hashval)
 
     # property ID P9310 for "pHash checksum"
-    claimlist = statements["P9310"] # pHash checksum
+    # property ID P12563 for "dHash checksum"
+    claimlist = statements[prop] # hash
     for claim in claimlist:
         target = claim.getTarget()
         if (target != hashval):
@@ -1716,6 +1760,13 @@ def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, 
 
     #return p_claim
     return None
+
+def checkPerceptualHashInSdcData(pywikibot, wikidata_site, statements, hashval, comhashtime):
+    return checkHashvalueInSdcData(pywikibot, wikidata_site, statements, 'P9310', hashval, "Q104884110", comhashtime)
+
+def checkDifferenceHashInSdcData(pywikibot, wikidata_site, statements, hashval, comhashtime):
+    return checkHashvalueInSdcData(pywikibot, wikidata_site, statements, 'P12563', hashval, "Q124969714", comhashtime)
+
 
 # generic wrapper to check if given qcode exists for given property
 # in SDC data
@@ -2107,6 +2158,44 @@ def parsemetaidfromfinnapage(finnaurl):
         return newid
 
     return ""
+
+# input: source reported by commons (url to europeana eu)
+def parsesourcefromeuropeana(commonssource):
+    if (commonssource.find("europeana.eu") < 0):
+        print("Not europeana url: " + commonssource)
+        return ""
+    if (commonssource.find("proxy.europeana.eu") >= 0):
+        print("can't use proxy (might direct to binary image): " + commonssource)
+        return ""
+
+    eupage = requestpage(commonssource)
+    if (len(eupage) <= 0):
+        return ""
+
+    attrlen = len('class="data-provider"')
+    indexdp = eupage.find('class="data-provider"')
+    if (indexdp < 0):
+        return ""
+    indexdp = eupage.find('>', indexdp+attrlen)
+    if (indexdp < 0):
+        return ""
+    attrlen = len('href="')
+    indexdp = eupage.find('href="', indexdp+1)
+    if (indexdp < 0):
+        return ""
+    indexend = eupage.find('"', indexdp+attrlen)
+    if (indexend < 0):
+        return ""
+
+    # this should get the actual source of image as it is set in europeana        
+    eusource = eupage[indexdp+attrlen:indexend]
+    if (len(eusource) <= 0):
+        print("Failed to parse source from europeana: " + commonssource)
+        return ""
+
+    # this should be the source reported in europeana    
+    print("europeana page source: " + eusource)
+    return eusource
 
 # note alternate: might have timestamp like "1943-06-24" or "01.06.1930"
 # also: might be "yyyymm" or plain year or "mmyyyy".
@@ -3711,7 +3800,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
+pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
 
 # many are from valokuvataiteenmuseo via flickr
 # many from fng via flickr
@@ -3788,7 +3877,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            continue
+            #continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -3885,6 +3974,10 @@ for page in pages:
             
         if (srcvalue.find("kuvakokoelmat.fi") > 0):
             kkid = getkuvakokoelmatidfromurl(srcvalue)
+            
+        #if (srcvalue.find("europeana.eu") > 0):
+            #kkid = getidfromeuropeana(srcvalue)
+            
         if (srcvalue.find("finna.fi") > 0):
             # try metapage-id first
             finnarecordid = getrecordid(srcvalue)
@@ -3936,7 +4029,7 @@ for page in pages:
         #if (fngid != None):
             #kgtid = str(fngid['objectid'])
 
-    if (len(kgtid) > 0 and len(fngacc) > 0 and wikidataqcodes != None):
+    if (len(kgtid) > 0 and len(fngacc) > 0):
         #print("DEBUG: kansallisgalleria id found:", kgtid)
         if (fngcache.findbyid(kgtid) == None or fngcache.findbyacc(fngacc) == None):
             print("WARN: db does not have matches for", kgtid, "", fngacc)
@@ -4188,6 +4281,14 @@ for page in pages:
     else:
         print("testing phash qualifiers for: ", finnaid)
         checkPerceptualHashInSdcData(pywikibot, wikidata_site, claims, tpcom['phashval'], tpcom['timestamp'])
+
+    if (isDifferenceHashInSdcData(claims, tpcom['dhashval']) == False):
+        print("adding dhash to statements for: ", finnaid)
+        hashclaim = addDifferenceHashToSdcData(pywikibot, wikidata_site, tpcom['dhashval'], tpcom['timestamp'])
+        commonssite.addClaim(wditem, hashclaim)
+    else:
+        print("testing dhash qualifiers for: ", finnaid)
+        checkDifferenceHashInSdcData(pywikibot, wikidata_site, claims, tpcom['dhashval'], tpcom['timestamp'])
 
     # use helper to check that it is correctly formed
     imagesExtended = getImagesExtended(finna_record)
