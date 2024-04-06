@@ -159,8 +159,35 @@ def get_finna_record(finnaid, quoteid=True):
 # http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
 #
 def getimagehash(img, hashlen=8):
-    phash = imagehash.phash(img, hash_size=hashlen)
-    dhash = imagehash.dhash(img, hash_size=hashlen)
+    print("DEBUG: hashing.. ")
+
+    # average hash
+    # ahash generates a lot of false positives ?
+    #ahash = imagehash.average_hash(img, hash_size=hashlen) # mean=numpy.mean
+    #print("DEBUG: ahash", str(ahash))
+
+    # perceptual hash
+    phash = imagehash.phash(img, hash_size=hashlen) # highfreq_factor=4
+    print("DEBUG: phash", str(phash))
+
+    # difference hash
+    dhash = imagehash.dhash(img, hash_size=hashlen) # no other parameters
+    print("DEBUG: dhash", str(dhash))
+
+    # wavelet hash
+    #whash = imagehash.whash(img, hash_size=hashlen) # image_scale=None, mode='haar', remove_max_haar_ll=True
+    #print("DEBUG: whash", str(whash))
+
+    # color hash
+    #chash = imagehash.colorhash(img) # no other parameters
+    #print("DEBUG: chash", str(chash))
+    
+    # crop-resistant hash
+    #crhash = imagehash.crop_resistant_hash(img) # 
+    #print("DEBUG: crhash", str(crhash))
+
+    ## Note : ahash, dhash and whash all give zeroes when pillow has failed handling tiff-file
+    # -> could use to detect failure as well
 
     # image download has failed or python is broken?
     if ('8000000000000000' == str(phash) or'0000000000000000' == str(dhash)):
@@ -3742,6 +3769,7 @@ d_subjecttocategory["Veljekset Åström Oy"] = "Veljekset Åström"
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
+wikidata_site.login()
 
 # site = pywikibot.Site("fi", "wikipedia")
 commonssite = pywikibot.Site("commons", "commons")
@@ -3754,6 +3782,7 @@ commonssite.login()
 
 # get list of pages upto depth of 1 
 #pages = getcatpages(pywikibot, commonssite, "Category:Kuvasiskot", True)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Kuvasiskot", 2)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency")
@@ -3800,7 +3829,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
-pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
+#pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
 
 # many are from valokuvataiteenmuseo via flickr
 # many from fng via flickr
@@ -3816,6 +3845,7 @@ pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikid
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by photographer from Finland", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Long-range reconnaissance patrols of Finland", 0)
 
@@ -3877,7 +3907,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            #continue
+            continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -4046,9 +4076,21 @@ for page in pages:
                     # maybe we should trust our database
                     fngacc = tmpacc
         
-        
         # should have collection Q2983474 Kansallisgalleria when adding object id
         fng_collectionqcodes = getCollectionsFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
+        locationqcode = getLocationFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
+
+        #isHamArtMuseum = False
+        # if collection or institution or location is Q5710459 (HAM Helsingin taidemuseo)
+        # the inventory number might point to different work
+        # -> skip things then
+        if (locationqcode == "Q5710459" or "Q5710459" in fng_collectionqcodes):
+            #isHamArtMuseum = True
+            print("skipping inventory/object number for HAM", page.title())
+            micache.addorupdate(filepage.pageid, datetime.now(timezone.utc))
+            # skip the rest as that requires finna id and finna record
+            continue
+        
         if (fng_collectionqcodes != None):
             print("DEBUG: found collection qcodes", fng_collectionqcodes)
             for fngcoll in fng_collectionqcodes:
@@ -4059,7 +4101,17 @@ for page in pages:
                         wditem.addClaim(fng_collclaim)
         else:
             print("WARN: did not find collection qcode")
-        
+
+        if (locationqcode != None):
+            if (isLocationinstatements(claims, locationqcode) == False):
+                print("DEBUG: adding location qcode to SDC", locationqcode)
+                locationclaim = addLocationtoStatements(pywikibot, wikidata_site, locationqcode)
+                if (locationclaim != None):
+                    wditem.addClaim(locationclaim)
+
+        # if collection or institution or location is Q5710459 (HAM Helsingin taidemuseo)
+        # the inventory number might point to different work
+        # -> don't add these then
         if (isKansallisgalleriateosInStatements(claims, kgtid) == False):
             print("DEBUG: adding kansallisgalleria object id to SDC", kgtid)
             fo_claim = addkansallisgalleriateostosdc(pywikibot, wikidata_site, kgtid)
@@ -4087,14 +4139,6 @@ for page in pages:
                 if (creatorclaim != None):
                     wditem.addClaim(creatorclaim)
                     #commonssite.addClaim(wditem, f_claim)
-
-        locationqcode = getLocationFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
-        if (locationqcode != None):
-            if (isLocationinstatements(claims, locationqcode) == False):
-                print("DEBUG: adding location qcode to SDC", locationqcode)
-                locationclaim = addLocationtoStatements(pywikibot, wikidata_site, locationqcode)
-                if (locationclaim != None):
-                    wditem.addClaim(locationclaim)
 
         # python fucks up checking for None when there are zero fields in a timestamp
         # -> force another bool
