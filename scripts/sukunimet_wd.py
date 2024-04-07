@@ -109,9 +109,16 @@ def checkqcode(wtitle, itemqcode, lang):
             print("disambiguation page")
             return False
 
+        # family name
         if (claim.getTarget().id == 'Q101352'):
             print("instance ok")
             isLastName = True
+
+        # affixed name
+        if (claim.getTarget().id == 'Q66480858'):
+            print("instance ok")
+            isLastName = True
+
 
     isFinnishLabel = False
     isEnglishLabel = False
@@ -134,7 +141,7 @@ def checkqcode(wtitle, itemqcode, lang):
         description = itemfound.descriptions[dsc]
         if (description == "sukunimi" and dsc == 'fi'):
             isDescriptionMissing = False
-
+            break
 
     if (isFinnishLabel == False and isEnglishLabel == True and isLastName == True):
         print("label for finnish missing: ", wtitle)
