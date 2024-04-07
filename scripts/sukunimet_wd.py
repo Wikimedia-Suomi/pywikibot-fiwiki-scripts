@@ -251,6 +251,9 @@ if __name__ == "__main__":
     for name in names:
         qc = names[name]
         if (qc == None):
+            if (name.find("'") > 0):
+                print("skipping name", name)
+                continue
             qid = searchname(name)
             if (len(qid) == 0):
                 qid = addname(name)
