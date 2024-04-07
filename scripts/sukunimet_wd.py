@@ -137,9 +137,9 @@ def checkqcode(wtitle, itemqcode, lang):
             isEnglishLabel = True
 
     isDescriptionMissing = True
-    for dsc in itemfound.descriptions:
-        description = itemfound.descriptions[dsc]
-        if (description == "sukunimi" and dsc == 'fi'):
+    for dscl in itemfound.descriptions:
+        description = itemfound.descriptions[dscl]
+        if (dscl == 'fi'):
             isDescriptionMissing = False
             break
 
@@ -148,7 +148,7 @@ def checkqcode(wtitle, itemqcode, lang):
         copy_labels = {"fi": wtitle}
         copy_descr = {"fi": "sukunimi"}
         itemfound.editLabels(labels=copy_labels, summary="Adding missing labels.")
-        if (isDescriptionMissing == True):
+        if (isDescriptionMissing == True and isLastName == True):
             itemfound.editDescriptions(copy_descr, summary="Adding missing descriptions.")
         itemfound.get()
         return True
