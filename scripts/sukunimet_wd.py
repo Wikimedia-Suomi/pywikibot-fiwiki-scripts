@@ -162,9 +162,11 @@ def checkqcode(wtitle, itemqcode, lang):
 # https://github.com/mpeel/wikicode/blob/master/wir_newpages.py#L706
 def searchname(wtitle, lang='fi'):
 
-    searchitemurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%s&language=%s&format=xml' % (urllib.parse.quote(wtitle), lang)
+    searchitemurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%s&language=%s&limit=10&format=xml' % (urllib.parse.quote(wtitle), lang)
     raw = getURL(searchitemurl)
     #print(searchitemurl.encode('utf-8'))
+
+    # if there is search-continue="7" results are not complete..
 
     if not '<search />' in raw:
         m = re.findall(r'id="(Q\d+)"', raw)
