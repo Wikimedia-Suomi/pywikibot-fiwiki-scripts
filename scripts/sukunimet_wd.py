@@ -104,6 +104,10 @@ def checkqcode(wtitle, itemqcode, lang):
 
     instance_of = itemfound.claims.get('P31', [])
     for claim in instance_of:
+        if (claim.getTarget().id == 'Q4167410'):
+            print("disambiguation page")
+            return False
+
         if (claim.getTarget().id == 'Q101352'):
             print("instance ok")
 
