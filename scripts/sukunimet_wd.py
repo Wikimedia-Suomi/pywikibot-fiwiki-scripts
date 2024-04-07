@@ -102,6 +102,7 @@ def checkqcode(wtitle, itemqcode, lang):
     itemfound = pywikibot.ItemPage(repo, itemqcode)
     dictionary = itemfound.get()
 
+    isLastName = False
     instance_of = itemfound.claims.get('P31', [])
     for claim in instance_of:
         if (claim.getTarget().id == 'Q4167410'):
@@ -110,17 +111,46 @@ def checkqcode(wtitle, itemqcode, lang):
 
         if (claim.getTarget().id == 'Q101352'):
             print("instance ok")
+            isLastName = True
 
+    isFinnishLabel = False
+    isEnglishLabel = False
     print("item id, ", itemfound.getID())
     for li in itemfound.labels:
         label = itemfound.labels[li]
-        if (label == wtitle and li == lang):
-            print("found exact matching label: ", label)
-            return True
-        elif (label == wtitle and li != lang):
+        if (label == wtitle and li != lang):
             print("found matching label for another language: ", li)
+        
+        if (label == wtitle and li == 'fi'):
+            print("found exact matching label: ", label)
+            isFinnishLabel = True
 
+        if (label == wtitle and li == 'en'):
+            print("found matching label: ", label)
+            isEnglishLabel = True
+
+    isDescriptionMissing = True
+    for dsc in itemfound.descriptions:
+        description = itemfound.descriptions[dsc]
+        if (description == "sukunimi" and dsc == 'fi'):
+            isDescriptionMissing = False
+
+
+    if (isFinnishLabel == False and isEnglishLabel == True and isLastName == True):
+        print("label for finnish missing: ", wtitle)
+        copy_labels = {"fi": wtitle}
+        copy_descr = {"fi": "sukunimi"}
+        itemfound.editLabels(labels=copy_labels, summary="Adding missing labels.")
+        if (isDescriptionMissing == True):
+            itemfound.editDescriptions(copy_descr, summary="Adding missing descriptions.")
+        itemfound.get()
+        return True
+ 
+    # exact match found
+    if (isFinnishLabel == True and isLastName == True):
+        return True
     return False
+    #return isFinnishLabel
 
 # https://github.com/mpeel/wikicode/blob/master/wir_newpages.py#L706
 def searchname(wtitle, lang='fi'):
@@ -142,7 +172,7 @@ def searchname(wtitle, lang='fi'):
             if (checkqcode(wtitle, itemfoundq, lang) == True):
                 return str(itemfoundq)
 
-    print("not found")
+    print("not found", wtitle)
     return ''
 
 
@@ -157,7 +187,7 @@ def addname(par_name):
     new_descr = {"fi": "sukunimi", "en": "family name"}
     newitemlabels = {'fi': par_name,'en': par_name}
 
-    print('Creating a new item...')
+    print('Creating a new item...', par_name)
 
     #create item
     newitem = pywikibot.ItemPage(repo)
