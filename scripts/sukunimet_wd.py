@@ -111,12 +111,17 @@ def checkqcode(wtitle, itemqcode, lang):
 
         # family name
         if (claim.getTarget().id == 'Q101352'):
-            print("instance ok")
+            print("instance ok", claim.getTarget().id)
             isLastName = True
 
         # affixed name
         if (claim.getTarget().id == 'Q66480858'):
-            print("instance ok")
+            print("instance ok", claim.getTarget().id)
+            isLastName = True
+
+        # hyphenated surname
+        if (claim.getTarget().id == 'Q106319018'):
+            print("instance ok", claim.getTarget().id)
             isLastName = True
 
 
@@ -162,7 +167,7 @@ def checkqcode(wtitle, itemqcode, lang):
 # https://github.com/mpeel/wikicode/blob/master/wir_newpages.py#L706
 def searchname(wtitle, lang='fi'):
 
-    searchitemurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%s&language=%s&limit=10&format=xml' % (urllib.parse.quote(wtitle), lang)
+    searchitemurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%s&language=%s&limit=20&format=xml' % (urllib.parse.quote(wtitle), lang)
     raw = getURL(searchitemurl)
     #print(searchitemurl.encode('utf-8'))
 
