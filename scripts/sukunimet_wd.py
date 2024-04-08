@@ -128,6 +128,71 @@ def isItemLastName(item):
             isLastName = True
     return isLastName
 
+##     data = {"labels": {"en": par_name, "fi": par_name, "sv": par_name, "fr": par_name, "it": par_name, "de": par_name, "es": par_name, "pt": par_name},
+#    "descriptions": {"en": "family name", "fi": "sukunimi", "sv": "efternamn", "fr": "nom de famille", "it": "cognome", "de": "Familienname", "es": "apellido", "pt": "sobrenome"}}
+
+def copylabels(wtitle, item):
+
+    modifiedItem = False
+    
+    if "fi" in item.labels:
+        label = item.labels["fi"]
+        if (label != wtitle):
+            # finnish label does not match -> wrong item?
+            return False;
+        
+    # finnish label is not set -> don't modify (avoid mistakes)
+    if "fi" not in item.labels:
+        return False;
+
+    # start with supported languages
+    supportedLabels = "en", "fi", "sv", "fr", "it", "de", "es", "pt"
+    for lang in supportedLabels:
+        if lang not in item.labels:
+            # example: "fi": "Virtanen"
+            copy_labels = {lang: wtitle}
+            item.editLabels(labels=copy_labels, summary="Adding missing labels.")
+            modifiedItem = True
+
+    for lang in supportedLabels:
+        if lang not in item.descriptions:
+            if (lang == 'fi'):
+                copy_descr = {"fi": "sukunimi"}
+                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
+                modifiedItem = True
+            if (lang == 'en'):
+                copy_descr = {"en": "family name"}
+                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
+                modifiedItem = True
+            if (lang == 'sv'):
+                copy_descr = {"sv": "efternamn"}
+                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
+                modifiedItem = True
+            if (lang == 'fr'):
+                copy_descr = {"fr": "nom de famille"}
+                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
+                modifiedItem = True
+            if (lang == 'it'):
+                copy_descr = {"it": "cognome"}
+                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
+                modifiedItem = True
+            if (lang == 'de'):
+                copy_descr = {"de": "Familienname"}
+                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
+                modifiedItem = True
+            if (lang == 'es'):
+                copy_descr = {"es": "apellido"}
+                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
+                modifiedItem = True
+            if (lang == 'pt'):
+                copy_descr = {"pt": "sobrenome"}
+                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
+                modifiedItem = True
+
+    if (modifiedItem == True):
+        item.get()
+    return modifiedItem
+
 def checkqcode(wtitle, itemqcode, lang):
     wdsite = pywikibot.Site('wikidata', 'wikidata')
     wdsite.login()
@@ -179,6 +244,8 @@ def checkqcode(wtitle, itemqcode, lang):
             itemfound.editDescriptions(copy_descr, summary="Adding missing descriptions.")
         itemfound.get()
         return True
+    #elif (isFinnishLabel == True and isLastName == True):
+        #return copylabels(wtitle, itemfound)
  
     # exact match found
     if (isFinnishLabel == True and isLastName == True):
@@ -268,22 +335,21 @@ def addname(par_name):
 
     repo = wdsite.data_repository()
 
-    new_descr = {"fi": "sukunimi", "en": "family name"}
-    newitemlabels = {'fi': par_name,'en': par_name}
-
     print('Creating a new item...', par_name)
 
     #create item
     newitem = pywikibot.ItemPage(repo)
 
+    #newitemlabels = {'fi': par_name,'en': par_name}
     #for key in newitemlabels:
         #newitem.editLabels(labels={key: newitemlabels[key]},
             #summary="Setting label: {} = '{}'".format(key, newitemlabels[key]))
         
+    #new_descr = {"fi": "sukunimi", "en": "family name"}
     #for key in new_descr:
         #newitem.editDescriptions({key: new_descr[key]},
             #summary="Setting description: {} = '{}'".format(key, new_descr[key]))
-        
+
     data = {"labels": {"en": par_name, "fi": par_name, "sv": par_name, "fr": par_name, "it": par_name, "de": par_name, "es": par_name, "pt": par_name},
     "descriptions": {"en": "family name", "fi": "sukunimi", "sv": "efternamn", "fr": "nom de famille", "it": "cognome", "de": "Familienname", "es": "apellido", "pt": "sobrenome"}}
     
@@ -315,13 +381,17 @@ def checkproperties(wtitle, itemqcode):
     dictionary = itemfound.get()
 
     isLastName = isItemLastName(itemfound)
-    if (isLastName == True):
-        addproperties(repo, itemfound)
-        print("Properties checked for ", itemqcode)
-        return True
-    else:
+    if (isLastName == False):
         print("code is not for a last name ", itemqcode)
-    return False
+        return False
+    
+    print("Checking Labels for ", wtitle)
+    copylabels(wtitle, itemfound)
+    print("Labels checked for ", wtitle)
+    
+    addproperties(repo, itemfound)
+    print("Properties checked for ", itemqcode)
+    return True
 
 
 # main()
