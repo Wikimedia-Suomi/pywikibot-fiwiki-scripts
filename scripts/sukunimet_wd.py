@@ -93,17 +93,9 @@ def getURL(url, retry=True, timeout=30):
             sleep = sleep * 2
     return raw
 
-def checkqcode(wtitle, itemqcode, lang):
-    wdsite = pywikibot.Site('wikidata', 'wikidata')
-    wdsite.login()
-
-    repo = wdsite.data_repository()
-    
-    itemfound = pywikibot.ItemPage(repo, itemqcode)
-    dictionary = itemfound.get()
-
+def isItemLastName(item):
     isLastName = False
-    instance_of = itemfound.claims.get('P31', [])
+    instance_of = item.claims.get('P31', [])
     for claim in instance_of:
         if (claim.getTarget().id == 'Q4167410'):
             print("disambiguation page")
@@ -114,17 +106,43 @@ def checkqcode(wtitle, itemqcode, lang):
             print("instance ok", claim.getTarget().id)
             isLastName = True
 
-        # affixed name
+        # "von something"
         if (claim.getTarget().id == 'Q66480858'):
-            print("instance ok", claim.getTarget().id)
+            print("instance affixed name", claim.getTarget().id)
             isLastName = True
 
-        # hyphenated surname
         if (claim.getTarget().id == 'Q106319018'):
-            print("instance ok", claim.getTarget().id)
+            print("instance hyphenated surname", claim.getTarget().id)
             isLastName = True
 
+        if (claim.getTarget().id == 'Q60558422'):
+            print("instance compound surname", claim.getTarget().id)
+            isLastName = True
 
+        if (claim.getTarget().id == 'Q121493679'):
+            print("instance surname", claim.getTarget().id)
+            isLastName = True
+
+        if (claim.getTarget().id == 'Q29042997'):
+            print("instance double family name", claim.getTarget().id)
+            isLastName = True
+    return isLastName
+
+def checkqcode(wtitle, itemqcode, lang):
+    wdsite = pywikibot.Site('wikidata', 'wikidata')
+    wdsite.login()
+
+    repo = wdsite.data_repository()
+    
+    itemfound = pywikibot.ItemPage(repo, itemqcode)
+    if (itemfound.isRedirectPage() == True):
+        return False
+
+    dictionary = itemfound.get()
+
+    isLastName = isItemLastName(itemfound)
+
+    isFinnishLabelMissing = True
     isFinnishLabel = False
     isEnglishLabel = False
     print("item id, ", itemfound.getID())
@@ -141,6 +159,10 @@ def checkqcode(wtitle, itemqcode, lang):
             print("found matching label: ", label)
             isEnglishLabel = True
 
+        if (li == 'fi'):
+            isFinnishLabelMissing = False
+
+
     isDescriptionMissing = True
     for dscl in itemfound.descriptions:
         description = itemfound.descriptions[dscl]
@@ -148,7 +170,7 @@ def checkqcode(wtitle, itemqcode, lang):
             isDescriptionMissing = False
             break
 
-    if (isFinnishLabel == False and isEnglishLabel == True and isLastName == True):
+    if (isFinnishLabelMissing == True and isEnglishLabel == True and isLastName == True):
         print("label for finnish missing: ", wtitle)
         copy_labels = {"fi": wtitle}
         copy_descr = {"fi": "sukunimi"}
@@ -167,7 +189,7 @@ def checkqcode(wtitle, itemqcode, lang):
 # https://github.com/mpeel/wikicode/blob/master/wir_newpages.py#L706
 def searchname(wtitle, lang='fi'):
 
-    searchitemurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%s&language=%s&limit=20&format=xml' % (urllib.parse.quote(wtitle), lang)
+    searchitemurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%s&language=%s&limit=50&format=xml' % (urllib.parse.quote(wtitle), lang)
     raw = getURL(searchitemurl)
     #print(searchitemurl.encode('utf-8'))
 
@@ -189,9 +211,57 @@ def searchname(wtitle, lang='fi'):
     print("not found", wtitle)
     return ''
 
+def addproperties(repo, wditem):
+    # instance of
+    if not 'P31' in wditem.claims:
+        print("Adding claim: family name")
+        claim = pywikibot.Claim(repo, 'P31')
+        target = pywikibot.ItemPage(repo, 'Q101352') # family name
+        claim.setTarget(target)
+        wditem.addClaim(claim)#, summary='Adding 1 claim')
+        
+    # writing system
+    if not 'P282' in wditem.claims:
+        print("Adding claim: writing system")
+        claim = pywikibot.Claim(repo, 'P282')
+        target = pywikibot.ItemPage(repo, 'Q8229') # latin alphabet
+        claim.setTarget(target)
+        wditem.addClaim(claim)#, summary='Adding 1 claim')
+        
+    # native label
+    #if not 'P1705' in wditem.claims:
+        #print("Adding claim: native label")
+        #claim = pywikibot.Claim(repo, 'P1705')
+        #claim.setTarget(par_name) # + qualifer lang Q1412
+
+            #l_claim = pywikibot.Claim(wikidata_site, 'P???', is_reference=False, is_qualifier=True)
+            #q_target = pywikibot.ItemPage(wdsite, 'Q1412')
+            #l_claim.setTarget(q_target)
+            #claim.addQualifier(l_claim)
+        
+        #wditem.addClaim(claim)#, summary='Adding 1 claim')
+
+    # attested in 
+    if not 'P5323' in wditem.claims:
+        print("Adding claim: attested in")
+        claim = pywikibot.Claim(repo, 'P5323')
+        target = pywikibot.ItemPage(repo, 'Q18694404') # väestötietojärjestelmä
+        claim.setTarget(target)
+        wditem.addClaim(claim)#, summary='Adding 1 claim')
+
+    #elif 'P5323' in wditem.claims:
+        #claim = pywikibot.Claim(repo, 'P5323')
+        #if (claim.getTarget().id == Q117799914): # väestötietojärjestelmä Suomessa
+            #target = pywikibot.ItemPage(repo, 'Q18694404') # väestötietojärjestelmä
+            #claim.setTarget(target)
+        #wditem.addClaim(claim)#, summary='Adding 1 claim')
+
+
 
 # see: https://www.wikidata.org/wiki/Wikidata:Pywikibot_-_Python_3_Tutorial/Labels
 def addname(par_name):
+    if (len(par_name) == 0):
+        return None
 
     wdsite = pywikibot.Site('wikidata', 'wikidata')
     wdsite.login()
@@ -214,46 +284,45 @@ def addname(par_name):
         #newitem.editDescriptions({key: new_descr[key]},
             #summary="Setting description: {} = '{}'".format(key, new_descr[key]))
         
-    data = {"labels": {"en": par_name, "fi": par_name},
-    "descriptions": {"en": "family name", "fi": "sukunimi"}}
+    data = {"labels": {"en": par_name, "fi": par_name, "sv": par_name, "fr": par_name, "it": par_name, "de": par_name, "es": par_name, "pt": par_name},
+    "descriptions": {"en": "family name", "fi": "sukunimi", "sv": "efternamn", "fr": "nom de famille", "it": "cognome", "de": "Familienname", "es": "apellido", "pt": "sobrenome"}}
+    
     newitem.editEntity(data, summary=u'Edited item: set labels, descriptions')
 
     newitem.get()
 
     print('Adding properties...')
 
-    # instance of
-    if not 'P31' in newitem.claims:
-        print("Adding claim: family name")
-        claim = pywikibot.Claim(repo, 'P31')
-        target = pywikibot.ItemPage(repo, 'Q101352') # family name
-        claim.setTarget(target)
-        newitem.addClaim(claim)#, summary='Adding 1 claim')
-        
-    # writing system
-    if not 'P282' in newitem.claims:
-        print("Adding claim: writing system")
-        claim = pywikibot.Claim(repo, 'P282')
-        target = pywikibot.ItemPage(repo, 'Q8229') # latin alphabet
-        claim.setTarget(target)
-        newitem.addClaim(claim)#, summary='Adding 1 claim')
-        
-    # native label
-    #if not 'P1705' in newitem.claims:
-        #print("Adding claim: native label")
-        #claim = pywikibot.Claim(repo, 'P1705')
-        #claim.setTarget(par_name) # + qualifer lang Q1412
-
-            #l_claim = pywikibot.Claim(wikidata_site, 'P???', is_reference=False, is_qualifier=True)
-            #q_target = pywikibot.ItemPage(wdsite, 'Q1412')
-            #l_claim.setTarget(q_target)
-            #claim.addQualifier(l_claim)
-        
-        #newitem.addClaim(claim)#, summary='Adding 1 claim')
+    addproperties(repo, newitem)
 
     nid = newitem.getID()
     print('All done', nid)
     return nid
+
+def checkproperties(wtitle, itemqcode):
+    if (len(itemqcode) == 0):
+        return False
+
+    wdsite = pywikibot.Site('wikidata', 'wikidata')
+    wdsite.login()
+
+    repo = wdsite.data_repository()
+    
+    itemfound = pywikibot.ItemPage(repo, itemqcode)
+    if (itemfound.isRedirectPage() == True):
+        return False
+    
+    dictionary = itemfound.get()
+
+    isLastName = isItemLastName(itemfound)
+    if (isLastName == True):
+        addproperties(repo, itemfound)
+        print("Properties checked for ", itemqcode)
+        return True
+    else:
+        print("code is not for a last name ", itemqcode)
+    return False
+
 
 # main()
 
@@ -272,7 +341,10 @@ if __name__ == "__main__":
             if (len(qid) == 0):
                 qid = addname(name)
                 cache.updatecache(name, qid)
-                #exit(1) ## TEST
             else:
                 cache.updatecache(name, qid)
+        else:
+            if (checkproperties(name, qc) == False):
+                # not a last name -> reset qcode and try again later
+                cache.updatecache(name, '')
     
