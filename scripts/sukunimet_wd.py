@@ -146,48 +146,39 @@ def copylabels(wtitle, item):
         return False;
 
     # start with supported languages
+    copy_labels = {}
     supportedLabels = "en", "fi", "sv", "fr", "it", "de", "es", "pt"
     for lang in supportedLabels:
         if lang not in item.labels:
             # example: "fi": "Virtanen"
-            copy_labels = {lang: wtitle}
-            item.editLabels(labels=copy_labels, summary="Adding missing labels.")
-            modifiedItem = True
+            copy_labels[lang] = wtitle
+    if (len(copy_labels) > 0):
+        item.editLabels(labels=copy_labels, summary="Adding missing labels.")
+        modifiedItem = True
 
+    copy_descr = {}
     for lang in supportedLabels:
         if lang not in item.descriptions:
             if (lang == 'fi'):
-                copy_descr = {"fi": "sukunimi"}
-                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
-                modifiedItem = True
+                copy_descr["fi"] = "sukunimi"
             if (lang == 'en'):
-                copy_descr = {"en": "family name"}
-                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
-                modifiedItem = True
+                copy_descr ["en"] = "family name"
             if (lang == 'sv'):
-                copy_descr = {"sv": "efternamn"}
-                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
-                modifiedItem = True
+                copy_descr["sv"] = "efternamn"
             if (lang == 'fr'):
-                copy_descr = {"fr": "nom de famille"}
-                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
-                modifiedItem = True
+                copy_descr["fr"] = "nom de famille"
             if (lang == 'it'):
-                copy_descr = {"it": "cognome"}
-                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
-                modifiedItem = True
+                copy_descr["it"] = "cognome"
             if (lang == 'de'):
-                copy_descr = {"de": "Familienname"}
-                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
-                modifiedItem = True
+                copy_descr["de"] = "Familienname"
             if (lang == 'es'):
-                copy_descr = {"es": "apellido"}
-                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
-                modifiedItem = True
+                copy_descr["es"] = "apellido"
             if (lang == 'pt'):
-                copy_descr = {"pt": "sobrenome"}
-                item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
-                modifiedItem = True
+                copy_descr["pt"] = "sobrenome"
+
+    if (len(copy_descr) > 0):
+        item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
+        modifiedItem = True
 
     if (modifiedItem == True):
         item.get()
