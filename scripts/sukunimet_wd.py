@@ -19,6 +19,8 @@ import urllib
 import urllib.request
 import urllib.parse
 
+def escapesinglequote(s):
+    return s.replace("'", "''")
 
 class CachedNames:
     def opencachedb(self):
@@ -85,7 +87,7 @@ def getURL(url, retry=True, timeout=30):
     req = urllib.request.Request(url, headers=headers)
     while retry and sleep <= maxsleep:
         try:
-            return urllib.request.urlopen(req, timeout=timeout).read().strip().decode('utf-8')
+            return urllib.request.urlopen(req, timeout=timeout).read()
         except:
             print('Error while retrieving: %s' % (url))
             print('Retry in %s seconds...' % (sleep))
@@ -272,27 +274,42 @@ def checkqcode(wtitle, itemqcode, lang):
     return False
     #return isFinnishLabel
 
+def getqcodesfromresponse(record):
+    qcodes = list()
+    if "search" in record:
+        s = record["search"]
+        if (len(s) > 0):
+            for res in s:
+                if "id" in res:
+                    #print("id = ", res["id"])
+                    qcodes.append(res["id"])
+    return qcodes
+
 # https://github.com/mpeel/wikicode/blob/master/wir_newpages.py#L706
 def searchname(wtitle, lang='fi'):
 
-    searchitemurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%s&language=%s&limit=50&format=xml' % (urllib.parse.quote(wtitle), lang)
-    raw = getURL(searchitemurl)
+    searchitemurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%s&language=%s&limit=50&format=json' % (urllib.parse.quote(wtitle), lang)
     #print(searchitemurl.encode('utf-8'))
+    resp = getURL(searchitemurl).strip().decode('utf-8')
 
+    record = json.loads(resp) #.json()
+
+    if (record['success'] != 1):
+        print("not successful")
+    elif (record['success'] == 1):
+        print("success")
+        
     # if there is search-continue="7" results are not complete..
+    if "search-continue" in record:
+        print("continue search from: ", record['search-continue'])
 
-    if not '<search />' in raw:
-        m = re.findall(r'id="(Q\d+)"', raw)
+    qcodes = getqcodesfromresponse(record)
         
-        numcandidates = '' #do not set to zero
-        numcandidates = len(m)
-        print("Found %s candidates" % (numcandidates))
-        
-        for itemfoundq in m:
-            # NOTE! server gives suggestions, verify it matches!
-            print("potential match exists ", str(itemfoundq))
-            if (checkqcode(wtitle, itemfoundq, lang) == True):
-                return str(itemfoundq)
+    for itemfoundq in qcodes:
+        # NOTE! server gives suggestions, verify it matches!
+        print("potential match exists ", str(itemfoundq))
+        if (checkqcode(wtitle, itemfoundq, lang) == True):
+            return str(itemfoundq)
 
     print("not found", wtitle)
     return ''
@@ -413,6 +430,21 @@ def checkproperties(wtitle, itemqcode):
     return True
 
 
+def skipbyqcode(qc):
+    if (qc == "Q55221557"):
+        return True
+    if (qc == "Q2354177"):
+        return True
+    return False
+
+def skipbyname(name):
+    if (name.find("'") > 0):
+        return True
+    if (name == "Tan"):
+        return True
+    return False
+
+
 # main()
 
 if __name__ == "__main__":
@@ -423,8 +455,11 @@ if __name__ == "__main__":
     for name in names:
         qc = names[name]
         if (qc == None):
-            if (name.find("'") > 0):
-                print("skipping name", name)
+            if (skipbyname(name) == True):
+                print("skipping by name", name)
+                continue
+            if (skipbyqcode(qc) == True):
+                print("skipping by qcode", qc)
                 continue
             qid = searchname(name)
             if (len(qid) == 0):
