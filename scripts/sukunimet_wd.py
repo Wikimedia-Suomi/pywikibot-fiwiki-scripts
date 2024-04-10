@@ -231,6 +231,7 @@ def checkqcode(wtitle, itemqcode, lang):
     isFinnishLabelMissing = True
     isFinnishLabel = False
     isEnglishLabel = False
+    isSwedishLabel = False
     print("item id, ", itemfound.getID())
     for li in itemfound.labels:
         label = itemfound.labels[li]
@@ -245,6 +246,10 @@ def checkqcode(wtitle, itemqcode, lang):
             print("found matching label: ", label)
             isEnglishLabel = True
 
+        if (label == wtitle and li == 'sv'):
+            print("found matching label: ", label)
+            isSwedishLabel = True
+
         if (li == 'fi'):
             isFinnishLabelMissing = False
 
@@ -256,7 +261,7 @@ def checkqcode(wtitle, itemqcode, lang):
             isDescriptionMissing = False
             break
 
-    if (isFinnishLabelMissing == True and isEnglishLabel == True and isLastName == True):
+    if (isFinnishLabelMissing == True and (isEnglishLabel == True or isSwedishLabel == True) and isLastName == True):
         print("label for finnish missing: ", wtitle)
         copy_labels = {"fi": wtitle}
         copy_descr = {"fi": "sukunimi"}
@@ -288,22 +293,39 @@ def getqcodesfromresponse(record):
 # https://github.com/mpeel/wikicode/blob/master/wir_newpages.py#L706
 def searchname(wtitle, lang='fi'):
 
-    searchitemurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%s&language=%s&limit=50&format=json' % (urllib.parse.quote(wtitle), lang)
-    #print(searchitemurl.encode('utf-8'))
-    resp = getURL(searchitemurl).strip().decode('utf-8')
+    qcodes = {}
+    hasMoreItems = True
+    contfrom = 0
+    
+    while (hasMoreItems == True):
+        if (contfrom == 0):
+            searchitemurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%s&language=%s&limit=50&format=json' % (urllib.parse.quote(wtitle), lang)
+        else:
+            searchitemurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%s&language=%s&continue=%s&limit=50&format=json' % (urllib.parse.quote(wtitle), lang, str(contfrom))
+        #print(searchitemurl.encode('utf-8'))
+        resp = getURL(searchitemurl).strip().decode('utf-8')
 
-    record = json.loads(resp) #.json()
+        record = json.loads(resp) #.json()
 
-    if (record['success'] != 1):
-        print("not successful")
-    elif (record['success'] == 1):
-        print("success")
-        
-    # if there is search-continue="7" results are not complete..
-    if "search-continue" in record:
-        print("continue search from: ", record['search-continue'])
+        if (record['success'] != 1):
+            print("not successful")
+        elif (record['success'] == 1):
+            print("success")
+            
+        # if there is search-continue="7" results are not complete..
+        if "search-continue" in record:
+            print("continue search from: ", record['search-continue'])
+            contfrom = record['search-continue']
+        else:
+            hasMoreItems = False
 
-    qcodes = getqcodesfromresponse(record)
+        qcodestmp = getqcodesfromresponse(record)
+        for qc in qcodestmp:
+            qcodes.append(qc)
+
+    if (len(qcodes) == 0):
+        print("no codes found for", wtitle)
+        return ''
         
     for itemfoundq in qcodes:
         # NOTE! server gives suggestions, verify it matches!
@@ -431,16 +453,18 @@ def checkproperties(wtitle, itemqcode):
 
 
 def skipbyqcode(qc):
-    if (qc == "Q55221557"):
+    codes = {"Q55221557", "Q2354177", "Q37036807", "Q13391907"}
+    if qc in codes:
         return True
-    if (qc == "Q2354177"):
-        return True
+    
     return False
 
 def skipbyname(name):
     if (name.find("'") > 0):
         return True
     if (name == "Tan"):
+        return True
+    if (name == "Zhu"):
         return True
     return False
 
@@ -458,9 +482,6 @@ if __name__ == "__main__":
             if (skipbyname(name) == True):
                 print("skipping by name", name)
                 continue
-            if (skipbyqcode(qc) == True):
-                print("skipping by qcode", qc)
-                continue
             qid = searchname(name)
             if (len(qid) == 0):
                 qid = addname(name)
@@ -468,6 +489,12 @@ if __name__ == "__main__":
             else:
                 cache.updatecache(name, qid)
         else:
+            if (skipbyname(name) == True):
+                print("skipping by name", name)
+                continue
+            if (skipbyqcode(qc) == True):
+                print("skipping by qcode", qc)
+                continue
             if (checkproperties(name, qc) == False):
                 # not a last name -> reset qcode and try again later
                 cache.updatecache(name, '')
