@@ -97,9 +97,11 @@ def isItemLastName(item):
     isLastName = False
     instance_of = item.claims.get('P31', [])
     for claim in instance_of:
+        
+        # might have combinations of last name and disambiguation
         if (claim.getTarget().id == 'Q4167410'):
             print("disambiguation page")
-            return False
+            return False # skip for now
 
         # family name
         if (claim.getTarget().id == 'Q101352'):
@@ -127,6 +129,29 @@ def isItemLastName(item):
             print("instance double family name", claim.getTarget().id)
             isLastName = True
     return isLastName
+
+# skip some where translitteration might cause issues
+def skipByWritingSystem(item):
+    instance_of = item.claims.get('P31', [])
+    for claim in instance_of:
+        
+        # Han-sukunimi
+        if (claim.getTarget().id == 'Q1093580'):
+            return True
+
+    writingsystem = item.claims.get('P282', [])
+    for claim in writingsystem:
+        
+        # kiinan kirjoitusjärjestelmä
+        if (claim.getTarget().id == 'Q8201'):
+            return True
+        
+        # not latin alphabet
+        if (claim.getTarget().id != 'Q8229'):
+            return True
+
+    return False
+
 
 ##     data = {"labels": {"en": par_name, "fi": par_name, "sv": par_name, "fr": par_name, "it": par_name, "de": par_name, "es": par_name, "pt": par_name},
 #    "descriptions": {"en": "family name", "fi": "sukunimi", "sv": "efternamn", "fr": "nom de famille", "it": "cognome", "de": "Familienname", "es": "apellido", "pt": "sobrenome"}}
@@ -195,6 +220,9 @@ def checkqcode(wtitle, itemqcode, lang):
         return False
 
     dictionary = itemfound.get()
+
+    if (skipByWritingSystem(itemfound) == True):
+        return False
 
     isLastName = isItemLastName(itemfound)
 
