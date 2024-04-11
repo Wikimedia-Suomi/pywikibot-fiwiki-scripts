@@ -224,6 +224,7 @@ def checkqcode(wtitle, itemqcode, lang):
     dictionary = itemfound.get()
 
     if (skipByWritingSystem(itemfound) == True):
+        print("skipping, writing system might cause mismatch ", itemqcode)
         return False
 
     isLastName = isItemLastName(itemfound)
@@ -442,6 +443,10 @@ def checkproperties(wtitle, itemqcode):
     if (isLastName == False):
         print("code is not for a last name ", itemqcode)
         return False
+
+    if (skipByWritingSystem(itemfound) == True):
+        print("skipping, writing system might cause mismatch ", itemqcode)
+        return False
     
     print("Checking Labels for ", wtitle)
     copylabels(wtitle, itemfound)
@@ -453,19 +458,19 @@ def checkproperties(wtitle, itemqcode):
 
 
 def skipbyqcode(qc):
-    codes = {"Q55221557", "Q2354177", "Q37036807", "Q13391907"}
+    codes = {"Q55221557", "Q2354177", "Q37036807", "Q13391907", "Q21450308", "Q42293799", "Q21511080", "Q125380726"}
     if qc in codes:
         return True
     
     return False
 
 def skipbyname(name):
+    names = { "Tan", "Zhu", "Jakovlev" }
     if (name.find("'") > 0):
         return True
-    if (name == "Tan"):
+    if name in names:
         return True
-    if (name == "Zhu"):
-        return True
+
     return False
 
 
