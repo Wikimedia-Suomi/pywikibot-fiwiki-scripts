@@ -130,6 +130,11 @@ def isItemLastName(item):
         if (claim.getTarget().id == 'Q29042997'):
             print("instance double family name", claim.getTarget().id)
             isLastName = True
+
+        if (claim.getTarget().id == 'Q56219051'):
+            print("instance Mac of Mc prefix", claim.getTarget().id)
+            isLastName = True
+            
     return isLastName
 
 # skip some where translitteration might cause issues
@@ -174,7 +179,7 @@ def copylabels(wtitle, item):
 
     # start with supported languages
     copy_labels = {}
-    supportedLabels = "en", "fi", "sv", "fr", "it", "de", "es", "pt"
+    supportedLabels = "en", "fi", "sv", "fr", "it", "de", "es", "pt", "nl", "da", "nb", "nn", "et", "pl"
     for lang in supportedLabels:
         if lang not in item.labels:
             # example: "fi": "Virtanen"
@@ -202,6 +207,18 @@ def copylabels(wtitle, item):
                 copy_descr["es"] = "apellido"
             if (lang == 'pt'):
                 copy_descr["pt"] = "sobrenome"
+            if (lang == 'nl'):
+                copy_descr["nl"] = "achternaam"
+            if (lang == 'da'):
+                copy_descr["da"] = "efternavn"
+            if (lang == 'nb'):
+                copy_descr["nb"] = "etternavn"
+            if (lang == 'nn'):
+                copy_descr["nn"] = "etternamn"
+            if (lang == 'et'):
+                copy_descr["et"] = "perekonnanimi"
+            if (lang == 'pl'):
+                copy_descr["pl"] = "nazwisko"
 
     if (len(copy_descr) > 0):
         item.editDescriptions(copy_descr, summary="Adding missing descriptions.")
