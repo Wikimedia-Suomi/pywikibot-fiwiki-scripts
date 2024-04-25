@@ -382,26 +382,42 @@ class CachedImageData:
         #self.conn = sqlite3.connect("pwbimagedatacache.db")
         self.conn = psycopg2.connect("dbname=wikidb")
         cur = self.conn.cursor()
-        cur.execute("CREATE TABLE IF NOT EXISTS imagecache(url varchar(500), phashlen integer, phashval varchar(50), dhashlen integer, dhashval varchar(50), recent timestamp)")
+        cur.execute("CREATE TABLE IF NOT EXISTS imagecache(url varchar(500), phashlen integer, phashval varchar(50), dhashlen integer, dhashval varchar(50), recent timestamp, pillowbug char(1))")
 
-    def addtocache(self, url, plen, pval, dlen, dval, ts):
+    def addtocache(self, url, plen, pval, dlen, dval, ts, pillowbugstate='n'):
 
-        sqlq = "INSERT INTO imagecache(url, phashlen, phashval, dhashlen, dhashval, recent) VALUES ('"+ url + "', "+ str(plen) + ", '"+ pval + "', "+ str(dlen) + ", '"+ dval + "', '" + ts.isoformat() + "')"
+        sqlq = "INSERT INTO imagecache(url, phashlen, phashval, dhashlen, dhashval, recent, pillowbug) VALUES ('"+ url + "', "+ str(plen) + ", '"+ pval + "', "+ str(dlen) + ", '"+ dval + "', '" + ts.isoformat() + "', '"+ pillowbugstate +"')"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
         self.conn.commit()
 
-    def updatecache(self, url, plen, pval, dlen, dval, ts):
+    def updatecache(self, url, plen, pval, dlen, dval, ts, pillowbugstate='n'):
 
-        sqlq = "UPDATE imagecache SET phashlen = "+ str(plen) + ", phashval = '"+ pval + "', dhashlen = "+ str(dlen) + ", dhashval = '"+ dval + "', recent = '" + ts.isoformat() + "' WHERE url = '" + url + "'"
+        sqlq = "UPDATE imagecache SET phashlen = "+ str(plen) + ", phashval = '"+ pval + "', dhashlen = "+ str(dlen) + ", dhashval = '"+ dval + "', recent = '" + ts.isoformat() + "', pillowbug = '" + pillowbugstate + "' WHERE url = '" + url + "'"
+
+        cur = self.conn.cursor()
+        cur.execute(sqlq)
+        self.conn.commit()
+
+    def addtocachewithpillowbug(self, url, ts, pillowbugstate='y'):
+
+        sqlq = "INSERT INTO imagecache(url, recent, pillowbug) VALUES ('"+ url + "', '" + ts.isoformat() + "', '"+ pillowbugstate +"')"
+
+        cur = self.conn.cursor()
+        cur.execute(sqlq)
+        self.conn.commit()
+
+    def setpillowbug(self, url, pillowbugstate, ts):
+        
+        sqlq = "UPDATE imagecache SET pillowbug = '"+ pillowbugstate + "', recent = '" + ts.isoformat() + "' WHERE url = '" + url + "'"
 
         cur = self.conn.cursor()
         cur.execute(sqlq)
         self.conn.commit()
 
     def findfromcache(self, url):
-        sqlq = "SELECT url, phashlen, phashval, dhashlen, dhashval, recent FROM imagecache WHERE url = '" + url + "'"
+        sqlq = "SELECT url, phashlen, phashval, dhashlen, dhashval, recent, pillowbug FROM imagecache WHERE url = '" + url + "'"
         
         cur = self.conn.cursor()
         res = cur.execute(sqlq)
@@ -422,11 +438,18 @@ class CachedImageData:
             #print(row)
             dt = dict()
             dt['url'] = row[0]
-            dt['phashlen'] = int(row[1])
+            if (row[1] != None):
+                dt['phashlen'] = int(row[1])
+            else:
+                dt['phashlen'] = 0
             dt['phashval'] = row[2]
-            dt['dhashlen'] = int(row[3])
+            if (row[3] != None):
+                dt['dhashlen'] = int(row[3])
+            else:
+                dt['dhashlen'] = 0
             dt['dhashval'] = row[4]
             dt['timestamp'] = datetime.fromisoformat(str(row[5]))
+            dt['pillowbug'] = row[6]
             #print(dt)
             return dt
 
@@ -2293,6 +2316,14 @@ def timestringtodatetime(timestring):
     print("DEBUG: cannot use timestring", timestring)
     return None
 
+# remove pointless characters if any:
+#  sometimes there are newlines and tabs in the string -> strip them out
+def fixwhitespaces(s):
+    s = s.replace("\n", " ")
+    s = s.replace("\t", " ")
+    s = s.replace("\r", " ")
+    return trimlr(s)
+
 # parse timestamp of picture from finna data
 # TODO: sometimes there is a range of approximate dates given
 # -> we could parse them but how do we mark them in SDC?
@@ -2314,9 +2345,7 @@ def parseinceptionfromfinna(finnarecord):
                     index = index+len("kuvausaika")
                     timestamp = sbstr[index:]
                     #  sometimes there is newlines and tabs in the string -> strip them out
-                    timestamp = timestamp.replace("\n", " ")
-                    timestamp = timestamp.replace("\t", " ")
-                    timestamp = trimlr(timestamp)
+                    timestamp = fixwhitespaces(timestamp)
 
                     # something human-readable after a timestamp?
                     if (timestamp.find(",") > 0):
@@ -2333,9 +2362,7 @@ def parseinceptionfromfinna(finnarecord):
                     index = index+len("ajankohta:")
                     timestamp = sbstr[index:]
                     # sometimes there is newlines and tabs in the string -> strip them out
-                    timestamp = timestamp.replace("\n", " ")
-                    timestamp = timestamp.replace("\t", " ")
-                    timestamp = trimlr(timestamp)
+                    timestamp = fixwhitespaces(timestamp)
 
                     # something human-readable after a timestamp?
                     if (timestamp.find(",") > 0):
@@ -2353,9 +2380,7 @@ def parseinceptionfromfinna(finnarecord):
                     index = index+len("valmistusaika ")
                     timestamp = sbstr[index:]
                     # sometimes there is newlines and tabs in the string -> strip them out
-                    timestamp = timestamp.replace("\n", " ")
-                    timestamp = timestamp.replace("\t", " ")
-                    timestamp = trimlr(timestamp)
+                    timestamp = fixwhitespaces(timestamp)
 
                     # something human-readable after a timestamp?
                     if (timestamp.find(",") > 0):
@@ -3412,8 +3437,9 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, 'File:Helene Schjerfbeck - The Door - A IV 3680 - Finnish National Gallery.jpg')
 
-    fp = pywikibot.FilePage(commonssite, 'File:Axel Gustav Estlander.jpg')
+    #fp = pywikibot.FilePage(commonssite, 'File:Axel Gustav Estlander.jpg')
 
+    fp = pywikibot.FilePage(commonssite, 'File:A fire broke out at the Helsinki railway station on June 14, 1950 (JOKAVIU2C003-4).tif')
 
     
     pages.append(fp)
@@ -3602,7 +3628,7 @@ d_institutionqcode["Keski-Suomen museo"] = "Q11871078"
 d_institutionqcode["Nurmeksen museo"] = "Q18661027"
 d_institutionqcode["Lahden museot"] = "Q115322278"
 d_institutionqcode["Postimuseo"] = "Q5492225"
-
+d_institutionqcode["Nuorisotyön tallentaja Nuoperi"] = "Q125428627"
 
 # qcode of collections -> label
 #
@@ -3713,6 +3739,8 @@ d_labeltoqcode["Helsingin kaupunginmuseon kuvakokoelma"] = "Q124299286"
 d_labeltoqcode["HKM Valokuva"] = "Q124299286"
 d_labeltoqcode["Vilho Uomalan kokoelma"] = "Q124672017"
 d_labeltoqcode["Pressfoto Zeeland"] = "Q125141028"
+d_labeltoqcode["Nuoperin valokuvakokoelma"] = "Q125428578"
+d_labeltoqcode["Ylä-Karjalan kuva-arkisto"] = "Q125429017"
 
 
 # collection qcode (after parsing) to commons-category
@@ -3841,15 +3869,20 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
+pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by photographer from Finland", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Long-range reconnaissance patrols of Finland", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Olga Gummerus-Ehrström", 0)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs of Leo Laukkanen by Kuvasiskot", 0)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Päivän Kuva", 1)
+
+#pages = getcatpages(pywikibot, commonssite, "Businesspeople from Finland")
 
 
 cachedb = CachedImageData() 
@@ -4272,6 +4305,10 @@ for page in pages:
         commonshash = getimagehash(commons_image)
         if (commonshash == None):
             print("WARN: Failed to hash commons-image: " + page.title() )
+
+            cachedb.addtocachewithpillowbug(commons_image_url, 
+                                filepage.latest_file_info.timestamp,
+                                'y')
             continue
         
         # same lengths for p and d hash, keep change time from commons
@@ -4284,6 +4321,11 @@ for page in pages:
     else:
         # compare timestamp: if too old recheck the hash
         print("Commons-image cached data found for: " + page.title() + " timestamp: " + tpcom['timestamp'].isoformat())
+        
+        if (tpcom["pillowbug"] != None and tpcom["pillowbug"] == 'y'):
+            print("Pillow is bugging on image: " + page.title() + ", skipping")
+            continue
+
         
         # NOTE! force timezone since python is garbage in handling UTC-times:
         # python loses timezone even when the original string from database includes it
@@ -4300,6 +4342,10 @@ for page in pages:
             commonshash = getimagehash(commons_image)
             if (commonshash == None):
                 print("WARN: Failed to hash commons-image: " + page.title() )
+                # might be transient bug?
+                cachedb.setpillowbug(commons_image_url, 
+                                    'f', 
+                                    filepage.latest_file_info.timestamp)
                 continue
             cachedb.addorupdate(commons_image_url, 
                                 commonshash[0], commonshash[1], commonshash[0], commonshash[2], 
@@ -4313,10 +4359,21 @@ for page in pages:
 
     if ('8000000000000000' == tpcom['phashval']):
         print("WARN: phash is bogus for: ", page.title())
+        cachedb.setpillowbug(commons_image_url, 
+                            'y', 
+                            filepage.latest_file_info.timestamp)
         continue
     if ('0000000000000000' == tpcom['dhashval']):
         print("WARN: dhash is bogus for: ", page.title())
+        cachedb.setpillowbug(commons_image_url, 
+                            'y', 
+                            filepage.latest_file_info.timestamp)
         continue
+
+    # if we have passed, mark as none
+    cachedb.setpillowbug(commons_image_url, 
+                        'n', 
+                        filepage.latest_file_info.timestamp)
 
     if (isPerceptualHashInSdcData(claims, tpcom['phashval']) == False):
         print("adding phash to statements for: ", finnaid)
@@ -4365,6 +4422,9 @@ for page in pages:
             finnahash = getimagehash(finna_image)
             if (finnahash == None):
                 print("WARN: Failed to hash finna-image: " + page.title() )
+                cachedb.addtocachewithpillowbug(finna_image_url, 
+                                    datetime.now(timezone.utc),
+                                    'y')
                 continue
             
             # same lengths for p and d hash
@@ -4403,6 +4463,9 @@ for page in pages:
                 finnahash = getimagehash(finna_image)
                 if (finnahash == None):
                     print("WARN: Failed to hash finna-image: " + page.title() )
+                    cachedb.addtocachewithpillowbug(finna_image_url, 
+                                        datetime.now(timezone.utc),
+                                        'y')
                     continue
                 # same lengths for p and d hash
                 cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now(timezone.utc))
@@ -4426,7 +4489,7 @@ for page in pages:
     if (match_found == False):
         print("No matching image found, skipping: " + finnaid)
         continue
-    
+
     if (needReupload(file_info, finna_record, imagesExtended) == True):
         print("Note: image should be uploaded with higher resolution for: " + finnaid)
         #if (reuploadImage(finnaid, file_info, imagesExtended, need_index, filepage, finna_image_url) == True):
