@@ -3499,6 +3499,25 @@ def getcategoriesforsubjects(pywikibot, subjecttocategory, finnarecord):
 
     return extracatstoadd
 
+# when you need a category but there is no collection in data (museum of finnish architecture)
+#extracatstoadd = getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, finna_record)
+def getcategoriesforinstitutions(pywikibot, institutionqtocategory, pubqcode, opqcode):
+    extracatstoadd = list()
+
+    #for pub in pubqcode:
+    if pubqcode in institutionqtocategory: # skip unknown tags
+        cattext = institutionqtocategory[pubqcode]
+        if cattext not in extracatstoadd: # avoid duplicates
+            extracatstoadd.append(cattext)
+
+    #for op in opqcode:
+    if opqcode in institutionqtocategory: # skip unknown tags
+        cattext = institutionqtocategory[opqcode]
+        if cattext not in extracatstoadd: # avoid duplicates
+            extracatstoadd.append(cattext)
+
+    return extracatstoadd
+
 # lookup category names by collection qcodes
 #
 def getcategoriesforcollections(pywikibot, categories, collectiontocategory):
@@ -3629,6 +3648,7 @@ d_institutionqcode["Nurmeksen museo"] = "Q18661027"
 d_institutionqcode["Lahden museot"] = "Q115322278"
 d_institutionqcode["Postimuseo"] = "Q5492225"
 d_institutionqcode["Nuorisotyön tallentaja Nuoperi"] = "Q125428627"
+d_institutionqcode["Arkkitehtuurimuseo"] = "Q1418116" # MFA
 
 # qcode of collections -> label
 #
@@ -3765,9 +3785,17 @@ d_collectionqtocategory["Q123358672"] = "Finno-Ugric Picture Collection of The F
 #d_collectionqtocategory["Q122414127"] = "Ethnographic Collection" # Yleisetnografinen kuvakokoelma
 d_collectionqtocategory["Q122414127"] = "Ethnographic Collection of The Finnish Heritage Agency" # Yleisetnografinen kuvakokoelma
 
+# there are no colections in museum of architecture? -> need to determine by publisher
+#d_collectionqtocategory[""] = "Files from Museum of Finnish Architecture" # 
+
+
 # note! only add this if not already in one of the subcategories below this one
 # -> TODO: check the hierarchy of categories
 #d_collectionqtocategory["Q118976025"] = "Photographs by Kuvasiskot" # Studio Kuvasiskojen kokoelma
+
+# there are no colections in museum of architecture? -> need to determine by publisher
+d_institutionqtocategory = dict()
+d_institutionqtocategory["Q1418116"] = "Files from Museum of Finnish Architecture" # 
 
 
 # institution qcode (after parsing) to commons-template
@@ -3782,7 +3810,7 @@ d_institutionqtotemplate["Q41776741"] = "Hyvinkää City Museum"
 d_institutionqtotemplate["Q283140"] = "SA-Kuva" 
 d_institutionqtotemplate["Q769544"] = "Society of Swedish Literature in Finland" 
 d_institutionqtotemplate["Q18346681"] = "South Karelia Museum" 
-
+d_institutionqtotemplate["Q1418116"] = "Museum of Finnish Architecture" # MFA
 
 
 # subject tags to commons-categories:
@@ -3821,6 +3849,7 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
 #pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
+#pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva")
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in World War II", 3)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
@@ -3869,20 +3898,22 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by photographer from Finland", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Long-range reconnaissance patrols of Finland", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Olga Gummerus-Ehrström", 0)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs of Leo Laukkanen by Kuvasiskot", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by I. K. Inha", 1)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Päivän Kuva", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Grönqvist House", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Signe Brander", 0)
 
-#pages = getcatpages(pywikibot, commonssite, "Businesspeople from Finland")
+#pages = getpagesrecurse(pywikibot, commonssite, "Hotel Juhana Herttua", 0)
+
+pages = getpagesrecurse(pywikibot, commonssite, "Suur-Merijoki Manor", 0)
+
 
 
 cachedb = CachedImageData() 
@@ -4670,6 +4701,10 @@ for page in pages:
     # add commons-categoeris for other tags (subjects)
     extracatstoadd = list() # disabled for now
     #extracatstoadd = getcategoriesforsubjects(pywikibot, d_subjecttocategory, finna_record)
+            
+    # when you need a category but there is no collection in data (museum of finnish architecture)
+    extracatstoadd += getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, publisherqcode, operatorqcode)
+
     if (len(extracatstoadd) > 0):
         print("Adding subject categories for: ", finnaid, "categories ", str(extracatstoadd))
         res, tmptext = addCategoriesToCommons(pywikibot, tmptext, extracatstoadd)
