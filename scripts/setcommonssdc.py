@@ -2603,13 +2603,18 @@ def isFinnaRecordOk(finnarecord, finnaid):
 # get accession number / identifier string from finna
 def getFinnaAccessionIdentifier(finnarecord):
     records = finnarecord['records'][0]
+
+    finna_id = ""
+    if "id" in records:
+        # there is often id even if accession number is not there
+        finna_id = records['id']
     
     if "identifierString" not in records:
-        print("ERROR: no identifier in finna record" + str(records))
+        print("WARN: no identifier in finna record, id:", finna_id)
         return ""
 
     finnaidentifier = records['identifierString']
-    print("DBEUG: found identifier in finna record: " + str(finnaidentifier))
+    print("DBEUG: found identifier in finna record: ", str(finnaidentifier))
     return finnaidentifier
 
 def getTitleFromFinna(finnarecord, lang='fi'):
@@ -3944,7 +3949,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 ## TEST
-#pages = list()
+pages = list()
 
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
@@ -3967,7 +3972,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
+pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
 
 # many are from valokuvataiteenmuseo via flickr
 # many from fng via flickr
