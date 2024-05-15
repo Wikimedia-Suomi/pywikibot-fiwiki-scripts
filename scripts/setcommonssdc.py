@@ -642,6 +642,47 @@ def createMediainfoClaim(site, media_identifier, property, value):
       
     return False
 
+def wbGetEntity(site, media_identifier):
+    #media_identifier = 'M' + str(wd_item_id)
+    #print(media_identifier)
+    
+    # https://commons.wikimedia.org/w/api.php?action=wbgetentities&format=json&ids=M62891762
+    
+    #mediawiki_api_url='https://www.wikidata.org/w/api.php'
+    mediawiki_api_url='https://commons.wikimedia.org/w/api.php'
+    
+    max_retries=10
+    retry_after=10
+    headers = {
+        'User-Agent': 'pywikibot'
+    }
+    
+    params = {
+        'action': 'wbgetentities',
+        #'sites': 'enwiki',
+        'ids': media_identifier,
+        'format': 'json'
+    }
+
+    request = site.simple_request(**params)
+    for n in range(max_retries):
+        try:
+            
+            #method="GET"
+            response = request.submit()
+            
+        except requests.exceptions.ConnectionError as e:
+            print("Connection error: {}. Sleeping for {} seconds.".format(e, retry_after))
+            time.sleep(retry_after)
+            continue
+        
+        #if 'success' in response:
+
+        if 'error' not in response:
+            return response
+    return ''
+
+
 def wbEditEntity(site, media_identifier, data):
     csrf_token = site.tokens['csrf']
     # payload documentation
@@ -666,7 +707,7 @@ def wbEditEntity(site, media_identifier, data):
 
     return False
 
-def addSdcCaption(commons_site, media_identifier, lang, caption):
+def addSdcCaption(commons_site, media_identifier, caption, lang='fi'):
     captions={}
     captions[lang] = {u'language' : lang, 'value' : caption }
     data={ u'labels' : captions}
@@ -678,6 +719,24 @@ def addSdcMimetype(commons_site, media_identifier, mimetype):
     property='P1163' # mime type
     value={'entity-type':'item','id': mimetype } # Antoinia Toini
     return createMediainfoClaim(commons_site, media_identifier, property, value)
+
+# is there caption in commons for the item yet
+def isSdcCaption(commons_site, media_identifier, lang='fi'):
+    data = wbGetEntity(commons_site, media_identifier)
+    if 'success' not in data:
+        return False
+    if 'entities' not in data:
+        return False
+    if len(data['entities']) == 0:
+        return False
+    for k, v in data['entities'].items():
+        for k2, v2 in v.items():
+            if (k2 == "labels"):
+                if lang in v2:
+                    print("found captions :", v2[lang])
+                    return True
+    return False
+    
 
 # ----- /CommonsMediaInfo
 
@@ -2553,6 +2612,29 @@ def getFinnaAccessionIdentifier(finnarecord):
     print("DBEUG: found identifier in finna record: " + str(finnaidentifier))
     return finnaidentifier
 
+def getTitleFromFinna(finnarecord, lang='fi'):
+    records = finnarecord['records'][0]
+    
+    f_title = ""
+    if "title" in records:
+        #print("DBEUG: found title in finna record: ", records['title'])
+        
+        # there is a limit to how much commons caption allows
+        if (len(records['title']) < 250):
+            f_title = records['title']
+
+    #if "shortTitle" in records:
+        #print("DBEUG: found shortTitle in finna record: ", records['shortTitle'])
+        
+    #if "subTitle" in records:
+        #print("DBEUG: found subTitle in finna record: ", records['subTitle'])
+
+    #if "summary" in records:
+        #print("DBEUG: found summary in finna record: ", records['summary'])
+
+    print("DBEUG: found title in finna record: ", f_title)
+    return f_title
+
 # check if we have normal photographic image
 # (if not artwork, drawing or something else)
 def isFinnaFormatImage(finnarecord):
@@ -2835,7 +2917,6 @@ def fixMissingSdcData(pywikibot, wikidata_site, commonssite, file_info, page):
             wditem.addClaim(mime_claim)
 
             #file_info.mime == 'image/jpeg'
-            #addSdcCaption(commonssite, file_media_identifier, "fi", "testing")
             
             # alternate method
             #addSdcMimetype(commonssite, file_media_identifier, str(file_info.mime))
@@ -3439,7 +3520,7 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, 'File:Axel Gustav Estlander.jpg')
 
-    fp = pywikibot.FilePage(commonssite, 'File:A fire broke out at the Helsinki railway station on June 14, 1950 (JOKAVIU2C003-4).tif')
+    #fp = pywikibot.FilePage(commonssite, 'File:A fire broke out at the Helsinki railway station on June 14, 1950 (JOKAVIU2C003-4).tif')
 
     
     pages.append(fp)
@@ -3903,17 +3984,14 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Long-range reconnaissance patrols of Finland", 0)
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by I. K. Inha", 1)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Grönqvist House", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Signe Brander", 0)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Hotel Juhana Herttua", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Cycling at the 1952 Summer Olympics", 0)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Suur-Merijoki Manor", 0)
-
+#pages = getpagesrecurse(pywikibot, commonssite, "J. E. Rosberg", 0)
 
 
 cachedb = CachedImageData() 
@@ -4316,7 +4394,7 @@ for page in pages:
     # check what finna reports as identifier
     finna_accession_id = getFinnaAccessionIdentifier(finna_record)
     print("finna record ok: ", finnaid, " accession id: ", finna_accession_id)
-    
+
     
     # TODO! Python throws error if image is larger than 178956970 pixels
     # so we can't handle really large images. Check for those and skip them..
@@ -4395,6 +4473,12 @@ for page in pages:
                             filepage.latest_file_info.timestamp)
         continue
     if ('0000000000000000' == tpcom['dhashval']):
+        print("WARN: dhash is bogus for: ", page.title())
+        cachedb.setpillowbug(commons_image_url, 
+                            'y', 
+                            filepage.latest_file_info.timestamp)
+        continue
+    if ('0000000000000040' == tpcom['dhashval']):
         print("WARN: dhash is bogus for: ", page.title())
         cachedb.setpillowbug(commons_image_url, 
                             'y', 
@@ -4529,16 +4613,18 @@ for page in pages:
         #else:
             #print("WARN: Could not reupload with higher resolution for: ", page.title())
 
+    if (isSdcCaption(commonssite, file_media_identifier, 'fi') == False):
+        finna_title = getTitleFromFinna(finna_record, 'fi')
+        if (len(finna_title) > 0 and len(finna_title) < 250):
+            addSdcCaption(commonssite, file_media_identifier, finna_title, 'fi')
+            print("Caption added to page: ", page.title())
+
     # note: if there are no collections, don't remove from commons as they may have manual additions
     collectionqcodes = getCollectionsFromRecord(finna_record, finnaid, d_labeltoqcode)
     if (len(collectionqcodes) == 0):
         print("No collections for: " + finnaid)
     else:
         print("Collections qcodes found:", str(collectionqcodes))
-
-    # TODO: add caption to sdc?
-    #finna_title = finna_record['records'][0]['title']
-    #addSdcCaption(commonssite, file_media_identifier, "fi", finna_title)
 
     publisherqcode = getqcodeforfinnapublisher(finna_record, d_institutionqcode)
     if (len(publisherqcode) == 0):
