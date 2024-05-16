@@ -3542,6 +3542,8 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, 'File:A fire broke out at the Helsinki railway station on June 14, 1950 (JOKAVIU2C003-4).tif')
 
+    fp = pywikibot.FilePage(commonssite, 'File:Ristisaaren erottelutyömaata.jpg')
+
     
     pages.append(fp)
     return pages
@@ -3863,6 +3865,7 @@ d_labeltoqcode["Pressfoto Zeeland"] = "Q125141028"
 d_labeltoqcode["Nuoperin valokuvakokoelma"] = "Q125428578"
 d_labeltoqcode["Ylä-Karjalan kuva-arkisto"] = "Q125429017"
 d_labeltoqcode["S. E. Multamäen kokoelma"] = "Q125946755"
+d_labeltoqcode["Metsätehon kokoelma"] = "Q125947321"
 
 
 # collection qcode (after parsing) to commons-category
