@@ -3130,6 +3130,21 @@ def getKansallisgalleriaInceptionFromWikidata(pywikibot, wikidata_site, qcodes):
     # -> force a bool to tell that we really found a value
     return foundval, incdt
 
+# get name of institution-template (for commons) from wikidata
+#
+def getInstitutionTemplateFromWikidata(pywikibot, wikidata_site, itemqcode):
+    if (itemqcode == None):
+        return None
+    if (len(itemqcode) == 0):
+        return None
+    
+    wikidata_item = pywikibot.ItemPage(wikidata_site, itemqcode)
+    if not wikidata_item.exists():
+        print("WARN: qcode", itemqcode, "does not exist in wikidata")
+        return None
+    template = getValueFromWdItem(wikidata_item, 'P1612')
+    return template
+
 
 # ----- CommonsTemplate
 # helper to contain stuff related to commons template parsing,
@@ -3951,7 +3966,7 @@ commonssite.login()
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/europeana-kuvat')
 
 ## TEST
-pages = list()
+#pages = list()
 
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp1')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp2')
@@ -4773,11 +4788,23 @@ for page in pages:
                     print("Fixed template type for: " + page.title())
                 if (ct.addOrSetAccNumber(template, finna_accession_id) == True):
                     print("Fixed accession number for: " + page.title())
-                    
+                
+                institutiontemplate = ""
                 if publisherqcode in d_institutionqtotemplate: # skip unknown tags
-                    institutiontemplate = "{{Institution:" + d_institutionqtotemplate[publisherqcode] + "}}"
+                    # try local lookup
+                    institutiontemplate = d_institutionqtotemplate[publisherqcode]
+                    print("DEBUG: matching institution template: ", institutiontemplate)
+                else:
+                    # try wikidata lookup
+                    institutiontemplate = getInstitutionTemplateFromWikidata(pywikibot, wikidata_site, publisherqcode)
+                    print("DEBUG: found institution template from Wikidata: ", institutiontemplate)
+
+                # if we found a match -> add wrapping for template
+                if (len(institutiontemplate) > 0):
+                    institutiontemplate = "{{Institution:" + institutiontemplate + "}}"
                     if (ct.addOrSetInstitution(template, institutiontemplate) == True):
                         print("Fixed institution for: " + page.title())
+                        
 
         if (ct.isChanged() == True):
             tmptext = str(ct.wikicode)
