@@ -3847,6 +3847,7 @@ d_labeltoqcode["Vilho Uomalan kokoelma"] = "Q124672017"
 d_labeltoqcode["Pressfoto Zeeland"] = "Q125141028"
 d_labeltoqcode["Nuoperin valokuvakokoelma"] = "Q125428578"
 d_labeltoqcode["Ylä-Karjalan kuva-arkisto"] = "Q125429017"
+d_labeltoqcode["S. E. Multamäen kokoelma"] = "Q125946755"
 
 
 # collection qcode (after parsing) to commons-category
@@ -3897,6 +3898,7 @@ d_institutionqtotemplate["Q283140"] = "SA-Kuva"
 d_institutionqtotemplate["Q769544"] = "Society of Swedish Literature in Finland" 
 d_institutionqtotemplate["Q18346681"] = "South Karelia Museum" 
 d_institutionqtotemplate["Q1418116"] = "Museum of Finnish Architecture" # MFA
+d_institutionqtotemplate["Q11879901"] = "Lusto" # metsämuseo
 
 
 # subject tags to commons-categories:
@@ -3961,6 +3963,7 @@ pages = list()
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp8')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp9')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp10')
+
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp11')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp12')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp13')
@@ -3972,7 +3975,7 @@ pages = list()
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/fng-kuvat')
 #pages = getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/kansallisgalleriakuvat')
 
-pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
+#pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikidocumentaries")
 
 # many are from valokuvataiteenmuseo via flickr
 # many from fng via flickr
@@ -3997,6 +4000,8 @@ pages = getcatpages(pywikibot, commonssite, "Category:Images uploaded from Wikid
 #pages = getpagesrecurse(pywikibot, commonssite, "Cycling at the 1952 Summer Olympics", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "J. E. Rosberg", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by J. E. Rosberg", 0)
+
 
 
 cachedb = CachedImageData() 
