@@ -3752,6 +3752,7 @@ d_institutionqcode["Lahden museot"] = "Q115322278"
 d_institutionqcode["Postimuseo"] = "Q5492225"
 d_institutionqcode["Nuorisotyön tallentaja Nuoperi"] = "Q125428627"
 d_institutionqcode["Arkkitehtuurimuseo"] = "Q1418116" # MFA
+d_institutionqcode["Tuusulan museo"] = "Q58636633"
 
 # qcode of collections -> label
 #
@@ -3981,7 +3982,6 @@ commonssite.login()
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp8')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp9')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp10')
-
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp11')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp12')
 #pages += getlinkedpages(pywikibot, commonssite, 'user:FinnaUploadBot/finnalistp13')
@@ -4002,24 +4002,21 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by I. K. Inha", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
+pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kuvasiskot", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by I. K. Inha", 1)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Grönqvist House", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Signe Brander", 0)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Cycling at the 1952 Summer Olympics", 0)
-
 #pages = getpagesrecurse(pywikibot, commonssite, "J. E. Rosberg", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by J. E. Rosberg", 0)
-
 
 
 cachedb = CachedImageData() 
@@ -4512,6 +4509,13 @@ for page in pages:
                             'y', 
                             filepage.latest_file_info.timestamp)
         continue
+    if ('0000000000000080' == tpcom['dhashval']):
+        print("WARN: dhash is bogus for: ", page.title())
+        cachedb.setpillowbug(commons_image_url, 
+                            'y', 
+                            filepage.latest_file_info.timestamp)
+        continue
+    
 
     # if we have passed, mark as none
     cachedb.setpillowbug(commons_image_url, 
@@ -4640,6 +4644,9 @@ for page in pages:
             # after uploading, recalculate and update hashed
         #else:
             #print("WARN: Could not reupload with higher resolution for: ", page.title())
+
+    # TODO: can we simplify lookup?
+    # does this work? if 'fi' in filepage.labels,  filepage.labels['fi'] = finna_title
 
     if (isSdcCaption(commonssite, file_media_identifier, 'fi') == False):
         finna_title = getTitleFromFinna(finna_record, 'fi')
@@ -4792,7 +4799,7 @@ for page in pages:
                 if (ct.addOrSetAccNumber(template, finna_accession_id) == True):
                     print("Fixed accession number for: " + page.title())
                 
-                institutiontemplate = ""
+                institutiontemplate = None
                 if publisherqcode in d_institutionqtotemplate: # skip unknown tags
                     # try local lookup
                     institutiontemplate = d_institutionqtotemplate[publisherqcode]
@@ -4803,7 +4810,7 @@ for page in pages:
                     print("DEBUG: found institution template from Wikidata: ", institutiontemplate)
 
                 # if we found a match -> add wrapping for template
-                if (len(institutiontemplate) > 0):
+                if (institutiontemplate != None and len(institutiontemplate) > 0):
                     institutiontemplate = "{{Institution:" + institutiontemplate + "}}"
                     if (ct.addOrSetInstitution(template, institutiontemplate) == True):
                         print("Fixed institution for: " + page.title())
