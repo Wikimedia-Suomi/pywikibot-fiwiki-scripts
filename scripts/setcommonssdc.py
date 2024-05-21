@@ -3556,9 +3556,15 @@ def getlinkedpages(pywikibot, commonssite, linkpage):
 
 # list of newest pages in given category
 def getnewestpagesfromcategory(pywikibot, commonssite, maincat, limit=100):
-    #final_pages = list()
+
     cat = pywikibot.Category(commonssite, maincat)
-    pages = list(cat.newest_pages(limit))
+    newest = cat.newest_pages(limit)
+    
+    pages = list()
+    for page in newest:
+        #print("name: ", page.title())
+        fp = pywikibot.FilePage(commonssite, page.title())
+        pages.append(fp)
     return pages
 
 # different method to parse links
