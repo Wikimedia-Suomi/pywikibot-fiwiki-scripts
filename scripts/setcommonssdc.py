@@ -2418,12 +2418,13 @@ def parseinceptionfromfinna(finnarecord):
     try:
         for subject in subjects:
             for sbstr in subject:
+                #  sometimes there is newlines and tabs in the string -> strip them out
+                sbstr = fixwhitespaces(sbstr)
+                
                 index = sbstr.find("kuvausaika")
                 if (index >= 0):
                     index = index+len("kuvausaika")
                     timestamp = sbstr[index:]
-                    #  sometimes there is newlines and tabs in the string -> strip them out
-                    timestamp = fixwhitespaces(timestamp)
 
                     # something human-readable after a timestamp?
                     if (timestamp.find(",") > 0):
@@ -2439,8 +2440,6 @@ def parseinceptionfromfinna(finnarecord):
                 if (index >= 0):
                     index = index+len("ajankohta:")
                     timestamp = sbstr[index:]
-                    # sometimes there is newlines and tabs in the string -> strip them out
-                    timestamp = fixwhitespaces(timestamp)
 
                     # something human-readable after a timestamp?
                     if (timestamp.find(",") > 0):
@@ -2457,8 +2456,6 @@ def parseinceptionfromfinna(finnarecord):
                 if (index >= 0):
                     index = index+len("valmistusaika ")
                     timestamp = sbstr[index:]
-                    # sometimes there is newlines and tabs in the string -> strip them out
-                    timestamp = fixwhitespaces(timestamp)
 
                     # something human-readable after a timestamp?
                     if (timestamp.find(",") > 0):
@@ -2737,6 +2734,8 @@ def getFinnaSubjects(finnarecord):
         return datalist
     for d in finnadata:
         for dstr in d:
+            #  sometimes there is newlines and tabs in the string -> strip them out
+            dstr = fixwhitespaces(dstr)
             datalist.append(dstr)
     return datalist
 
@@ -2745,8 +2744,10 @@ def getFinnaActors(finnarecord):
     finnadata = getFinnaDatalist(finnarecord, "subjectActors")
     if (finnadata == None):
         return datalist
-    for d in finnadata:
-        datalist.append(trimlr(d))
+    for dstr in finnadata:
+        #  sometimes there is newlines and tabs in the string -> strip them out
+        dstr = fixwhitespaces(dstr)
+        datalist.append(dstr)
     return datalist
 
 def getFinnaPlaces(finnarecord):
@@ -2754,8 +2755,10 @@ def getFinnaPlaces(finnarecord):
     finnadata = getFinnaDatalist(finnarecord, "subjectPlaces")
     if (finnadata == None):
         return datalist
-    for d in finnadata:
-        datalist.append(trimlr(d))
+    for dstr in finnadata:
+        #  sometimes there is newlines and tabs in the string -> strip them out
+        dstr = fixwhitespaces(dstr)
+        datalist.append(dstr)
     return datalist
 
 # check image metadata if it could be uploaded again with a higher resolution
@@ -4296,7 +4299,7 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Väinö Bremer", 0)
 
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 50)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 5000)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Pauli Jänis", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Viljo Pietinen", 1)
