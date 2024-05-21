@@ -68,6 +68,49 @@ def finna_api_parameter(name, value):
 # * https://api.finna.fi
 # * https://www.kiwi.fi/pages/viewpage.action?pageId=53839221 
 
+def append_finna_api_parameters(url):
+
+    url += finna_api_parameter('field[]', 'id')
+    url += finna_api_parameter('field[]', 'title')
+    url += finna_api_parameter('field[]', 'subTitle')
+    url += finna_api_parameter('field[]', 'alternativeTitles')
+    url += finna_api_parameter('field[]', 'shortTitle')
+    url += finna_api_parameter('field[]', 'titleSection')
+    url += finna_api_parameter('field[]', 'titleStatement')
+    url += finna_api_parameter('field[]', 'uniformTitles')
+    url += finna_api_parameter('field[]', 'summary')
+    url += finna_api_parameter('field[]', 'imageRights')
+    url += finna_api_parameter('field[]', 'images')
+    url += finna_api_parameter('field[]', 'imagesExtended')
+    url += finna_api_parameter('field[]', 'onlineUrls')
+    url += finna_api_parameter('field[]', 'openUrl')
+    url += finna_api_parameter('field[]', 'nonPresenterAuthors')
+    url += finna_api_parameter('field[]', 'onlineUrls')
+    url += finna_api_parameter('field[]', 'subjects')
+    url += finna_api_parameter('field[]', 'subjectsExtendet')
+    url += finna_api_parameter('field[]', 'subjectPlaces')
+    url += finna_api_parameter('field[]', 'subjectActors')
+    url += finna_api_parameter('field[]', 'subjectDetails')
+    url += finna_api_parameter('field[]', 'geoLocations')
+    url += finna_api_parameter('field[]', 'buildings')
+    url += finna_api_parameter('field[]', 'identifierString')
+    url += finna_api_parameter('field[]', 'collections')
+    url += finna_api_parameter('field[]', 'institutions')
+    url += finna_api_parameter('field[]', 'classifications')
+    url += finna_api_parameter('field[]', 'events')
+    url += finna_api_parameter('field[]', 'languages')
+    url += finna_api_parameter('field[]', 'originalLanguages')
+    url += finna_api_parameter('field[]', 'year')
+    url += finna_api_parameter('field[]', 'hierarchicalPlaceNames')
+    url += finna_api_parameter('field[]', 'formats')
+    url += finna_api_parameter('field[]', 'physicalDescriptions')
+    url += finna_api_parameter('field[]', 'physicalLocations')
+    url += finna_api_parameter('field[]', 'measurements')
+    url += finna_api_parameter('field[]', 'recordLinks')
+    url += finna_api_parameter('field[]', 'recordPage')
+    url += finna_api_parameter('field[]', 'systemDetails')
+    url += finna_api_parameter('field[]', 'fullRecord')
+    return url
 
 # note: finna API query id and finna metapage id need different quoting:
 # https://www.finna.fi/Record/sls.%25C3%2596TA+335_%25C3%2596TA+335+foto+81
@@ -110,39 +153,8 @@ def get_finna_record(finnaid, quoteid=True):
         
     print("DEBUG: fetching record with id:", quotedfinnaid, ", for id:", finnaid)
 
-    url="https://api.finna.fi/v1/record?id=" +  quotedfinnaid
-    url+= finna_api_parameter('field[]', 'id')
-    url+= finna_api_parameter('field[]', 'title')
-    url+= finna_api_parameter('field[]', 'subTitle')
-    url+= finna_api_parameter('field[]', 'shortTitle')
-    url+= finna_api_parameter('field[]', 'summary')
-    url+= finna_api_parameter('field[]', 'imageRights')
-    url+= finna_api_parameter('field[]', 'images')
-    url+= finna_api_parameter('field[]', 'imagesExtended')
-    #url+= finna_api_parameter('field[]', 'onlineUrls')
-    url+= finna_api_parameter('field[]', 'openUrl')
-    url+= finna_api_parameter('field[]', 'nonPresenterAuthors')
-    url+= finna_api_parameter('field[]', 'onlineUrls')
-    url+= finna_api_parameter('field[]', 'subjects')
-    #url+= finna_api_parameter('field[]', 'subjectsExtendet')
-    url+= finna_api_parameter('field[]', 'subjectPlaces')
-    url+= finna_api_parameter('field[]', 'subjectActors')
-    url+= finna_api_parameter('field[]', 'subjectDetails')
-    # url+= finna_api_parameter('field[]', 'geoLocations')
-    url+= finna_api_parameter('field[]', 'buildings')
-    url+= finna_api_parameter('field[]', 'identifierString')
-    url+= finna_api_parameter('field[]', 'collections')
-    url+= finna_api_parameter('field[]', 'institutions')
-    url+= finna_api_parameter('field[]', 'classifications')
-    url+= finna_api_parameter('field[]', 'events')
-    url+= finna_api_parameter('field[]', 'languages')
-    url+= finna_api_parameter('field[]', 'originalLanguages')
-    url+= finna_api_parameter('field[]', 'year')
-    #url+= finna_api_parameter('field[]', 'hierarchicalPlaceNames')
-    url+= finna_api_parameter('field[]', 'formats')
-    #url+= finna_api_parameter('field[]', 'physicalDescriptions')
-    url+= finna_api_parameter('field[]', 'measurements')
-
+    url ="https://api.finna.fi/v1/record?id=" +  quotedfinnaid
+    url = append_finna_api_parameters(url)
 
     try:
         response = requests.get(url)
@@ -2375,6 +2387,14 @@ def timestringtodatetime(timestring):
     print("DEBUG: cannot use timestring", timestring)
     return None
 
+def getSubjectsFromFinnarecord(finnarecord):
+    records = finnarecord['records'][0]
+    if "subjects" not in records:
+        return None
+    subjects = finnarecord['records'][0]['subjects']
+    return subjects
+
+
 # remove pointless characters if any:
 #  sometimes there are newlines and tabs in the string -> strip them out
 def fixwhitespaces(s):
@@ -2391,12 +2411,11 @@ def parseinceptionfromfinna(finnarecord):
         print("ERROR: no records in finna record")
         return None
 
-    records = finnarecord['records'][0]
-    if "subjects" not in records:
+    subjects = getSubjectsFromFinnarecord(finnarecord)
+    if (subjects == None):
         print("no subjects in finna record")
         return None
     try:
-        subjects = finnarecord['records'][0]['subjects']
         for subject in subjects:
             for sbstr in subject:
                 index = sbstr.find("kuvausaika")
@@ -2685,6 +2704,34 @@ def getImagesExtended(finnarecord):
 
     # at least one entry exists
     return imagesExtended[0]
+
+def getFinnaDatalist(finnarecord, param):
+    if param not in finnarecord['records'][0]:
+        print("WARN: '", param ,"' not found in finna record: " + finnaid)
+        return None
+
+    finnadata = finnarecord['records'][0][param]
+    print("found ", param ," in finna record: " + str(finnadata))
+    return finnadata
+
+def getFinnaSubjects(finnarecord):
+    datalist = list()
+    finnadata = getFinnaDatalist(finnarecord, "subjects")
+    if (finnadata == None):
+        return datalist
+    for d in finnadata:
+        for dstr in d:
+            datalist.append(dstr)
+    return datalist
+
+def getFinnaPlaces(finnarecord):
+    datalist = list()
+    finnadata = getFinnaDatalist(finnarecord, "subjectPlaces")
+    if (finnadata == None):
+        return datalist
+    for d in finnadata:
+        datalist.append(trimlr(d))
+    return datalist
 
 # check image metadata if it could be uploaded again with a higher resolution
 #
@@ -3542,8 +3589,8 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, 'File:A fire broke out at the Helsinki railway station on June 14, 1950 (JOKAVIU2C003-4).tif')
 
-    fp = pywikibot.FilePage(commonssite, 'File:Ristisaaren erottelutyömaata.jpg')
-
+    #fp = pywikibot.FilePage(commonssite, 'File:Höyryalus, matkustaja-alus Seura Joensuun kanavassa 1936 (HK19670603-29402).tif')
+    
     
     pages.append(fp)
     return pages
@@ -3580,25 +3627,82 @@ def getfilepage(pywikibot, page):
 # lookup subjects in finna-data that easily map into commons-categories
 # and that we can add to commons-pages
 #
-def getcategoriesforsubjects(pywikibot, subjecttocategory, finnarecord):
-    if "records" not in finnarecord:
-        print("ERROR: no records in finna record")
-        return None
-
-    records = finnarecord['records'][0]
-    if "subjects" not in records:
-        print("no subjects in finna record")
-        return None
-
-    extracatstoadd = list()
+def getcategoriesforsubjects(pywikibot, finnarecord):
+    # subject tags to commons-categories:
+    # must be in subjects-list from Finna
+    #
+    # Ssteamboats: non ocean-going
+    # Steamships of Finland
+    # Naval ships of Finland
+    # Sailing ships of Finland
+    subject_categories = {
+        'muotokuvat': 'Portrait photographs',
+        'henkilökuvat': 'Portrait photographs',
+        'professorit': 'Professors from Finland',
+        'Osuusliike Elanto': 'Elanto',
+        'Valmet Oy': 'Valmet',
+        'Salora Oy': 'Salora',
+        'Veljekset Åström Oy': 'Veljekset Åström',
+        'Yntyneet Paperitehtaat': 'Yntyneet Paperitehtaat',
+        'Turun linna' : 'Turku Castle',
+        'Hämeen linna' : 'Häme Castle',
+        'Olavinlinna' : 'Olavinlinna',
+        'Hvitträsk': 'Hvitträsk',
+        'kiväärit' : 'Rifles'
+    }
     
-    subjects = finnarecord['records'][0]['subjects']
-    for subject in subjects:
-        for sbstr in subject:
-            if sbstr in subjecttocategory: # skip unknown tags
-                cattext = subjecttocategory[sbstr]
-                if cattext not in extracatstoadd: # avoid duplicates
-                    extracatstoadd.append(cattext)
+    extracatstoadd = list()
+
+    subjectlist = getFinnaSubjects(finnarecord)
+    if (subjectlist == None or len(subjectlist) == 0):
+        print("no subjects in finna record")
+        return extracatstoadd
+
+    for subject in subjectlist:
+        #print("DEBUG: subject '", subject ,"' in finna record")
+        if subject in subject_categories:
+            cattext = subject_categories[subject]
+        
+            if cattext not in extracatstoadd: # avoid duplicates
+                extracatstoadd.append(cattext)
+
+    placeslist = getFinnaPlaces(finnarecord)
+    if (placeslist == None or len(placeslist) == 0):
+        print("no places in finna record")
+        return extracatstoadd
+
+    subject_categories_with_country = {
+        'miesten puvut': 'Men wearing suits in Finland',
+        'muotinäytökset' : 'Fashion shows in Finland',
+        'laivat' : 'Ships in Finland',
+        'veneet' : 'Boats in Finland',
+        'linja-autot', 'Buses in Finland',
+        'kuorma-autot' : 'Trucks in Finland',
+        'henkilöautot' : 'Automobiles in Finland',
+        'autokilpailut' : 'Automobile races in Finland',
+        'auto-onnettomuudet' : 'Automobile accidents in Finland',
+        'asuinrakennukset' : 'Houses in Finland',
+        'nosturit' : 'Cranes in Finland',
+        'tehtaat' : 'Factories in Finland',
+        'teollisuusrakennukset' : 'Factories in Finland',
+        'laulujuhlat' : 'Music festivals in Finland'
+    }
+
+    isfromfinland = False
+    for t in placeslist:
+        if ('Suomi' in t):
+            isfromfinland = True
+    
+    if isfromfinland == False:
+        print("Suomi not found in places in finna record")
+        return extracatstoadd
+    
+    for subject in subjectlist:
+        #print("DEBUG: subject '", subject ,"' in finna record")
+        if subject in subject_categories_with_country: # skip unknown tags
+            cattext = subject_categories_with_country[subject]
+            if cattext not in extracatstoadd: # avoid duplicates
+                extracatstoadd.append(cattext)
 
     return extracatstoadd
 
@@ -3732,6 +3836,8 @@ d_institutionqcode["Helsingin yliopistomuseo"] = "Q3329065"
 d_institutionqcode["Suomen Rautatiemuseo"] = "Q1138355"
 d_institutionqcode["Salon historiallinen museo"] = "Q56403058"
 d_institutionqcode["Etelä-Karjalan museo"] = "Q18346681"
+d_institutionqcode["ETELÄ-KARJALAN MUSEO"] = "Q18346681"
+
 d_institutionqcode["Pohjois-Karjalan museo"] = "Q11888467"
 d_institutionqcode["Kymenlaakson museo"] = "Q18346674"
 d_institutionqcode["Pielisen museo"] = "Q11887930"
@@ -3789,6 +3895,7 @@ d_labeltoqcode["Helge W. Heinosen kokoelma"] = "Q123398858"
 d_labeltoqcode["Valokuvaamo Jäniksen kokoelma"] = "Q123396641"
 d_labeltoqcode["Yleisetnografinen kuvakokoelma"] = "Q122414127"
 d_labeltoqcode["Suomalais-ugrilainen kuvakokoelma"] = "Q123358672"
+d_labeltoqcode["Suomalais-Ugrilaisen Seuran kokoelma"] = "Q125974815"
 d_labeltoqcode["Fazerin konserttitoimiston kokoelma"] = "Q123378084"
 d_labeltoqcode["Numismaattiset kokoelmat"] = "Q123390334"
 d_labeltoqcode["Matkailun edistämiskeskuksen kokoelma"] = "Q123463484"
@@ -3823,6 +3930,7 @@ d_labeltoqcode["Suomen Rautatiemuseon kuvakokoelma"] = "Q123508786"
 d_labeltoqcode["Arkeologian kuvakokoelma"] = "Q123508795"
 d_labeltoqcode["Hugo Simbergin valokuvat"] = "Q123523516"
 d_labeltoqcode["I K Inha"] = "Q123555486"
+d_labeltoqcode["Valokuvaamo Atelier Nyblinin kokoelma"] = "Q126002123"
 d_labeltoqcode["Collianderin kokoelma"] = "Q123694615"
 d_labeltoqcode["Heikki Y. Rissasen kokoelma"] = "Q123699187"
 d_labeltoqcode["Jaakko Julkusen kokoelma"] = "Q123746517"
@@ -3867,7 +3975,10 @@ d_labeltoqcode["Nuoperin valokuvakokoelma"] = "Q125428578"
 d_labeltoqcode["Ylä-Karjalan kuva-arkisto"] = "Q125429017"
 d_labeltoqcode["S. E. Multamäen kokoelma"] = "Q125946755"
 d_labeltoqcode["Metsätehon kokoelma"] = "Q125947321"
-
+d_labeltoqcode["Hämeen linnan kuvakokoelma"] = "Q125980519"
+d_labeltoqcode["Olavinlinnan kuvakokoelma"] = "Q125980786"
+d_labeltoqcode["Juha Lankisen kokoelma"] = "Q125994258"
+d_labeltoqcode["Kuva-arkisto"] = "Q125995005"
 
 # collection qcode (after parsing) to commons-category
 #
@@ -3918,16 +4029,6 @@ d_institutionqtotemplate["Q769544"] = "Society of Swedish Literature in Finland"
 d_institutionqtotemplate["Q18346681"] = "South Karelia Museum" 
 d_institutionqtotemplate["Q1418116"] = "Museum of Finnish Architecture" # MFA
 d_institutionqtotemplate["Q11879901"] = "Lusto" # metsämuseo
-
-
-# subject tags to commons-categories:
-# must be in subjects-list from Finna
-#
-d_subjecttocategory = dict()
-d_subjecttocategory["Osuusliike Elanto"] = "Elanto"
-d_subjecttocategory["Valmet Oy"] = "Valmet"
-d_subjecttocategory["Salora Oy"] = "Salora"
-d_subjecttocategory["Veljekset Åström Oy"] = "Veljekset Åström"
 
 
 # Accessing wikidata properties and items
@@ -4004,7 +4105,7 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
@@ -4017,6 +4118,14 @@ pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBo
 
 #pages = getpagesrecurse(pywikibot, commonssite, "J. E. Rosberg", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by J. E. Rosberg", 0)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Carl Gustaf Emil Mannerheim", 1)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kuvasiskot", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kai Donner", 1)
+
+pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Aarne Pietinen Oy", 0)
+
 
 
 cachedb = CachedImageData() 
@@ -4833,7 +4942,7 @@ for page in pages:
 
     # add commons-categoeris for other tags (subjects)
     extracatstoadd = list() # disabled for now
-    #extracatstoadd = getcategoriesforsubjects(pywikibot, d_subjecttocategory, finna_record)
+    extracatstoadd += getcategoriesforsubjects(pywikibot, finna_record)
             
     # when you need a category but there is no collection in data (museum of finnish architecture)
     extracatstoadd += getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, publisherqcode, operatorqcode)
