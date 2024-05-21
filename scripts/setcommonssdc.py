@@ -2740,6 +2740,15 @@ def getFinnaSubjects(finnarecord):
             datalist.append(dstr)
     return datalist
 
+def getFinnaActors(finnarecord):
+    datalist = list()
+    finnadata = getFinnaDatalist(finnarecord, "subjectActors")
+    if (finnadata == None):
+        return datalist
+    for d in finnadata:
+        datalist.append(trimlr(d))
+    return datalist
+
 def getFinnaPlaces(finnarecord):
     datalist = list()
     finnadata = getFinnaDatalist(finnarecord, "subjectPlaces")
@@ -3311,6 +3320,28 @@ class CommonsTemplate:
                 return template.get("museum")
         return None
 
+    def getDepictedPeopleCommonsTemplate(self, template):
+        if template.has("depicted people"):
+            return template.get("depicted people")
+        if template.has("Depicted people"):
+            return template.get("Depicted people")
+        if template.has("Depicted_people"):
+            return template.get("Depicted_people")
+        if template.has("depicted_people"):
+            return template.get("depicted_people")
+        return None
+
+    def getDepictedPlacesCommonsTemplate(self, template):
+        if template.has("depicted place"):
+            return template.get("depicted place")
+        if template.has("Depicted place"):
+            return template.get("Depicted place")
+        if template.has("Depicted_place"):
+            return template.get("Depicted_place")
+        if template.has("depicted_place"):
+            return template.get("depicted_place")
+        return None
+
     # note: page may have multiple templates
     # The template artwork has field "references"
     def getReferencesFromCommonsTemplate(self, template):
@@ -3380,6 +3411,62 @@ class CommonsTemplate:
         else:
             if (self.isEmptyParamValue(par) == True):
                 par.value = accValue + "\n"
+                self.changed = True
+                return True
+            # if it is not empty, don't do anything
+            # could append but might add duplicates by mistake
+        return False
+
+
+    def addOrSetDepictedPeople(self, template, peoplelist):
+        if (peoplelist == None):
+            return False
+        if (len(peoplelist) == 0):
+            return False
+        
+        people = peoplelist
+        people = ""
+        for p in peoplelist:
+            if (len(people) > 0):
+                people += ";"
+            people += p
+        
+        print("Adding depicted people: ", people)
+        par = self.getDepictedPeopleCommonsTemplate(template)
+        if (par == None):
+            template.add("depicted people", people)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = people + "\n"
+                self.changed = True
+                return True
+            # if it is not empty, don't do anything
+            # could append but might add duplicates by mistake
+        return False
+
+    def addOrSetDepictedPlaces(self, template, placelist):
+        if (placelist == None):
+            return False
+        if (len(placelist) == 0):
+            return False
+
+        places = ""
+        for p in placelist:
+            if (len(places) > 0):
+                places += ";"
+            places += p
+        
+        print("Adding depicted places: ", places)
+        par = self.getDepictedPlacesCommonsTemplate(template)
+        if (par == None):
+            template.add("depicted place", places)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = places + "\n"
                 self.changed = True
                 return True
             # if it is not empty, don't do anything
@@ -3477,6 +3564,197 @@ def getwikidatacodefrompagetemplate(ct):
     else:
         print("DEBUG: qcodes found in template", wikidatacodes)
     return wikidatacodes
+
+# helper to check if list has similar category
+# like if there is "Aircraft in Helsinki" then don't add "Aircraft in Finland":
+# check if a cat has same base phrase like "Aircraft in "
+def findcatbeginningwithphrase(phrase, existingcategories):
+    print("DEBUG: looking for phrase: ", phrase)
+    for cat in existingcategories:
+        print("DEBUG: existing cat: ", cat )
+        if (cat.find(phrase) >= 0):
+            return True
+    print("DEBUG: phrase not found in existing cats: ", phrase)
+    return False
+
+# lookup subjects in finna-data that easily map into commons-categories
+# and that we can add to commons-pages
+#
+def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories):
+    # subject tags to commons-categories:
+    # must be in subjects-list from Finna
+    #
+    # Ssteamboats: non ocean-going
+    # Steamships of Finland
+    # Naval ships of Finland
+    # Sailing ships of Finland
+    subject_categories = {
+        #'muotokuvat': 'Portrait photographs',
+        #'henkilökuvat': 'Portrait photographs',
+        #'Osuusliike Elanto': 'Elanto',
+        #'Valmet Oy': 'Valmet',
+        #'Salora Oy': 'Salora',
+        #'Veljekset Åström Oy': 'Veljekset Åström',
+        'Yntyneet Paperitehtaat': 'Yntyneet Paperitehtaat',
+        'Turun linna' : 'Turku Castle',
+        'Hämeen linna' : 'Häme Castle',
+        'Olavinlinna' : 'Olavinlinna'
+        #'Hvitträsk': 'Hvitträsk'
+        #'kiväärit' : 'Rifles'
+    }
+
+    # can we determine automatically "in", "at", "from" or "of" for more genericity?
+    # aircraft may be "in" country or city, or "at" airport..
+    #
+    # also it might not be only prefix but as postfix e.g. "black and white photographs of buses in finland"
+    # -> need to improve lookup of the cat hierarchy
+    subject_categories_with_country = {
+        #'professorit': 'Professors from',
+        #'kauppaneuvokset' : 'Businesspeople from',
+        #'toimitusjohtajat' : 'Businesspeople from',
+        'miesten puvut': 'Men wearing suits in',
+        'muotinäytökset' : 'Fashion shows in',
+        'laivat' : 'Ships in',
+        'veneet' : 'Boats in',
+        'lentokoneet' : 'Aircraft in',
+        'linja-autot' : 'Buses in',
+        'kuorma-autot' : 'Trucks in',
+        'henkilöautot' : 'Automobiles in',
+        'asuinrakennukset' : 'Houses in',
+        'liikerakennukset' : 'Buildings in',
+        'nosturit' : 'Cranes in',
+        'tehtaat' : 'Factories in',
+        'teollisuusrakennukset' : 'Factories in',
+        'laulujuhlat' : 'Music festivals in'
+        #'rukit' : 'Spinning wheels'
+    }
+    
+    extracatstoadd = list()
+
+    subjectlist = getFinnaSubjects(finnarecord)
+    if (subjectlist == None or len(subjectlist) == 0):
+        print("no subjects in finna record")
+        return extracatstoadd
+
+    for subject in subjectlist:
+        #print("DEBUG: subject '", subject ,"' in finna record")
+        if subject in subject_categories:
+            cattext = subject_categories[subject]
+        
+            if cattext not in extracatstoadd: # avoid duplicates
+                extracatstoadd.append(cattext)
+
+    placeslist = getFinnaPlaces(finnarecord)
+    if (placeslist == None or len(placeslist) == 0):
+        print("no places in finna record")
+        return extracatstoadd
+
+    isfromfinland = False
+    for t in placeslist:
+        if ('Suomi' in t):
+            isfromfinland = True
+    
+    if isfromfinland == False:
+        print("Suomi not found in places in finna record")
+        return extracatstoadd
+    
+    # if existing categories has already more accurate category
+    # like "Aircraf in Helsinki" don't add broader "Aircraft in Finland"
+    #if (existingcategories
+    
+    for subject in subjectlist:
+        #print("DEBUG: subject '", subject ,"' in finna record")
+        if subject in subject_categories_with_country: # skip unknown tags
+            cattext = subject_categories_with_country[subject]
+            if (findcatbeginningwithphrase(cattext, existingcategories) == False):
+                if cattext not in extracatstoadd: # avoid duplicates
+                    # TODO: get from placeslist appropriate location
+                    cattext = cattext + " " + "Finland"
+                    
+                    extracatstoadd.append(cattext)
+
+    print("DEBUG: extra cats to add: ", str(extracatstoadd))
+    return extracatstoadd
+
+# when you need a category but there is no collection in data (museum of finnish architecture)
+#extracatstoadd = getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, finna_record)
+def getcategoriesforinstitutions(pywikibot, institutionqtocategory, pubqcode, opqcode):
+    extracatstoadd = list()
+
+    #for pub in pubqcode:
+    if pubqcode in institutionqtocategory: # skip unknown tags
+        cattext = institutionqtocategory[pubqcode]
+        if cattext not in extracatstoadd: # avoid duplicates
+            extracatstoadd.append(cattext)
+
+    #for op in opqcode:
+    if opqcode in institutionqtocategory: # skip unknown tags
+        cattext = institutionqtocategory[opqcode]
+        if cattext not in extracatstoadd: # avoid duplicates
+            extracatstoadd.append(cattext)
+
+    return extracatstoadd
+
+# lookup category names by collection qcodes
+#
+def getcategoriesforcollections(pywikibot, categories, collectiontocategory):
+
+    collcatstoadd = list()
+
+    for catq in categories:
+        if catq in collectiontocategory:
+            cattext = collectiontocategory[catq]
+            if cattext not in collcatstoadd: # avoid duplicates
+                collcatstoadd.append(cattext)
+
+    return collcatstoadd
+
+# add categories for each collection to the commons-page if they don't yet exist.
+# lookup text by qcode (parsed from finna record)
+#
+def addCategoriesToCommons(pywikibot, tmptext, categories):
+    catsadded = False
+    for cattext in categories:
+        tmp = "[[Category:" + cattext + "]]"
+        
+        if (tmptext.find(tmp) < 0):
+            print("DEBUG: adding category: ", tmp)
+            
+            if (tmptext.endswith("\n") == False):
+                tmptext += "\n" # avoid same line when missing linefeed
+                
+            tmptext += tmp
+            tmptext += "\n"
+            catsadded = True
+
+    return catsadded, tmptext
+
+# list existing categories in commons wikitext
+# (ignore those coming from templates or wikidata now)
+def listExistingCommonsCategories(oldtext):
+    #oldtext = page.text()
+    catsfound = list()
+    
+    indexBegin = 0
+    while (indexBegin >= 0 and indexBegin <= len(oldtext)):
+        indexTmp = oldtext.find("[[Category:", indexBegin)
+        if (indexTmp > 0):
+            indexTmp = oldtext.find(":", indexTmp) + 1
+            indexEnd = oldtext.find("]]", indexTmp)
+            if (indexEnd < 0):
+                # incomplete category-marking
+                break
+
+            cattext = oldtext[indexTmp:indexEnd]
+            catsfound.append(cattext)
+            #print("DEBUG: category found: " + cattext)
+            indexBegin = indexEnd
+        else:
+            # no more catgories
+            indexBegin = indexTmp
+            break
+    print("DEBUG: existing categories found: " + str(catsfound))
+    return catsfound
 
 
 def isSupportedMimetype(strmime):
@@ -3615,6 +3893,8 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fp = pywikibot.FilePage(commonssite, 'File:Helene Schjerfbeck - The Door - A IV 3680 - Finnish National Gallery.jpg')
 
     #fp = pywikibot.FilePage(commonssite, 'File:Axel Gustav Estlander.jpg')
+    
+   
 
     pages.append(fp)
     return pages
@@ -3648,191 +3928,6 @@ def getfilepage(pywikibot, page):
 
     return None
 
-# helper to check if list has similar category
-# like if there is "Aircraft in Helsinki" then don't add "Aircraft in Finland":
-# check if a cat has same base phrase like "Aircraft in "
-def findcatbeginningwithphrase(phrase, existingcategories):
-    print("DEBUG: looking for phrase: ", phrase)
-    for cat in existingcategories:
-        print("DEBUG: existing cat: ", cat )
-        if (cat.find(phrase) >= 0):
-            return True
-    print("DEBUG: phrase not found in existing cats: ", phrase)
-    return False
-
-# lookup subjects in finna-data that easily map into commons-categories
-# and that we can add to commons-pages
-#
-def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories):
-    # subject tags to commons-categories:
-    # must be in subjects-list from Finna
-    #
-    # Ssteamboats: non ocean-going
-    # Steamships of Finland
-    # Naval ships of Finland
-    # Sailing ships of Finland
-    subject_categories = {
-        'muotokuvat': 'Portrait photographs',
-        'henkilökuvat': 'Portrait photographs',
-        'Osuusliike Elanto': 'Elanto',
-        'Valmet Oy': 'Valmet',
-        'Salora Oy': 'Salora',
-        'Veljekset Åström Oy': 'Veljekset Åström',
-        'Yntyneet Paperitehtaat': 'Yntyneet Paperitehtaat',
-        'Turun linna' : 'Turku Castle',
-        'Hämeen linna' : 'Häme Castle',
-        'Olavinlinna' : 'Olavinlinna',
-        'Hvitträsk': 'Hvitträsk',
-        'kiväärit' : 'Rifles'
-    }
-
-    # can we determine automatically "in", "from" or "of" for more genericity?
-    subject_categories_with_country = {
-        'professorit': 'Professors from',
-        'kauppaneuvokset' : 'Businesspeople from',
-        'toimitusjohtajat' : 'Businesspeople from',
-        'miesten puvut': 'Men wearing suits in',
-        'muotinäytökset' : 'Fashion shows in',
-        'laivat' : 'Ships in',
-        'veneet' : 'Boats in',
-        'lentokoneet' : 'Aircraft in',
-        'linja-autot' : 'Buses in',
-        'kuorma-autot' : 'Trucks in',
-        'henkilöautot' : 'Automobiles in',
-        'asuinrakennukset' : 'Houses in',
-        'liikerakennukset' : 'Buildings in',
-        'nosturit' : 'Cranes in',
-        'tehtaat' : 'Factories in',
-        'teollisuusrakennukset' : 'Factories in',
-        'laulujuhlat' : 'Music festivals in'
-    }
-    
-    extracatstoadd = list()
-
-    subjectlist = getFinnaSubjects(finnarecord)
-    if (subjectlist == None or len(subjectlist) == 0):
-        print("no subjects in finna record")
-        return extracatstoadd
-
-    for subject in subjectlist:
-        #print("DEBUG: subject '", subject ,"' in finna record")
-        if subject in subject_categories:
-            cattext = subject_categories[subject]
-        
-            if cattext not in extracatstoadd: # avoid duplicates
-                extracatstoadd.append(cattext)
-
-    placeslist = getFinnaPlaces(finnarecord)
-    if (placeslist == None or len(placeslist) == 0):
-        print("no places in finna record")
-        return extracatstoadd
-
-    isfromfinland = False
-    for t in placeslist:
-        if ('Suomi' in t):
-            isfromfinland = True
-    
-    if isfromfinland == False:
-        print("Suomi not found in places in finna record")
-        return extracatstoadd
-    
-    # if existing categories has already more accurate category
-    # like "Aircraf in Helsinki" don't add broader "Aircraft in Finland"
-    #if (existingcategories
-    
-    for subject in subjectlist:
-        #print("DEBUG: subject '", subject ,"' in finna record")
-        if subject in subject_categories_with_country: # skip unknown tags
-            cattext = subject_categories_with_country[subject]
-            if (findcatbeginningwithphrase(cattext, existingcategories) == False):
-                if cattext not in extracatstoadd: # avoid duplicates
-                    # TODO: get from placeslist appropriate location
-                    cattext = cattext + " " + "Finland"
-                    
-                    extracatstoadd.append(cattext)
-
-    print("DEBUG: extra cats to add: ", str(extracatstoadd))
-    return extracatstoadd
-
-# when you need a category but there is no collection in data (museum of finnish architecture)
-#extracatstoadd = getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, finna_record)
-def getcategoriesforinstitutions(pywikibot, institutionqtocategory, pubqcode, opqcode):
-    extracatstoadd = list()
-
-    #for pub in pubqcode:
-    if pubqcode in institutionqtocategory: # skip unknown tags
-        cattext = institutionqtocategory[pubqcode]
-        if cattext not in extracatstoadd: # avoid duplicates
-            extracatstoadd.append(cattext)
-
-    #for op in opqcode:
-    if opqcode in institutionqtocategory: # skip unknown tags
-        cattext = institutionqtocategory[opqcode]
-        if cattext not in extracatstoadd: # avoid duplicates
-            extracatstoadd.append(cattext)
-
-    return extracatstoadd
-
-# lookup category names by collection qcodes
-#
-def getcategoriesforcollections(pywikibot, categories, collectiontocategory):
-
-    collcatstoadd = list()
-
-    for catq in categories:
-        if catq in collectiontocategory:
-            cattext = collectiontocategory[catq]
-            if cattext not in collcatstoadd: # avoid duplicates
-                collcatstoadd.append(cattext)
-
-    return collcatstoadd
-
-# add categories for each collection to the commons-page if they don't yet exist.
-# lookup text by qcode (parsed from finna record)
-#
-def addCategoriesToCommons(pywikibot, tmptext, categories):
-    catsadded = False
-    for cattext in categories:
-        tmp = "[[Category:" + cattext + "]]"
-        
-        if (tmptext.find(tmp) < 0):
-            print("DEBUG: adding category: ", tmp)
-            
-            if (tmptext.endswith("\n") == False):
-                tmptext += "\n" # avoid same line when missing linefeed
-                
-            tmptext += tmp
-            tmptext += "\n"
-            catsadded = True
-
-    return catsadded, tmptext
-
-# list existing categories in commons wikitext
-# (ignore those coming from templates or wikidata now)
-def listExistingCommonsCategories(oldtext):
-    #oldtext = page.text()
-    catsfound = list()
-    
-    indexBegin = 0
-    while (indexBegin >= 0 and indexBegin <= len(oldtext)):
-        indexTmp = oldtext.find("[[Category:", indexBegin)
-        if (indexTmp > 0):
-            indexTmp = oldtext.find(":", indexTmp) + 1
-            indexEnd = oldtext.find("]]", indexTmp)
-            if (indexEnd < 0):
-                # incomplete category-marking
-                break
-
-            cattext = oldtext[indexTmp:indexEnd]
-            catsfound.append(cattext)
-            #print("DEBUG: category found: " + cattext)
-            indexBegin = indexEnd
-        else:
-            # no more catgories
-            indexBegin = indexTmp
-            break
-    print("DEBUG: existing categories found: " + str(catsfound))
-    return catsfound
 
 def verifyTeosIdInSdc(claims, page, fngcache):
     kgteosid = getKansallisgalleriateosFromSdc(claims)
@@ -4201,8 +4296,12 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Väinö Bremer", 0)
 
-pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 10)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 50)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Pauli Jänis", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Viljo Pietinen", 1)
+
+pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
 
 
 cachedb = CachedImageData() 
@@ -4925,7 +5024,7 @@ for page in pages:
         else:
             print("testing license sources for: ", finnaid)
             checklicensesources(pywikibot, wikidata_site, claims, copyrightlicense, sourceurl)
-                
+
         statusqcode = determineCopyrightStatus(finna_record)
         if (statusqcode != ""):
             if (isCopyrightStatusInSDC(claims, statusqcode, sourceurl) == False):
@@ -4972,6 +5071,9 @@ for page in pages:
     else:
         print("id found, not adding again", finnaid)
 
+    placeslist = getFinnaPlaces(finna_record)
+    actorslist = getFinnaActors(finna_record)
+
     tmptext = oldtext
     oldcategories = listExistingCommonsCategories(oldtext)
     
@@ -5002,7 +5104,14 @@ for page in pages:
                     institutiontemplate = "{{Institution:" + institutiontemplate + "}}"
                     if (ct.addOrSetInstitution(template, institutiontemplate) == True):
                         print("Fixed institution for: " + page.title())
-                        
+
+
+                if (ct.addOrSetDepictedPeople(template, actorslist) == True):
+                    print("Added depicted people for: " + page.title())
+
+                if (ct.addOrSetDepictedPlaces(template, placeslist) == True):
+                    print("Added depicted places for: " + page.title())
+                    
 
         if (ct.isChanged() == True):
             tmptext = str(ct.wikicode)
