@@ -2705,6 +2705,22 @@ def getImagesExtended(finnarecord):
     # at least one entry exists
     return imagesExtended[0]
 
+# helper to check in case of malformed json
+def getFinnaImagelist(finnarecord):
+    if "images" not in finnarecord['records'][0]:
+        return None
+
+    # 'images' can have array of multiple images, need to select correct one
+    # -> loop through them (they should have just different &index= in them)
+    # and compare with the image in commons
+    imageList = finnarecord['records'][0]['images']
+
+    if (len(imageList) == 0):
+        return None
+
+    # at least one entry exists
+    return imageList
+
 def getFinnaDatalist(finnarecord, param):
     if param not in finnarecord['records'][0]:
         print("WARN: '", param ,"' not found in finna record: " + finnaid)
@@ -3538,6 +3554,13 @@ def getlinkedpages(pywikibot, commonssite, linkpage):
 
     return pages
 
+# list of newest pages in given category
+def getnewestpagesfromcategory(pywikibot, commonssite, maincat, limit=100):
+    #final_pages = list()
+    cat = pywikibot.Category(commonssite, maincat)
+    pages = list(cat.newest_pages(limit))
+    return pages
+
 # different method to parse links
 #
 #def getdumplistpage(pywikibot, commonssite, linkpage):
@@ -3587,11 +3610,6 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, 'File:Axel Gustav Estlander.jpg')
 
-    #fp = pywikibot.FilePage(commonssite, 'File:A fire broke out at the Helsinki railway station on June 14, 1950 (JOKAVIU2C003-4).tif')
-
-    #fp = pywikibot.FilePage(commonssite, 'File:Höyryalus, matkustaja-alus Seura Joensuun kanavassa 1936 (HK19670603-29402).tif')
-    
-    
     pages.append(fp)
     return pages
 
@@ -3624,10 +3642,22 @@ def getfilepage(pywikibot, page):
 
     return None
 
+# helper to check if list has similar category
+# like if there is "Aircraft in Helsinki" then don't add "Aircraft in Finland":
+# check if a cat has same base phrase like "Aircraft in "
+def findcatbeginningwithphrase(phrase, existingcategories):
+    print("DEBUG: looking for phrase: ", phrase)
+    for cat in existingcategories:
+        print("DEBUG: existing cat: ", cat )
+        if (cat.find(phrase) >= 0):
+            return True
+    print("DEBUG: phrase not found in existing cats: ", phrase)
+    return False
+
 # lookup subjects in finna-data that easily map into commons-categories
 # and that we can add to commons-pages
 #
-def getcategoriesforsubjects(pywikibot, finnarecord):
+def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories):
     # subject tags to commons-categories:
     # must be in subjects-list from Finna
     #
@@ -3638,7 +3668,6 @@ def getcategoriesforsubjects(pywikibot, finnarecord):
     subject_categories = {
         'muotokuvat': 'Portrait photographs',
         'henkilökuvat': 'Portrait photographs',
-        'professorit': 'Professors from Finland',
         'Osuusliike Elanto': 'Elanto',
         'Valmet Oy': 'Valmet',
         'Salora Oy': 'Salora',
@@ -3649,6 +3678,27 @@ def getcategoriesforsubjects(pywikibot, finnarecord):
         'Olavinlinna' : 'Olavinlinna',
         'Hvitträsk': 'Hvitträsk',
         'kiväärit' : 'Rifles'
+    }
+
+    # can we determine automatically "in", "from" or "of" for more genericity?
+    subject_categories_with_country = {
+        'professorit': 'Professors from',
+        'kauppaneuvokset' : 'Businesspeople from',
+        'toimitusjohtajat' : 'Businesspeople from',
+        'miesten puvut': 'Men wearing suits in',
+        'muotinäytökset' : 'Fashion shows in',
+        'laivat' : 'Ships in',
+        'veneet' : 'Boats in',
+        'lentokoneet' : 'Aircraft in',
+        'linja-autot' : 'Buses in',
+        'kuorma-autot' : 'Trucks in',
+        'henkilöautot' : 'Automobiles in',
+        'asuinrakennukset' : 'Houses in',
+        'liikerakennukset' : 'Buildings in',
+        'nosturit' : 'Cranes in',
+        'tehtaat' : 'Factories in',
+        'teollisuusrakennukset' : 'Factories in',
+        'laulujuhlat' : 'Music festivals in'
     }
     
     extracatstoadd = list()
@@ -3671,23 +3721,6 @@ def getcategoriesforsubjects(pywikibot, finnarecord):
         print("no places in finna record")
         return extracatstoadd
 
-    subject_categories_with_country = {
-        'miesten puvut': 'Men wearing suits in Finland',
-        'muotinäytökset' : 'Fashion shows in Finland',
-        'laivat' : 'Ships in Finland',
-        'veneet' : 'Boats in Finland',
-        'linja-autot', 'Buses in Finland',
-        'kuorma-autot' : 'Trucks in Finland',
-        'henkilöautot' : 'Automobiles in Finland',
-        'autokilpailut' : 'Automobile races in Finland',
-        'auto-onnettomuudet' : 'Automobile accidents in Finland',
-        'asuinrakennukset' : 'Houses in Finland',
-        'nosturit' : 'Cranes in Finland',
-        'tehtaat' : 'Factories in Finland',
-        'teollisuusrakennukset' : 'Factories in Finland',
-        'laulujuhlat' : 'Music festivals in Finland'
-    }
-
     isfromfinland = False
     for t in placeslist:
         if ('Suomi' in t):
@@ -3697,13 +3730,22 @@ def getcategoriesforsubjects(pywikibot, finnarecord):
         print("Suomi not found in places in finna record")
         return extracatstoadd
     
+    # if existing categories has already more accurate category
+    # like "Aircraf in Helsinki" don't add broader "Aircraft in Finland"
+    #if (existingcategories
+    
     for subject in subjectlist:
         #print("DEBUG: subject '", subject ,"' in finna record")
         if subject in subject_categories_with_country: # skip unknown tags
             cattext = subject_categories_with_country[subject]
-            if cattext not in extracatstoadd: # avoid duplicates
-                extracatstoadd.append(cattext)
+            if (findcatbeginningwithphrase(cattext, existingcategories) == False):
+                if cattext not in extracatstoadd: # avoid duplicates
+                    # TODO: get from placeslist appropriate location
+                    cattext = cattext + " " + "Finland"
+                    
+                    extracatstoadd.append(cattext)
 
+    print("DEBUG: extra cats to add: ", str(extracatstoadd))
     return extracatstoadd
 
 # when you need a category but there is no collection in data (museum of finnish architecture)
@@ -3758,6 +3800,33 @@ def addCategoriesToCommons(pywikibot, tmptext, categories):
             catsadded = True
 
     return catsadded, tmptext
+
+# list existing categories in commons wikitext
+# (ignore those coming from templates or wikidata now)
+def listExistingCommonsCategories(oldtext):
+    #oldtext = page.text()
+    catsfound = list()
+    
+    indexBegin = 0
+    while (indexBegin >= 0 and indexBegin <= len(oldtext)):
+        indexTmp = oldtext.find("[[Category:", indexBegin)
+        if (indexTmp > 0):
+            indexTmp = oldtext.find(":", indexTmp) + 1
+            indexEnd = oldtext.find("]]", indexTmp)
+            if (indexEnd < 0):
+                # incomplete category-marking
+                break
+
+            cattext = oldtext[indexTmp:indexEnd]
+            catsfound.append(cattext)
+            #print("DEBUG: category found: " + cattext)
+            indexBegin = indexEnd
+        else:
+            # no more catgories
+            indexBegin = indexTmp
+            break
+    print("DEBUG: existing categories found: " + str(catsfound))
+    return catsfound
 
 def verifyTeosIdInSdc(claims, page, fngcache):
     kgteosid = getKansallisgalleriateosFromSdc(claims)
@@ -4124,7 +4193,9 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kuvasiskot", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kai Donner", 1)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Aarne Pietinen Oy", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Väinö Bremer", 0)
+
+pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 10)
 
 
 
@@ -4653,10 +4724,10 @@ for page in pages:
         print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
         continue
 
-    # 'images' can have array of multiple images, need to select correct one
-    # -> loop through them (they should have just different &index= in them)
-    # and compare with the image in commons
-    imageList = finna_record['records'][0]['images']
+    imageList = getFinnaImagelist(finna_record)
+    if (imageList == None):
+        print("WARN: 'images' not found in finna record, skipping: " + finnaid)
+        continue
 
     finna_image_url = ""
     match_found = False
@@ -4896,7 +4967,9 @@ for page in pages:
         print("id found, not adding again", finnaid)
 
     tmptext = oldtext
-    # TODO: try to check if item type in Finna is "photograph" (not "artwork")
+    oldcategories = listExistingCommonsCategories(oldtext)
+    
+    #  try to check if item type in Finna is "photograph" (not "artwork")
     if (isFinnaFormatImage(finna_record) == True):
 
         for template in ct.templatelist:
@@ -4942,7 +5015,7 @@ for page in pages:
 
     # add commons-categoeris for other tags (subjects)
     extracatstoadd = list() # disabled for now
-    extracatstoadd += getcategoriesforsubjects(pywikibot, finna_record)
+    extracatstoadd += getcategoriesforsubjects(pywikibot, finna_record, oldcategories)
             
     # when you need a category but there is no collection in data (museum of finnish architecture)
     extracatstoadd += getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, publisherqcode, operatorqcode)
