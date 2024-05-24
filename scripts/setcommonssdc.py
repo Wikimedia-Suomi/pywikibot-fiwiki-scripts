@@ -3433,7 +3433,8 @@ class CommonsTemplate:
             if (len(people) > 0):
                 people += ";"
             people += p
-        
+        people = "{{fi|" + people + "}}"
+
         print("Adding depicted people: ", people)
         par = self.getDepictedPeopleCommonsTemplate(template)
         if (par == None):
@@ -3460,6 +3461,7 @@ class CommonsTemplate:
             if (len(places) > 0):
                 places += ";"
             places += p
+        places = "{{fi|" + places + "}}"
         
         print("Adding depicted places: ", places)
         par = self.getDepictedPlacesCommonsTemplate(template)
@@ -3571,7 +3573,9 @@ def getwikidatacodefrompagetemplate(ct):
 # helper to check if list has similar category
 # like if there is "Aircraft in Helsinki" then don't add "Aircraft in Finland":
 # check if a cat has same base phrase like "Aircraft in "
-def findcatbeginningwithphrase(phrase, existingcategories):
+# Also something like "1980 in Helsinki" or "1980 in Finland" you can check for location cats.
+# Note: there needs case-insensitive support for some category types?
+def findcatwithphrase(phrase, existingcategories):
     print("DEBUG: looking for phrase: ", phrase)
     for cat in existingcategories:
         print("DEBUG: existing cat: ", cat )
@@ -3594,14 +3598,15 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories):
     subject_categories = {
         #'muotokuvat': 'Portrait photographs',
         #'henkilökuvat': 'Portrait photographs',
+        #'saamenpuvut' : 'Sami clothing',
         #'Osuusliike Elanto': 'Elanto',
         #'Valmet Oy': 'Valmet',
         #'Salora Oy': 'Salora',
         #'Veljekset Åström Oy': 'Veljekset Åström',
-        'Yntyneet Paperitehtaat': 'Yntyneet Paperitehtaat',
-        'Turun linna' : 'Turku Castle',
-        'Hämeen linna' : 'Häme Castle',
-        'Olavinlinna' : 'Olavinlinna'
+        #'Yntyneet Paperitehtaat': 'Yntyneet Paperitehtaat',
+        #'Turun linna' : 'Turku Castle',
+        #'Hämeen linna' : 'Häme Castle',
+        #'Olavinlinna' : 'Olavinlinna'
         #'Hvitträsk': 'Hvitträsk'
         #'kiväärit' : 'Rifles'
     }
@@ -3615,21 +3620,31 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories):
         #'professorit': 'Professors from',
         #'kauppaneuvokset' : 'Businesspeople from',
         #'toimitusjohtajat' : 'Businesspeople from',
-        'miesten puvut': 'Men wearing suits in',
-        'muotinäytökset' : 'Fashion shows in',
-        'laivat' : 'Ships in',
-        'veneet' : 'Boats in',
-        'lentokoneet' : 'Aircraft in',
-        'linja-autot' : 'Buses in',
-        'kuorma-autot' : 'Trucks in',
-        'henkilöautot' : 'Automobiles in',
-        'asuinrakennukset' : 'Houses in',
-        'liikerakennukset' : 'Buildings in',
-        'nosturit' : 'Cranes in',
-        'tehtaat' : 'Factories in',
-        'teollisuusrakennukset' : 'Factories in',
-        'laulujuhlat' : 'Music festivals in'
-        #'rukit' : 'Spinning wheels'
+        #'miesten puvut': 'Men wearing suits in',
+        #'muotinäytökset' : 'Fashion shows in',
+        #'lentonäytökset': 'Air shows in',
+        #'laivat' : 'Ships in',
+        #'veneet' : 'Boats in',
+        #'purjeveneet' : 'Sailboats in',
+        #'moottoriveneet' : 'Motorboats in',
+        #'lossit' : 'Cable ferries in',
+        #'lentokoneet' : 'Aircraft in',
+        #'linja-autot': 'Buses in',
+        #'kuorma-autot' : 'Trucks in',
+        #'henkilöautot' : 'Automobiles in',
+        #'autokilpailut' : 'Automobile races in',
+        #'auto-onnettomuudet' : 'Automobile accidents in',
+        #'hotellit' : 'Hotels in'
+        #'asuinrakennukset' : 'Houses in',
+        #'liikerakennukset' : 'Buildings in',
+        #'osuusliikkeet' : 'Consumers\' cooperatives in',
+        #'nosturit' : 'Cranes in',
+        #'tehtaat' : 'Factories in',
+        #'teollisuusrakennukset' : 'Factories in',
+        #'laulujuhlat' : 'Music festivals in'
+        #'rukit' : 'Spinning wheels in',
+        #'meijerit' : 'Dairies in',
+        #'mainoskuvat' : 'Advertisements in'
     }
     
     extracatstoadd = list()
@@ -3669,7 +3684,7 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories):
         #print("DEBUG: subject '", subject ,"' in finna record")
         if subject in subject_categories_with_country: # skip unknown tags
             cattext = subject_categories_with_country[subject]
-            if (findcatbeginningwithphrase(cattext, existingcategories) == False):
+            if (findcatwithphrase(cattext, existingcategories) == False):
                 if cattext not in extracatstoadd: # avoid duplicates
                     # TODO: get from placeslist appropriate location
                     cattext = cattext + " " + "Finland"
@@ -3677,6 +3692,90 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories):
                     extracatstoadd.append(cattext)
 
     print("DEBUG: extra cats to add: ", str(extracatstoadd))
+    return extracatstoadd
+
+# list may have "Suomi, <place>" in as single string
+# -> check each if it can be split and has given string
+def isplaceinlistparts(place, placeslist):
+    for p in placeslist:
+        partlist = p.split(",")
+        for t in partlist:
+            if (trimlr(t) == place):
+                print("DEBUG: found ", t)
+                return True
+    return False
+
+def get_category_place(placeslist):
+    # places with year/decade templates
+    cat_place = {
+        "Helsinki","Hamina","Hyvinkää","Hämeenlinna","Espoo","Forssa","Iisalmi","Imatra","Inari","Joensuu","Jyväskylä","Lahti","Lappajärvi","Lappeenranta","Loviisa","Kajaani","Kemi","Kokkola","Kotka","Kuopio","Kuusamo","Kouvola","Mikkeli","Naantali","Pietarsaari","Porvoo","Pori","Oulu","Raahe","Rauma","Rovaniemi","Savonlinna","Seinäjoki","Sipoo","Sotkamo","Turku","Tampere","Tornio","Uusikaupunki","Vantaa","Vaasa"
+    }
+    for p in cat_place:
+        if (isplaceinlistparts(p, placeslist) == True):
+            return p
+        
+    if 'Suomi' in placeslist:
+        return "Finland"
+    return ""
+
+def getcategoriesforplaceandtime(pywikibot, finna_record, inceptiondt, placeslist, existingcategories):
+    extracatstoadd = list()
+    print("DEBUG: testing cats for time and place")
+    
+    # TODO: add only location name if we can't determine year?
+    if (inceptiondt == None):
+        print("DEBUG: no timestamp")
+        return extracatstoadd
+    if (inceptiondt.year == 0):
+        print("DEBUG: no year")
+        return extracatstoadd
+    if (len(placeslist) == 0):
+        print("DEBUG: no places")
+        return extracatstoadd
+
+    # for now, we don't have anything do with here in this case..
+    # TODO: may have "Suomi, <place>" in the list as single entry..
+    if (isplaceinlistparts("Suomi", placeslist) == False):
+        print("DEBUG: Finland isn't included in places")
+        return extracatstoadd
+    
+    # TODO: placelist might have a string like "Suomi, Espoo" 
+    # which would need to be split accordingly..
+    # it also might have "Suomi, Uusimaa, Espoo" or simply "Uusikaupunki"
+    # or "entinen kunta/pitäjä, <place>"
+    place = get_category_place(placeslist)
+    if (len(place) == 0):
+        print("DEBUG: unnkown place:", str(placeslist))
+        return extracatstoadd
+
+    # note: might need to check the year
+    # in case it is for decade instead of exact year..
+    yearstr = str(inceptiondt.year)
+    cattext = yearstr + " in " + place
+
+    # already has exact cat
+    if (findcatwithphrase(cattext, existingcategories) == True):
+        return extracatstoadd
+
+    # cat with part of it being same location? 
+    # -> maybe a combination class -> skip it
+    if (findcatwithphrase(place, existingcategories) == True):
+        return extracatstoadd
+
+    # category with same year?
+    # -> maybe combination class -> skip it
+    if (findcatwithphrase(yearstr, existingcategories) == True):
+        return extracatstoadd
+
+    # category with same year but more generic location?
+    # -> could replace with a more specific category
+    catgeneric = yearstr + " in Finland"
+    if ('Suomi' in placeslist and findcatwithphrase(catgeneric, existingcategories) == True):
+        return extracatstoadd
+
+    # otherwise might be safe to add the category now
+    extracatstoadd.append(cattext)
+    print("Adding cat for time and place:", cattext)
     return extracatstoadd
 
 # when you need a category but there is no collection in data (museum of finnish architecture)
@@ -3896,8 +3995,8 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fp = pywikibot.FilePage(commonssite, 'File:Helene Schjerfbeck - The Door - A IV 3680 - Finnish National Gallery.jpg')
 
     #fp = pywikibot.FilePage(commonssite, 'File:Axel Gustav Estlander.jpg')
-    
-   
+
+    #fp = pywikibot.FilePage(commonssite, 'File:Alexis von Kraemer.jpg')
 
     pages.append(fp)
     return pages
@@ -4010,7 +4109,6 @@ d_institutionqcode["Suomen Rautatiemuseo"] = "Q1138355"
 d_institutionqcode["Salon historiallinen museo"] = "Q56403058"
 d_institutionqcode["Etelä-Karjalan museo"] = "Q18346681"
 d_institutionqcode["ETELÄ-KARJALAN MUSEO"] = "Q18346681"
-
 d_institutionqcode["Pohjois-Karjalan museo"] = "Q11888467"
 d_institutionqcode["Kymenlaakson museo"] = "Q18346674"
 d_institutionqcode["Pielisen museo"] = "Q11887930"
@@ -4024,6 +4122,7 @@ d_institutionqcode["Ilomantsin museosäätiö"] = "Q121266098"
 d_institutionqcode["Lapin maakuntamuseo"] = "Q18346675"
 d_institutionqcode["Uudenkaupungin museo"] = "Q58636637"
 d_institutionqcode["Kuopion kulttuurihistoriallinen museo"] = "Q58636575"
+d_institutionqcode["KUOPION KULT. HIST. MUSEO"] = "Q58636575"
 d_institutionqcode["Varkauden museot"] = "Q58636646"
 d_institutionqcode["Keski-Suomen museo"] = "Q11871078"
 d_institutionqcode["Nurmeksen museo"] = "Q18661027"
@@ -4049,6 +4148,7 @@ d_labeltoqcode["Antellin kokoelmat"] = "Q123313922"
 d_labeltoqcode["Antellin kokoelma"] = "Q123313922"
 d_labeltoqcode["Scan-Foton ilmakuvakokoelma"] = "Q123458587"
 d_labeltoqcode["Scan-Foto"] = "Q123458587"
+d_labeltoqcode["Foto Roosin kokoelma"] = "Q126078977"
 d_labeltoqcode["Börje Sandbergin kokoelma"] = "Q123357635"
 d_labeltoqcode["Enckellin kokoelma"] = "Q123357692"
 d_labeltoqcode["Karjalaisen osakunnan kokoelma"] = "Q123357711"
@@ -4101,6 +4201,7 @@ d_labeltoqcode["Sote-kokoelma"] = "Q123508776"
 d_labeltoqcode["VR:n kuvakokoelma"] = "Q123508783"
 d_labeltoqcode["Suomen Rautatiemuseon kuvakokoelma"] = "Q123508786"
 d_labeltoqcode["Arkeologian kuvakokoelma"] = "Q123508795"
+d_labeltoqcode["Meriarkeologian kuvakokoelma"] = "Q126020900"
 d_labeltoqcode["Hugo Simbergin valokuvat"] = "Q123523516"
 d_labeltoqcode["I K Inha"] = "Q123555486"
 d_labeltoqcode["Valokuvaamo Atelier Nyblinin kokoelma"] = "Q126002123"
@@ -4146,6 +4247,7 @@ d_labeltoqcode["Vilho Uomalan kokoelma"] = "Q124672017"
 d_labeltoqcode["Pressfoto Zeeland"] = "Q125141028"
 d_labeltoqcode["Nuoperin valokuvakokoelma"] = "Q125428578"
 d_labeltoqcode["Ylä-Karjalan kuva-arkisto"] = "Q125429017"
+d_labeltoqcode["Seurasaaren kuvakokoelma"] = "Q126021273"
 d_labeltoqcode["S. E. Multamäen kokoelma"] = "Q125946755"
 d_labeltoqcode["Metsätehon kokoelma"] = "Q125947321"
 d_labeltoqcode["Hämeen linnan kuvakokoelma"] = "Q125980519"
@@ -4297,14 +4399,20 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kuvasiskot", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kai Donner", 1)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Väinö Bremer", 0)
-
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 5000)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Pauli Jänis", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Viljo Pietinen", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Picture Collection of The Finnish Heritage Agency", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Collection of The Finnish Heritage Agency", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Media by The Maritime Museum of Finland", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Collections of the Finnish Railway Museum", 0)
+
+pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 10)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Carl Klein (photographer)", 0)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Foto Roos", 2)
 
 
 cachedb = CachedImageData() 
@@ -5134,6 +5242,7 @@ for page in pages:
     # add commons-categoeris for other tags (subjects)
     extracatstoadd = list() # disabled for now
     extracatstoadd += getcategoriesforsubjects(pywikibot, finna_record, oldcategories)
+    extracatstoadd += getcategoriesforplaceandtime(pywikibot, finna_record, inceptiondt, placeslist, oldcategories)
             
     # when you need a category but there is no collection in data (museum of finnish architecture)
     extracatstoadd += getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, publisherqcode, operatorqcode)
