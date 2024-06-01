@@ -1505,6 +1505,26 @@ def islicenseinstatements(statements, license):
 
     return False
 
+# check for given url in references (sources)
+def istargetinsourcelist(claim, key, sourcetocheck):
+    sourcelist = claim.getSources()
+    for source in sourcelist:
+        for key, value in source.items():
+            if key == key:
+                for v in value: # v is another claim..
+                    vtarget = v.getTarget()
+                    if (vtarget == sourcetocheck):
+                        print("target found in sources:", vtarget)
+                        return True
+                    else:
+                        # note: for now, accept just having a source,
+                        # add comparison for domain later
+                        #print("DEBUG: target in sources:", vtarget)
+                        if (vtarget.find("finna.fi") > 0 and sourcetocheck.find("finna.fi") > 0):
+                            return True
+                        
+    return False
+
 # check if 'P275' is missing 'P854' with reference url
 def checklicensesources(pywikibot, wikidata_site, statements, copyrightlicense, sourceurl):
     if "P275" not in statements:
@@ -1537,21 +1557,16 @@ def checklicensesources(pywikibot, wikidata_site, statements, copyrightlicense, 
                 ftarget = fclaim.getTarget()
                 if (ftarget == sourceurl):
                     matchfound = True
-                    print("exact source url for license found")
-
-    
-        sourcelist = claim.getSources()
-        for source in sourcelist:
-            for key, value in source.items():
-                if key == "P854":
-                    for v in value: # v is another claim..
-                        vtarget = v.getTarget()
-                        if (vtarget == sourceurl):
-                            matchfound = True
-                            print("license source found")
+                    print("exact source url for license found", ftarget)
+                    break
+                
+        # check for url in references (sources)
+        if (istargetinsourcelist(claim, "P854", sourceurl) == True):
+            matchfound = True
+            print("license source found")
 
         if (matchfound == False):
-            print("NOTE: should add source url to license")
+            print("match not found, adding source url to license")
             u_claim = pywikibot.Claim(wikidata_site, 'P854', is_reference=True, is_qualifier=False)
             u_claim.setTarget(sourceurl)
             claim.addSource(u_claim)
@@ -1587,7 +1602,9 @@ def addlicensetostatements(pywikibot, wikidata_site, license, sourceurl):
 
     # note: commons does not support adding qualifiers to items,
     # you need to add items and qualifiers at same time.
-    
+
+    print("added license to statements")
+
     return lic_claim
 
 def addCopyrightstatusToSdc(pywikibot, wikidata_site, license, statusqcode, sourceurl):
@@ -2761,6 +2778,27 @@ def getFinnaPlaces(finnarecord):
         datalist.append(dstr)
     return datalist
 
+# "nonpresenterauthor" is "creators" in commons-speak:
+# in this case we want photographers
+# 
+def getFinnaNonPresenterAuthors(finnarecord):
+    datalist = list()
+    finnadata = getFinnaDatalist(finnarecord, "nonPresenterAuthors")
+    if (finnadata == None):
+        return datalist
+    #for d in finnadata:
+        #for dstr in d:
+            #print("DEBUG: dstr: ", str(dstr))
+            #  sometimes there is newlines and tabs in the string -> strip them out
+            #dstr = fixwhitespaces(dstr)
+            #name = dstr["name"]
+            #role = dstr["role"]
+            # might also be "reprokuvaaja" for photograps or other author ("arkkitehti" or other)
+            #if (role == "kuvaaja" or "valokuvaaja"):
+                #datalist.append(dstr)
+    return datalist
+
+
 # check image metadata if it could be uploaded again with a higher resolution
 #
 def needReupload(file_info, finna_record, imagesExtended):
@@ -3297,6 +3335,9 @@ class CommonsTemplate:
             return template.get("Author")
         if template.has("author"):
             return template.get("author")
+        return None
+
+    def getPhotographerFromCommonsTemplate(self, template):
         if template.has("Photographer"):
             return template.get("Photographer")
         if template.has("photographer"):
@@ -3587,7 +3628,7 @@ def findcatwithphrase(phrase, existingcategories):
 # lookup subjects in finna-data that easily map into commons-categories
 # and that we can add to commons-pages
 #
-def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories):
+def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories, inceptiondt):
     # subject tags to commons-categories:
     # must be in subjects-list from Finna
     #
@@ -3607,6 +3648,7 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories):
         #'Turun linna' : 'Turku Castle',
         #'Hämeen linna' : 'Häme Castle',
         #'Olavinlinna' : 'Olavinlinna'
+        #'Raaseporin linna' : 'Raseborg castle',
         #'Hvitträsk': 'Hvitträsk'
         #'kiväärit' : 'Rifles'
     }
@@ -3620,31 +3662,75 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories):
         #'professorit': 'Professors from',
         #'kauppaneuvokset' : 'Businesspeople from',
         #'toimitusjohtajat' : 'Businesspeople from',
+        #'miehet' : 'Men of',
+        #'naiset' : 'Women of',
+        #'perheet' : 'Families of',
         #'miesten puvut': 'Men wearing suits in',
         #'muotinäytökset' : 'Fashion shows in',
         #'lentonäytökset': 'Air shows in',
+        #'veturit' : 'Locomotives of',
+        #'junat' : 'Trains of',
+        #'junanvaunut' : 'Railway coaches of',
+        #'rautatieasemat' : 'Train stations in',
         #'laivat' : 'Ships in',
         #'veneet' : 'Boats in',
+        #'matkustajalaivat' : 'Passenger ships in',
         #'purjeveneet' : 'Sailboats in',
         #'moottoriveneet' : 'Motorboats in',
         #'lossit' : 'Cable ferries in',
         #'lentokoneet' : 'Aircraft in',
+        #'moottoripyörät' : 'Motorcycles in',
+        #'moottoripyöräurheilu' : 'Motorcycle racing in',
+        #'moottoriurheilu' : 'Motorsports in',
         #'linja-autot': 'Buses in',
         #'kuorma-autot' : 'Trucks in',
+        #'autot' : 'Automobiles in',
         #'henkilöautot' : 'Automobiles in',
+        #'autourheilu' : 'Automobile racing in',
         #'autokilpailut' : 'Automobile races in',
         #'auto-onnettomuudet' : 'Automobile accidents in',
-        #'hotellit' : 'Hotels in'
+        #'hotellit' : 'Hotels in',
+        #'kodit' : 'Accommodation buildings in',
         #'asuinrakennukset' : 'Houses in',
         #'liikerakennukset' : 'Buildings in',
+        #'kerrostalot' : 'Apartment buildings in',
         #'osuusliikkeet' : 'Consumers\' cooperatives in',
+        #'saunat' : 'Sauna buildings in',
         #'nosturit' : 'Cranes in',
+        #'kaivinkoneet' : 'Excavators in',
         #'tehtaat' : 'Factories in',
         #'teollisuusrakennukset' : 'Factories in',
-        #'laulujuhlat' : 'Music festivals in'
+        #'konepajateollisuus' : 'Machinery industry in',
+        #'paperiteollisuus' : 'Pulp and paper industry in',
+        #'sahateollisuus' : 'Sawmills in',
+        #'koulurakennukset' : 'School buildings in',
+        #'sairaalat' : 'Hospitals in',
+        #'museot' : 'Museums in',
+        #'rakennushankkeet' : 'Construction in',
+        #'laulujuhlat' : 'Music festivals in',
+        #'festivaalit' : 'Music festivals in',
         #'rukit' : 'Spinning wheels in',
         #'meijerit' : 'Dairies in',
-        #'mainoskuvat' : 'Advertisements in'
+        #'ravintolat' : 'Restaurants in',
+        #'mainoskuvat' : 'Advertisements in',
+        #'koira' : 'Dogs of',
+        #'hevosajoneuvot' : 'Horse-drawn vehicles in',
+        #'polkupyörät' : 'Bicycles in',
+        #'aikakauslehdet' : 'Magazines of',
+        # sanomalehtipaperi
+        #'sanomalehdet' : 'Newspapers of',
+        #'ammattikoulutus' : 'Vocational schools in',
+        #'salmet' : 'Straits of',
+        #'uimarannat' : 'Beaches of',
+        #'uimapuvut' : 'Swimwear in',
+        #'kylvö' : 'Agriculture in',
+        #'peltoviljely' : 'Agriculture in',
+        #'maanviljely' : 'Agriculture in',
+        #'maatalous' : 'Agriculture in',
+        #'uitto' : 'Timber floating in',
+        #'uittorännit' : 'Timber floating in',
+        # retkeilyalueet, retkeilyvarusteet
+        #'retkeily' : 'Camping in'
     }
     
     extracatstoadd = list()
@@ -3654,25 +3740,52 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories):
         print("no subjects in finna record")
         return extracatstoadd
 
+    placeslist = getFinnaPlaces(finnarecord)
+
+    # TODO: list can have places without country
+    isInFinland = False
+    for t in placeslist:
+        if ('Suomi' in t):
+            isInFinland = True
+
+    isInPortraits = False
     for subject in subjectlist:
         #print("DEBUG: subject '", subject ,"' in finna record")
+
+        if (subject == 'muotokuvat' or subject == 'henkilökuvat'):
+            isInPortraits = True
+
         if subject in subject_categories:
             cattext = subject_categories[subject]
-        
+            
             if cattext not in extracatstoadd: # avoid duplicates
                 extracatstoadd.append(cattext)
 
-    placeslist = getFinnaPlaces(finnarecord)
+    if (isInPortraits == True and isInFinland == True):
+        if 'miehet' in subjectlist:
+            extracatstoadd.append("Portrait photographs of men of Finland")
+        if 'naiset' in subjectlist:
+            extracatstoadd.append("Portrait photographs of women of Finland")
+        if ('Portrait photographs of men of Finland' not in extracatstoadd and 'Portrait photographs of women of Finland' not in extracatstoadd):
+            extracatstoadd.append("Portrait photographs of Finland")
+    elif (isInPortraits == True):
+        extracatstoadd.append("Portrait photographs")
+
+    #if (isInPortraits == True):
+        #print("DEBUG: extra cats for portraits: ", str(extracatstoadd))
+
+    if (inceptiondt != None):
+        if (inceptiondt.year != 0):
+            if (isInPortraits == True and isInFinland == True):
+                extracatstoadd.append(f'People of Finland in {inceptiondt.year}')
+            if (isInPortraits == True):
+                extracatstoadd.append(f'{inceptiondt.year} portrait photographs')
+            #print("DEBUG: extra cats with year: ", str(extracatstoadd))
+
     if (placeslist == None or len(placeslist) == 0):
         print("no places in finna record")
         return extracatstoadd
-
-    isfromfinland = False
-    for t in placeslist:
-        if ('Suomi' in t):
-            isfromfinland = True
-    
-    if isfromfinland == False:
+    if isInFinland == False:
         print("Suomi not found in places in finna record")
         return extracatstoadd
     
@@ -3706,9 +3819,17 @@ def isplaceinlistparts(place, placeslist):
     return False
 
 def get_category_place(placeslist):
+    # for now, use hack to translate into category
+    if ('Nokia' in depicted_places):
+        return "Nokia, Finland"
+    if ('Maarianhamina' in depicted_places):
+        return "Mariehamn"
+    if ('Viipuri' in depicted_places):
+        return "Vyborg"
+    
     # places with year/decade templates
     cat_place = {
-        "Helsinki","Hamina","Hyvinkää","Hämeenlinna","Espoo","Forssa","Iisalmi","Imatra","Inari","Joensuu","Jyväskylä","Lahti","Lappajärvi","Lappeenranta","Loviisa","Kajaani","Kemi","Kokkola","Kotka","Kuopio","Kuusamo","Kouvola","Mikkeli","Naantali","Pietarsaari","Porvoo","Pori","Oulu","Raahe","Rauma","Rovaniemi","Savonlinna","Seinäjoki","Sipoo","Sotkamo","Turku","Tampere","Tornio","Uusikaupunki","Vantaa","Vaasa"
+        "Helsinki","Hanko","Hamina","Heinola","Hyvinkää","Hämeenlinna","Espoo","Forssa","Iisalmi","Imatra","Inari","Joensuu","Jyväskylä","Jämsä","Kaarina","Kajaani","Kauhajoki","Kerava","Kemi","Kokkola","Kotka","Kuopio","Kuusamo","Kouvola","Lahti","Lappajärvi","Lappeenranta","Lohja","Loviisa","Mikkeli","Naantali","Pietarsaari","Porvoo","Pori","Pornainen","Oulu","Raahe","Raisio","Rauma","Rovaniemi","Salo","Savonlinna","Seinäjoki","Siilinjärvi","Sipoo","Sotkamo","Turku","Tampere","Tornio","Uusikaupunki","Vantaa","Vaasa","Virolahti"
     }
     for p in cat_place:
         if (isplaceinlistparts(p, placeslist) == True):
@@ -3998,6 +4119,7 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, 'File:Alexis von Kraemer.jpg')
 
+
     pages.append(fp)
     return pages
 
@@ -4149,6 +4271,7 @@ d_labeltoqcode["Antellin kokoelma"] = "Q123313922"
 d_labeltoqcode["Scan-Foton ilmakuvakokoelma"] = "Q123458587"
 d_labeltoqcode["Scan-Foto"] = "Q123458587"
 d_labeltoqcode["Foto Roosin kokoelma"] = "Q126078977"
+d_labeltoqcode["Kosken kuvaamo"] = "Q126095096"
 d_labeltoqcode["Börje Sandbergin kokoelma"] = "Q123357635"
 d_labeltoqcode["Enckellin kokoelma"] = "Q123357692"
 d_labeltoqcode["Karjalaisen osakunnan kokoelma"] = "Q123357711"
@@ -4253,7 +4376,18 @@ d_labeltoqcode["Metsätehon kokoelma"] = "Q125947321"
 d_labeltoqcode["Hämeen linnan kuvakokoelma"] = "Q125980519"
 d_labeltoqcode["Olavinlinnan kuvakokoelma"] = "Q125980786"
 d_labeltoqcode["Juha Lankisen kokoelma"] = "Q125994258"
-d_labeltoqcode["Kuva-arkisto"] = "Q125995005"
+d_labeltoqcode["Kuva-arkisto"] = "Q125995005" # lappeenrannan/etelä-karjalan museon
+d_labeltoqcode["Korttikeskuksen kokoelma"] = "Q126101695"
+d_labeltoqcode["Kustannusosakeyhtiö Kiven kokoelma"] = "Q126160418"
+d_labeltoqcode["Aarne Mikonsaari"] = "Q126162086"
+d_labeltoqcode["LPR kaupungin kuva-arkisto"] = "Q126162424"
+d_labeltoqcode["Kulttuuriympäristön kuvakokoelma"] = "Q126163175"
+d_labeltoqcode["Digikuvakokoelma"] = "Q126173053"
+d_labeltoqcode["Valokuvat/KUV/KV"] = "Q126177397"
+d_labeltoqcode["Diat/KUV/KD"] = "Q126193435"
+d_labeltoqcode["Heikki Havaksen negatiivikokoelma"] = "Q126201599"
+d_labeltoqcode["Timo Kirveen kokoelma"] = "Q126210138"
+
 
 # collection qcode (after parsing) to commons-category
 #
@@ -4279,6 +4413,9 @@ d_collectionqtocategory["Q122414127"] = "Ethnographic Collection of The Finnish 
 
 # there are no colections in museum of architecture? -> need to determine by publisher
 #d_collectionqtocategory[""] = "Files from Museum of Finnish Architecture" # 
+
+d_collectionqtocategory["Q123508795"] = "Archeological Picture Collection" # Arkeologian kuvakokoelma
+#d_collectionqtocategory["Q123508795"] = "Arkeologian kuvakokoelma" # 
 
 
 # note! only add this if not already in one of the subcategories below this one
@@ -4388,31 +4525,19 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by I. K. Inha", 1)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Grönqvist House", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Signe Brander", 0)
-
 #pages = getpagesrecurse(pywikibot, commonssite, "J. E. Rosberg", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by J. E. Rosberg", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Carl Gustaf Emil Mannerheim", 1)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kuvasiskot", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kai Donner", 1)
-
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 5000)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Pauli Jänis", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Picture Collection of The Finnish Heritage Agency", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Collection of The Finnish Heritage Agency", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Media by The Maritime Museum of Finland", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Collections of the Finnish Railway Museum", 0)
 
-pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 10)
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Carl Klein (photographer)", 0)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Foto Roos", 2)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Photographs by Kuvasiskot", 50)
 
 
 cachedb = CachedImageData() 
@@ -5182,6 +5307,18 @@ for page in pages:
     else:
         print("id found, not adding again", finnaid)
 
+    #photographers = getFinnaNonPresenterAuthors(finna_record)
+    #if (len(photographers) > 0):
+        #print("DEBUG: photographers in finna: ", str(photographers))
+        
+        # TODO: get qcode by name in list
+        #for photographer in photographers:
+        
+            #creatorclaim = addCreatortoStatements(pywikibot, wikidata_site, creatorqcode)
+            #if (creatorclaim != None):
+                #wditem.addClaim(creatorclaim)
+
+
     placeslist = getFinnaPlaces(finna_record)
     actorslist = getFinnaActors(finna_record)
 
@@ -5241,9 +5378,13 @@ for page in pages:
 
     # add commons-categoeris for other tags (subjects)
     extracatstoadd = list() # disabled for now
-    extracatstoadd += getcategoriesforsubjects(pywikibot, finna_record, oldcategories)
-    extracatstoadd += getcategoriesforplaceandtime(pywikibot, finna_record, inceptiondt, placeslist, oldcategories)
-            
+
+    # categories like "music festivals in finland" and other combinations
+    #extracatstoadd += getcategoriesforsubjects(pywikibot, finna_record, oldcategories, inceptiondt)
+
+    # categories like "1931 in helsinki"
+    #extracatstoadd += getcategoriesforplaceandtime(pywikibot, finna_record, inceptiondt, placeslist, oldcategories)
+
     # when you need a category but there is no collection in data (museum of finnish architecture)
     extracatstoadd += getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, publisherqcode, operatorqcode)
 
