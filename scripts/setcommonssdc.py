@@ -755,20 +755,36 @@ def isSdcCaption(commons_site, media_identifier, lang='fi'):
 
 # ----- FinnaTimestamp
 class FinnaTimestamp:
-    def setYear(self, year):
+    def __init__(self):
+        self.year = 0
+        self.month = 0
+        self.day = 0
+        self.maybe_normalized = False
+        self.precision = 0
+
+    # 1 for year, 10 for decade, 100 for century..
+    def setPrecision(self, precision):
+        self.precision = precision
+
+    def setYear(self, year, normalized = False):
         self.year = year
         self.month = 0
         self.day = 0
+        self.maybe_normalized = normalized
+        self.precision = 1
         
     def setYearMonth(self, year, month):
         self.year = year
         self.month = month
         self.day = 0
+        self.precision = -1
 
     def setDate(self, year, month, day):
         self.year = year
         self.month = month
         self.day = day
+        self.precision = -2
+
 # ----- /FinnaTimestamp
 
 
@@ -2511,9 +2527,15 @@ def parseinceptionyearfromfinna(finnarecord):
         year = trimlr(year)
         if (year.isnumeric() == False):
             print("DEBUG: not a numeric year: " + year)
-            
+
+        # if conversion fails -> not a usable number
+        yearnum = int(year)
+
+        # TODO: if last digit is zero, we have only per-decade precision?
+        # if two last digits are zero, we only have per-century precision?
+
         fdt = FinnaTimestamp()
-        fdt.setYear(int(year))
+        fdt.setYear(yearnum, True)
         return fdt
     except:
         print("failed to parse timestamp")
@@ -2782,20 +2804,27 @@ def getFinnaPlaces(finnarecord):
 # in this case we want photographers
 # 
 def getFinnaNonPresenterAuthors(finnarecord):
+    # also: pht for swedish language archive
+    photographer_roles = ['kuvaaja', 'reprokuvaaja', 'valokuvaaja', 'Valokuvaaja']
+
     datalist = list()
     finnadata = getFinnaDatalist(finnarecord, "nonPresenterAuthors")
     if (finnadata == None):
         return datalist
-    #for d in finnadata:
-        #for dstr in d:
-            #print("DEBUG: dstr: ", str(dstr))
-            #  sometimes there is newlines and tabs in the string -> strip them out
-            #dstr = fixwhitespaces(dstr)
-            #name = dstr["name"]
-            #role = dstr["role"]
-            # might also be "reprokuvaaja" for photograps or other author ("arkkitehti" or other)
-            #if (role == "kuvaaja" or "valokuvaaja"):
-                #datalist.append(dstr)
+    if (len(finnadata) == 0):
+        print("DEBUG: empty list in nonPresenterAuthors: ", finnaid)
+        return datalist
+    
+    for entry in finnadata:
+        if ("name" not in entry or "role" not in entry):
+            continue
+        name = entry["name"]
+        role = entry["role"]
+
+        print("DEBUG: nonPresenterAuthors, name: ", name ," role: ", role)
+
+        if role in photographer_roles:
+            datalist.append(name)
     return datalist
 
 
@@ -3761,21 +3790,24 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories, incepti
             if cattext not in extracatstoadd: # avoid duplicates
                 extracatstoadd.append(cattext)
 
-    if (isInPortraits == True and isInFinland == True):
-        if 'miehet' in subjectlist:
-            extracatstoadd.append("Portrait photographs of men of Finland")
-        if 'naiset' in subjectlist:
-            extracatstoadd.append("Portrait photographs of women of Finland")
-        if ('Portrait photographs of men of Finland' not in extracatstoadd and 'Portrait photographs of women of Finland' not in extracatstoadd):
-            extracatstoadd.append("Portrait photographs of Finland")
-    elif (isInPortraits == True):
-        extracatstoadd.append("Portrait photographs")
+    if (findcatwithphrase("Portrait photographs", existingcategories) == False):
+        if (isInPortraits == True and isInFinland == True):
+            if 'miehet' in subjectlist:
+                extracatstoadd.append("Portrait photographs of men of Finland")
+            if 'naiset' in subjectlist:
+                extracatstoadd.append("Portrait photographs of women of Finland")
+            if ('Portrait photographs of men of Finland' not in extracatstoadd and 'Portrait photographs of women of Finland' not in extracatstoadd):
+                extracatstoadd.append("Portrait photographs of Finland")
+        elif (isInPortraits == True):
+            extracatstoadd.append("Portrait photographs")
 
     #if (isInPortraits == True):
         #print("DEBUG: extra cats for portraits: ", str(extracatstoadd))
 
     if (inceptiondt != None):
-        if (inceptiondt.year != 0):
+        # only use year if we are confident it is at least one year:
+        # we need a better detection when year is only decade or century..
+        if (inceptiondt.year != 0 and inceptiondt.precision < 0):
             if (isInPortraits == True and isInFinland == True):
                 extracatstoadd.append(f'People of Finland in {inceptiondt.year}')
             if (isInPortraits == True):
@@ -4535,9 +4567,12 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Media by The Maritime Museum of Finland", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Collections of the Finnish Railway Museum", 0)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Cartes de visite in Swedish Theatre Helsinki Archive", 0)
 
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Photographs by Kuvasiskot", 50)
+pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 10)
+
 
 
 cachedb = CachedImageData() 
@@ -5307,9 +5342,9 @@ for page in pages:
     else:
         print("id found, not adding again", finnaid)
 
-    #photographers = getFinnaNonPresenterAuthors(finna_record)
-    #if (len(photographers) > 0):
-        #print("DEBUG: photographers in finna: ", str(photographers))
+    photographers = getFinnaNonPresenterAuthors(finna_record)
+    if (len(photographers) > 0):
+        print("DEBUG: photographers in finna: ", str(photographers))
         
         # TODO: get qcode by name in list
         #for photographer in photographers:
