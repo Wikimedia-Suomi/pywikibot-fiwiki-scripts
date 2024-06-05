@@ -3442,6 +3442,13 @@ class CommonsTemplate:
             return True
         return False
 
+    # work around parser/python bugs
+    def getParValue(self, par):
+        if (par == None):
+            return True
+        parval = str(par.value)
+        return trimlr(parval)
+
     # add institution text to the template field
     # should have institution-template
     #def addInstitution(self, institution):
@@ -3484,6 +3491,47 @@ class CommonsTemplate:
         else:
             if (self.isEmptyParamValue(par) == True):
                 par.value = accValue + "\n"
+                self.changed = True
+                return True
+            # if it is not empty, don't do anything
+            # could append but might add duplicates by mistake
+        return False
+
+    def addOrSetPhotographers(self, template, photographers):
+        if (photographers == None):
+            return False
+        if (len(photographers) == 0):
+            return False
+
+        # TODO: if there are authors, skip adding photographers?
+        parAuthors = self.getAuthorFromCommonsTemplate(template)
+        if (self.isEmptyParamValue(parAuthors) == False):
+            authors = self.getParValue(parAuthors)
+            authors = authors.replace("\n", "")
+            if (len(authors) > 0 and authors != "Museovirasto"):
+                # something already in author that is not institution
+                # -> don't add again
+                print("Already has authors: ", authors)
+                return False
+
+        people = photographers
+        people = ""
+        for p in photographers:
+            if (len(people) > 0):
+                people += ";"
+            people += p
+        #people = "{{fi|" + people + "}}"
+        
+        #
+        print("Adding photographers: ", people)
+        par = self.getPhotographerFromCommonsTemplate(template)
+        if (par == None):
+            template.add("photographer", people)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = people + "\n"
                 self.changed = True
                 return True
             # if it is not empty, don't do anything
@@ -3668,6 +3716,7 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories, incepti
     subject_categories = {
         #'muotokuvat': 'Portrait photographs',
         #'henkilökuvat': 'Portrait photographs',
+        #'henkilövalokuvat': 'Portrait photographs',
         #'saamenpuvut' : 'Sami clothing',
         #'Osuusliike Elanto': 'Elanto',
         #'Valmet Oy': 'Valmet',
@@ -3852,11 +3901,11 @@ def isplaceinlistparts(place, placeslist):
 
 def get_category_place(placeslist):
     # for now, use hack to translate into category
-    if ('Nokia' in depicted_places):
+    if ('Nokia' in placeslist):
         return "Nokia, Finland"
-    if ('Maarianhamina' in depicted_places):
+    if ('Maarianhamina' in placeslist):
         return "Mariehamn"
-    if ('Viipuri' in depicted_places):
+    if ('Viipuri' in placeslist):
         return "Vyborg"
     
     # places with year/decade templates
@@ -4100,6 +4149,16 @@ def getnewestpagesfromcategory(pywikibot, commonssite, maincat, limit=100):
         pages.append(fp)
     return pages
 
+def getuseruploads(commonssite, username, limit=100):
+    user = pywikibot.User(commonssite, username)
+    contribs = user.contributions(total=limit)  # Get the user's last 5000 edits
+
+    uploadsummary = ''
+    for contrib in contribs:
+        uploadsummary += str(contrib) + "\n"
+    return uploadsummary
+    
+
 # different method to parse links
 #
 #def getdumplistpage(pywikibot, commonssite, linkpage):
@@ -4149,7 +4208,6 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, 'File:Axel Gustav Estlander.jpg')
 
-    #fp = pywikibot.FilePage(commonssite, 'File:Alexis von Kraemer.jpg')
 
 
     pages.append(fp)
@@ -4240,6 +4298,7 @@ d_institutionqcode["Ateneumin taidemuseo"] = "Q754507"
 d_institutionqcode["Sinebrychoffin taidemuseo"] = "Q1393952"
 d_institutionqcode["Tekniikan museo"] = "Q5549583"
 d_institutionqcode["Museokeskus Vapriikki"] = "Q18346706"
+d_institutionqcode["Varkauden museokeskus Konsti"] = "Q126368681"
 d_institutionqcode["Helsingin kaupunginmuseo"] = "Q2031357"
 d_institutionqcode["Helsinki City Museum"] = "Q2031357"
 d_institutionqcode["HKM Valokuva"] = "Q2031357"
@@ -4335,6 +4394,7 @@ d_labeltoqcode["Sari Gustafssonin kokoelma"] = "Q123458004"
 d_labeltoqcode["Jukka Kuusiston kokoelma"] = "Q123458213"
 d_labeltoqcode["Veijo Laineen kokoelma"] = "Q123458458"
 d_labeltoqcode["Atte Matilaisen kokoelma"] = "Q123531731"
+d_labeltoqcode["Kustannusosakeyhtiö Otavan kokoelma"] = "Q123502566"
 d_labeltoqcode["Otava"] = "Q123502566"
 d_labeltoqcode["Otavamedia"] = "Q123502645"
 d_labeltoqcode["Kaleva"] = "Q123508471"
@@ -4562,6 +4622,9 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Carl Gustaf Emil Mannerheim", 1)
 
+
+pages = getpagesrecurse(pywikibot, commonssite, "Historical Picture Collection of The Finnish Heritage Agency", 0)
+
 #pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Picture Collection of The Finnish Heritage Agency", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Collection of The Finnish Heritage Agency", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Media by The Maritime Museum of Finland", 0)
@@ -4571,8 +4634,12 @@ commonssite.login()
 
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Photographs by Kuvasiskot", 50)
-pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 10)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 30)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Tapio Kautovaara", 0)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by C.P. Dyrendahl", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Th. Nyblin", 0)
 
 
 cachedb = CachedImageData() 
@@ -5388,6 +5455,9 @@ for page in pages:
                     if (ct.addOrSetInstitution(template, institutiontemplate) == True):
                         print("Fixed institution for: " + page.title())
 
+
+                if (ct.addOrSetPhotographers(template, photographers) == True):
+                    print("Added photographers for: " + page.title())
 
                 if (ct.addOrSetDepictedPeople(template, actorslist) == True):
                     print("Added depicted people for: " + page.title())
