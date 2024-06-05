@@ -2805,7 +2805,7 @@ def getFinnaPlaces(finnarecord):
 # 
 def getFinnaNonPresenterAuthors(finnarecord):
     # also: pht for swedish language archive
-    photographer_roles = ['kuvaaja', 'reprokuvaaja', 'valokuvaaja', 'Valokuvaaja']
+    photographer_roles = ['kuvaaja', 'Kuvaaja', 'valokuvaaja', 'Valokuvaaja', 'pht']
 
     datalist = list()
     finnadata = getFinnaDatalist(finnarecord, "nonPresenterAuthors")
