@@ -2775,6 +2775,14 @@ def getFinnaSubjects(finnarecord):
         for dstr in d:
             #  sometimes there is newlines and tabs in the string -> strip them out
             dstr = fixwhitespaces(dstr)
+
+            if (len(dstr) == 0):
+                continue
+            # sometimes data has bugs
+            if (dstr.find("Cannot get property") >= 0):
+                print("DEBUG: bugged data in subjects: ", finnaid)
+                continue
+            
             datalist.append(dstr)
     return datalist
 
@@ -2786,6 +2794,14 @@ def getFinnaActors(finnarecord):
     for dstr in finnadata:
         #  sometimes there is newlines and tabs in the string -> strip them out
         dstr = fixwhitespaces(dstr)
+
+        if (len(dstr) == 0):
+            continue
+        # sometimes data has bugs
+        if (dstr.find("Cannot get property") >= 0):
+            print("DEBUG: bugged data in actors: ", finnaid)
+            continue
+
         datalist.append(dstr)
     return datalist
 
@@ -2797,6 +2813,14 @@ def getFinnaPlaces(finnarecord):
     for dstr in finnadata:
         #  sometimes there is newlines and tabs in the string -> strip them out
         dstr = fixwhitespaces(dstr)
+
+        if (len(dstr) == 0):
+            continue
+        # sometimes data has bugs
+        if (dstr.find("Cannot get property") >= 0):
+            print("DEBUG: bugged data in places: ", finnaid)
+            continue
+        
         datalist.append(dstr)
     return datalist
 
@@ -2818,8 +2842,14 @@ def getFinnaNonPresenterAuthors(finnarecord):
     for entry in finnadata:
         if ("name" not in entry or "role" not in entry):
             continue
+        
         name = entry["name"]
         role = entry["role"]
+
+        # sometimes data has bugs
+        if (name.find("Cannot get property") >= 0 or role.find("Cannot get property") >= 0):
+            print("DEBUG: bugged data in nonpresenterauthors: ", finnaid)
+            continue
 
         print("DEBUG: nonPresenterAuthors, name: ", name ," role: ", role)
 
@@ -4146,17 +4176,23 @@ def getnewestpagesfromcategory(pywikibot, commonssite, maincat, limit=100):
     for page in newest:
         #print("name: ", page.title())
         fp = pywikibot.FilePage(commonssite, page.title())
-        pages.append(fp)
+        if (fp not in pages):
+            pages.append(fp)
     return pages
 
-def getuseruploads(commonssite, username, limit=100):
+def getuseruploads(pywikibot,commonssite, username, limit=100):
     user = pywikibot.User(commonssite, username)
     contribs = user.contributions(total=limit)  # Get the user's last 5000 edits
 
-    uploadsummary = ''
+    pages = list()
     for contrib in contribs:
-        uploadsummary += str(contrib) + "\n"
-    return uploadsummary
+        #uploadsummary += str(contrib) + "\n"
+        print("DEBUG: contrib: ", str(contrib))
+        #if (contrib.namespace() != 6):  # 6 is the namespace ID for files
+            #continue
+        if (contrib not in pages):
+            pages.append(contrib)
+    return pages
     
 
 # different method to parse links
@@ -4208,6 +4244,7 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, 'File:Axel Gustav Estlander.jpg')
 
+    fp = pywikibot.FilePage(commonssite, 'File:The family of Finnish actress Mirjami Kuosmanen and Finnish film director Erik Blomberg in 1953 (JOKAUAS2 2034-4).tif')
 
 
     pages.append(fp)
@@ -4408,6 +4445,7 @@ d_labeltoqcode["Uusi Suomi − Iltalehti"] = "Q123508540"
 d_labeltoqcode["Östnyland"] = "Q123508541"
 d_labeltoqcode["Östnyland Borgåbladet"] = "Q123508541"
 d_labeltoqcode["Västra Nyland"] = "Q124670813"
+d_labeltoqcode["Borgåbladet"] = "Q126390040"
 d_labeltoqcode["Satakunnan Kansan kuva-arkisto"] = "Q123508726"
 d_labeltoqcode["Suomen Lähetysseura ry:n kuvakokoelma"] = "Q123508491"
 d_labeltoqcode["Hyvinkään kaupunginmuseon kokoelma"] = "Q123508767"
@@ -4623,7 +4661,7 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Carl Gustaf Emil Mannerheim", 1)
 
 
-pages = getpagesrecurse(pywikibot, commonssite, "Historical Picture Collection of The Finnish Heritage Agency", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Historical Picture Collection of The Finnish Heritage Agency", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Picture Collection of The Finnish Heritage Agency", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Collection of The Finnish Heritage Agency", 0)
@@ -4632,14 +4670,13 @@ pages = getpagesrecurse(pywikibot, commonssite, "Historical Picture Collection o
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Cartes de visite in Swedish Theatre Helsinki Archive", 0)
 
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Photographs by Kuvasiskot", 50)
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 30)
+pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 500)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Tapio Kautovaara", 0)
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by C.P. Dyrendahl", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Th. Nyblin", 0)
+
 
 
 cachedb = CachedImageData() 
