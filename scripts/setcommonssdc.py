@@ -19,6 +19,9 @@ import os
 import tempfile
 from PIL import Image
 
+import xml.etree.ElementTree as XEltree
+import html
+
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
@@ -3718,6 +3721,41 @@ def getwikidatacodefrompagetemplate(ct):
         print("DEBUG: qcodes found in template", wikidatacodes)
     return wikidatacodes
 
+
+def parseFullRecord(finnarecord):
+    if "fullRecord" not in finnarecord['records'][0]:
+        print("fullRecord does not exist in finna record")
+        return
+    full_record_data = finnarecord['records'][0]["fullRecord"]
+    if (len(full_record_data) == 0):
+        print("empty full record")
+        return
+    root = XEltree.fromstring(full_record_data)
+    if (root == None):
+        print("root not found")
+        return
+
+    # <inscriptionsWrap><inscriptions><inscriptionDescription><descriptiveNoteValue>Kirjoitus..
+    # may have things like physical description and so on 
+    descriptive_notes = root.findall(".//descriptiveNoteValue")
+    for note in descriptive_notes:
+        if (note.text != None):
+            print("note: ", html.unescape(note.text))
+
+    # <relatedWorkSet><relatedWork><displayObject>Hufvudstadsbladet 16.6.1940, s. 4</displayObject>
+    related_works = root.findall(".//displayObject")
+    for work in related_works:
+        if (work.text != None):
+            print("work: ", html.unescape(work.text))
+
+    # classificationWrap><classification><term lang="fi" label="luokitus">
+    classifications = root.findall(".//term")
+    for clf in classifications:
+        if (clf.text != None):
+            # check attribs: {'label': 'asiasana', 'lang': 'sv'}
+            print("clf: ", html.unescape(clf.text), " ", clf.attrib)
+
+
 # helper to check if list has similar category
 # like if there is "Aircraft in Helsinki" then don't add "Aircraft in Finland":
 # check if a cat has same base phrase like "Aircraft in "
@@ -3746,7 +3784,8 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories, incepti
     subject_categories = {
         #'muotokuvat': 'Portrait photographs',
         #'henkilökuvat': 'Portrait photographs',
-        #'henkilövalokuvat': 'Portrait photographs',
+        #'henkilövalokuvaus': 'Portrait photographs',
+        #'ryhmäkuvat' : 'Group photographs',
         #'saamenpuvut' : 'Sami clothing',
         #'Osuusliike Elanto': 'Elanto',
         #'Valmet Oy': 'Valmet',
@@ -3755,10 +3794,12 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories, incepti
         #'Yntyneet Paperitehtaat': 'Yntyneet Paperitehtaat',
         #'Turun linna' : 'Turku Castle',
         #'Hämeen linna' : 'Häme Castle',
-        #'Olavinlinna' : 'Olavinlinna'
+        #'Olavinlinna' : 'Olavinlinna',
         #'Raaseporin linna' : 'Raseborg castle',
-        #'Hvitträsk': 'Hvitträsk'
+        #'Hvitträsk': 'Hvitträsk',
+        #'taksinkuljettajat' : 'Taxi drivers'
         #'kiväärit' : 'Rifles'
+        #'mikroskoopit' : 'Microscopes'
     }
 
     # can we determine automatically "in", "at", "from" or "of" for more genericity?
@@ -3774,19 +3815,32 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories, incepti
         #'naiset' : 'Women of',
         #'perheet' : 'Families of',
         #'miesten puvut': 'Men wearing suits in',
+        #'naisten puvut': 'Women wearing suits in',
         #'muotinäytökset' : 'Fashion shows in',
-        #'lentonäytökset': 'Air shows in',
+        #'kampaukset' : 'Hair fashion in',
         #'veturit' : 'Locomotives of',
         #'junat' : 'Trains of',
         #'junanvaunut' : 'Railway coaches of',
         #'rautatieasemat' : 'Train stations in',
+        #'merimiesvaatteet' : '',
+        #'telakat' : 'Shipyards in',
         #'laivat' : 'Ships in',
+        #'rahtilaivat' : 'Cargo ships in',
+        #'sotalaivat' : 'Naval ships in',
+        #'sota-alukset' : 'Naval ships in',
+        #'sukellusveneet' : 'Submarines in',
         #'veneet' : 'Boats in',
+        #'jäänmurtajat' : 'Ice breakers in',
         #'matkustajalaivat' : 'Passenger ships in',
         #'purjeveneet' : 'Sailboats in',
+        #'purjelaivat' : 'Sailing ships'
         #'moottoriveneet' : 'Motorboats in',
         #'lossit' : 'Cable ferries in',
+        #'traktorit' : 'Tractors in',
+        #'lentonäytökset': 'Air shows in',
         #'lentokoneet' : 'Aircraft in',
+        #'helikopterit' : 'Helicopters in',
+        #'purjelento' : 'Gliding in',
         #'moottoripyörät' : 'Motorcycles in',
         #'moottoripyöräurheilu' : 'Motorcycle racing in',
         #'moottoriurheilu' : 'Motorsports in',
@@ -3797,13 +3851,18 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories, incepti
         #'autourheilu' : 'Automobile racing in',
         #'autokilpailut' : 'Automobile races in',
         #'auto-onnettomuudet' : 'Automobile accidents in',
+        #'taksit' : 'Taxis in',
+        #'taksiasemat' : 'Taxi stands in',
         #'hotellit' : 'Hotels in',
         #'kodit' : 'Accommodation buildings in',
         #'asuinrakennukset' : 'Houses in',
         #'liikerakennukset' : 'Buildings in',
+        #'virastotalot' : 'Government buildings in',
+        #'toimistorakennukset' : 'Office buildings in',
         #'kerrostalot' : 'Apartment buildings in',
         #'osuusliikkeet' : 'Consumers\' cooperatives in',
         #'saunat' : 'Sauna buildings in',
+        #'alastomuus' : 'Nudity in',
         #'nosturit' : 'Cranes in',
         #'kaivinkoneet' : 'Excavators in',
         #'tehtaat' : 'Factories in',
@@ -3811,17 +3870,60 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories, incepti
         #'konepajateollisuus' : 'Machinery industry in',
         #'paperiteollisuus' : 'Pulp and paper industry in',
         #'sahateollisuus' : 'Sawmills in',
+        #'metsänhoito' : 'Forestry in',
         #'koulurakennukset' : 'School buildings in',
+        #'koululaiset' : 'School children of',
+        #'koulutus' : 'Education in',
+        #'opetus' : 'Teaching in',
+        #'opettajat' : 'Teachers from',
+        #'ammatit opettajat' : 'Teachers from',
         #'sairaalat' : 'Hospitals in',
+        #'sairaanhoitajat' : 'Nurses from',
+        #'lääkärit' : 'Physicians from',
         #'museot' : 'Museums in',
+        #'kirjat' : 'Books of',
+        #'kirjastorakennukset' : 'Libraries in',
+        #'kirjastoautot': 'Bookmobiles in',
         #'rakennushankkeet' : 'Construction in',
+        #'rakennustarvikkeet' : 'Construction equipment in',
+        #'työvälineet'
+        #'puusepänteollisuus' : 'Carpentry in',
+        #'ompelukone' : 'Sewing machines in',
+        #'sängyt' : 'Beds in',
+        #'parisängyt' : 'Beds in',
+        #'muusikot' : 'Musicians from', # who is playing?
+        #'orkesterit' : 'Orchestras from', # who is playing?
+        #'yhtyeet' : 'Musical groups from', # who is playing?
         #'laulujuhlat' : 'Music festivals in',
         #'festivaalit' : 'Music festivals in',
+        #'neulonta' : 'Knitting in',
+        #'työvaatteet' : 'Work clothing in',
         #'rukit' : 'Spinning wheels in',
+        #'kehruu' : 'Spinning in',
+        #'kutojat' : 'Weavers in',
+        #'kudonta' : 'Weaving in',
+        #'kutominen' : 'Weaving in',
+        #kudinpuut 
+        #'kangaspuut' : 'Looms in',
+        #'räsymatot' : 'Rugs and carpets of',
+        #'nuket' : 'Dolls in',
         #'meijerit' : 'Dairies in',
+        #'elintarvikeliikkeet' : 'Grocery stores in',
+        #'myymälät' : 'Shops in',
         #'ravintolat' : 'Restaurants in',
+        #'kahvilat' : 'Coffee shops in',
+        #'konditoriat' : 'Konditoreien in',
+        #'leipomoteollisuus' : 'Bread industry in',
+        #'leipomotuotteet' : '',
+        #'leipomotyöntekijät' : '',
+        #'leivinuunit' : 'Baking ovens in',
+        #'musiikkiliikkeet' : 'Music stores in',
+        #'laulajat' : 'Vocalists from',
+        #'vaateliikkeet' : 'Clothing shops in',
         #'mainoskuvat' : 'Advertisements in',
+        #'näyteikkunat' : 'Shop windows in',
         #'koira' : 'Dogs of',
+        #'koiranäyttelyt' : 'Dog shows in',
         #'hevosajoneuvot' : 'Horse-drawn vehicles in',
         #'polkupyörät' : 'Bicycles in',
         #'aikakauslehdet' : 'Magazines of',
@@ -3835,10 +3937,30 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories, incepti
         #'peltoviljely' : 'Agriculture in',
         #'maanviljely' : 'Agriculture in',
         #'maatalous' : 'Agriculture in',
+        #'tukinuitto' : 'Timber floating in',
         #'uitto' : 'Timber floating in',
         #'uittorännit' : 'Timber floating in',
+        #'kalanviljely' : 'Fish farming in',
+        #'kalanviljelylaitokset' : 'Fish farming in',
+        #'luonnonmaisema' : 'Landscapes of',
         # retkeilyalueet, retkeilyvarusteet
-        #'retkeily' : 'Camping in'
+        #'retkeily' : 'Camping in',
+        #'tuolit' : 'Chairs in',
+        #'keittiöt' : 'Kitchens in',
+        #'kylpyhuoneet' : 'Bathrooms in',
+        #'näyttelyt' : 'Exhibitions in',
+        #'messut' : 'Trade fairs in',
+        #'messut (tapahtumat)' : 'Trade fairs in',
+        #'pikaluistelu' : 'Speed skating in',
+        #'talviurheilulajit' : 'Winter sports in',
+        #'talviurheilu' : 'Winter sports in',
+        #'kilpaurheilu' : 'Sports competitions in',
+        #'maaottelut' : ''
+        #'autokorjaamot' : '',
+        #'huoltamot' : 'Petrol stations in',
+        #'huoltoasemat' : 'Petrol stations in',
+        #'panssarivaunut' : 'Tanks',
+        #'hautajaiset' : 'Funerals in'
     }
     
     extracatstoadd = list()
@@ -3935,12 +4057,22 @@ def get_category_place(placeslist):
         return "Nokia, Finland"
     if ('Maarianhamina' in placeslist):
         return "Mariehamn"
-    if ('Viipuri' in placeslist):
-        return "Vyborg"
+    if ('Raasepori' in depicted_places):
+        return "Raseborg"
+    #if ('Viipuri' in placeslist):
+        #return "Vyborg"
+    #if ('Helsingin maalaiskunta' in depicted_places):
+        #return "Vantaa"
+    if ('Pietarsaari' in depicted_places):
+        return "Jakobstad"
+    if ('Tammisaari' in depicted_places):
+        return "Ekenäs"
+    #if ('Jääski' in depicted_places):
+        #return "Lesogorsky"
     
     # places with year/decade templates
     cat_place = {
-        "Helsinki","Hanko","Hamina","Heinola","Hyvinkää","Hämeenlinna","Espoo","Forssa","Iisalmi","Imatra","Inari","Joensuu","Jyväskylä","Jämsä","Kaarina","Kajaani","Kauhajoki","Kerava","Kemi","Kokkola","Kotka","Kuopio","Kuusamo","Kouvola","Lahti","Lappajärvi","Lappeenranta","Lohja","Loviisa","Mikkeli","Naantali","Pietarsaari","Porvoo","Pori","Pornainen","Oulu","Raahe","Raisio","Rauma","Rovaniemi","Salo","Savonlinna","Seinäjoki","Siilinjärvi","Sipoo","Sotkamo","Turku","Tampere","Tornio","Uusikaupunki","Vantaa","Vaasa","Virolahti"
+        "Helsinki","Hanko","Hamina","Heinola","Hyvinkää","Hämeenlinna","Espoo","Forssa","Iisalmi","Imatra","Inari","Joensuu","Joutseno","Jyväskylä","Jämsä","Kaarina","Karkkila","Kajaani","Kauhajoki","Kerava","Kemi","Kitee","Kokkola","Kotka","Kuopio","Kuusamo","Kouvola","Lahti","Lappajärvi","Lappeenranta","Lohja","Loviisa","Mikkeli","Muhos","Naantali","Padasjoki","Porvoo","Pori","Pornainen","Oulu","Raahe","Raisio","Rauma","Rovaniemi","Salo","Savonlinna","Seinäjoki","Siilinjärvi","Sipoo","Sotkamo","Turku","Tammela","Tampere","Tornio","Uusikaupunki","Vantaa","Vaasa","Virolahti","Virrat"
     }
     for p in cat_place:
         if (isplaceinlistparts(p, placeslist) == True):
@@ -4046,11 +4178,13 @@ def getcategoriesforcollections(pywikibot, categories, collectiontocategory):
 # add categories for each collection to the commons-page if they don't yet exist.
 # lookup text by qcode (parsed from finna record)
 #
-def addCategoriesToCommons(pywikibot, tmptext, categories):
+def addCategoriesToCommons(pywikibot, existingCategories, tmptext, categories):
     catsadded = False
     for cattext in categories:
+        #if (cattext in existingCategories):
+            #continue
+
         tmp = "[[Category:" + cattext + "]]"
-        
         if (tmptext.find(tmp) < 0):
             print("DEBUG: adding category: ", tmp)
             
@@ -4200,6 +4334,9 @@ def getuseruploads(pywikibot,commonssite, username, limit=100):
 #def getdumplistpage(pywikibot, commonssite, linkpage):
     #listpage = pywikibot.Page(commonssite, linkpage)  # The page you're interested in
 
+def getpagebyname(pywikibot, commonssite, name):
+    return pywikibot.FilePage(commonssite, name)
+
 
 # simply to aid in debuggimg
 def getpagesfixedlist(pywikibot, commonssite):
@@ -4244,8 +4381,13 @@ def getpagesfixedlist(pywikibot, commonssite):
 
     #fp = pywikibot.FilePage(commonssite, 'File:Axel Gustav Estlander.jpg')
 
-    fp = pywikibot.FilePage(commonssite, 'File:The family of Finnish actress Mirjami Kuosmanen and Finnish film director Erik Blomberg in 1953 (JOKAUAS2 2034-4).tif')
+    #fp = pywikibot.FilePage(commonssite, 'File:The family of Finnish actress Mirjami Kuosmanen and Finnish film director Erik Blomberg in 1953 (JOKAUAS2 2034-4).tif')
 
+
+    fp = getpagebyname(pywikibot, commonssite, 'File:Allring House 1940 (2500C; JOKAHBL3C A53-1).tif')
+
+
+    #fp = getpagebyname(pywikibot, commonssite, 'File:Vuorineuvos Edwin Lönnbeck.tif')
 
     pages.append(fp)
     return pages
@@ -4671,12 +4813,12 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Cartes de visite in Swedish Theatre Helsinki Archive", 0)
 
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Photographs by Kuvasiskot", 50)
-pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 500)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Tapio Kautovaara", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by C.P. Dyrendahl", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Th. Nyblin", 0)
 
+pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
 
 
 cachedb = CachedImageData() 
@@ -5075,6 +5217,9 @@ for page in pages:
     finna_record = get_finna_record(finnaid)
     if (isFinnaRecordOk(finna_record, finnaid) == False):
         continue
+    
+    ## TESTING
+    #parseFullRecord(finna_record)
     
     # check what finna reports as identifier
     finna_accession_id = getFinnaAccessionIdentifier(finna_record)
@@ -5511,7 +5656,7 @@ for page in pages:
     collcatstoadd = getcategoriesforcollections(pywikibot, collectionqcodes, d_collectionqtocategory)
     if (len(collcatstoadd) > 0):
         print("Adding collection categories for: ", finnaid, "categories ", str(collcatstoadd))
-        res, tmptext = addCategoriesToCommons(pywikibot, tmptext, collcatstoadd) 
+        res, tmptext = addCategoriesToCommons(pywikibot, oldcategories, tmptext, collcatstoadd) 
         if (res == True):
             print("Collection categories added for: " + finnaid)
             categoriesadded = True
@@ -5532,7 +5677,7 @@ for page in pages:
 
     if (len(extracatstoadd) > 0):
         print("Adding subject categories for: ", finnaid, "categories ", str(extracatstoadd))
-        res, tmptext = addCategoriesToCommons(pywikibot, tmptext, extracatstoadd)
+        res, tmptext = addCategoriesToCommons(pywikibot, oldcategories, tmptext, extracatstoadd)
         if (res == True):
             print("Subject categories added for: " + finnaid)
             categoriesadded = True
