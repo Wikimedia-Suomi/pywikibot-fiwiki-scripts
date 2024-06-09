@@ -4142,6 +4142,31 @@ def getcategoriesforplaceandtime(pywikibot, finna_record, inceptiondt, placeslis
     print("Adding cat for time and place:", cattext)
     return extracatstoadd
 
+# categories for well-known non-presenter authors
+def getcategoriesforauthors(pywikibot, photographers, existingcategories):
+    author_categories = {
+        'Atelier Rembrandt, Helsingfors' : 'Photographs by Atelier Rembrandt (Helsinki)',
+        'Atelier Apollo' : 'Photographs by Atelier Apollo',
+        'Atelier Universal' : 'Photographs by Atelier Universal',
+        'Atelier Nyblin' : 'Photographs by Atelier Nyblin',
+        'Atelier Paris' : 'Photographs by Atelier Paris',
+        'Valokuvaamo Tenhovaara' : 'Photographs by Valokuvaamo Tenhovaara'
+    }
+
+    extracatstoadd = list()
+
+    for author in photographers:
+        if author in author_categories:
+            cattext = author_categories[author]
+            if cattext not in existingcategories: # avoid duplicates
+                print("adding category ", cattext, " for author ", author)
+                extracatstoadd.append(cattext)
+            else:
+                print("already has category ", cattext, " for author ", author)
+        else:
+            print("not category for author ", author)
+    return extracatstoadd
+
 # when you need a category but there is no collection in data (museum of finnish architecture)
 #extracatstoadd = getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, finna_record)
 def getcategoriesforinstitutions(pywikibot, institutionqtocategory, pubqcode, opqcode):
@@ -4818,7 +4843,10 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by C.P. Dyrendahl", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Th. Nyblin", 0)
 
-pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
+
+pages = getpagesrecurse(pywikibot, commonssite, "Swedish Theatre Helsinki Archive", 0)
+
 
 
 cachedb = CachedImageData() 
@@ -4876,7 +4904,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            continue
+            #continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -5671,6 +5699,9 @@ for page in pages:
 
     # categories like "1931 in helsinki"
     #extracatstoadd += getcategoriesforplaceandtime(pywikibot, finna_record, inceptiondt, placeslist, oldcategories)
+
+    # categories for well-known non-presenter authors
+    extracatstoadd += getcategoriesforauthors(pywikibot, photographers, oldcategories)
 
     # when you need a category but there is no collection in data (museum of finnish architecture)
     extracatstoadd += getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, publisherqcode, operatorqcode)
