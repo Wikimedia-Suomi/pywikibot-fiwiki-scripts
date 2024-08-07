@@ -168,13 +168,20 @@ def get_finna_record(finnaid, quoteid=True):
 
 # ----- /FinnaData
 
+class HashedImageResults:
+    def __init__(self):
+        self.hashlen = 0
+        self.phash = ""
+        self.dhash = ""
+
+
 # Perceptual hashing 
 # http://www.hackerfactor.com/blog/index.php?/archives/432-Looks-Like-It.html
 # difference hashing
 # http://www.hackerfactor.com/blog/index.php?/archives/529-Kind-of-Like-That.html
 #
-def getimagehash(img, hashlen=8):
-    print("DEBUG: hashing.. ")
+def getimagehash(img : Image, hashlen=8):
+    print("DEBUG: hashing.. format: ", img.format)
 
     # average hash
     # ahash generates a lot of false positives ?
@@ -207,7 +214,12 @@ def getimagehash(img, hashlen=8):
     # image download has failed or python is broken?
     if ('8000000000000000' == str(phash) or'0000000000000000' == str(dhash)):
         return None
-    return tuple((hashlen, str(phash), str(dhash)))
+    
+    hr = HashedImageResults()
+    hr.hashlen = hashlen
+    hr.phash = str(phash)
+    hr.dhash = str(dhash)
+    return hr
 
 # convert string to base 16 integer for calculating difference
 def converthashtoint(h, base=16):
@@ -470,6 +482,13 @@ class CachedImageData:
 
         return None
 
+    # params:
+    # source url
+    # phash length
+    # phash value
+    # dhash length
+    # dhash value
+    # timestamp
     def addorupdate(self, url, plen, pval, dlen, dval, ts):
         tp = self.findfromcache(url)
         if (tp == None):
@@ -2720,6 +2739,9 @@ def isFinnaFormatImage(finnarecord):
 
     # note, might be "0/PhysicalObject/" for images of physical objects
     # handle those as photographs as well?
+    #if (finnaformats == "0/PhysicalObject/"):
+        #print("DBEUG: found physical object in finna record: " + str(finnaformats))
+        #return True
     
     # Note, don't modify when "0/WorkOfArt/"
 
@@ -3737,18 +3759,21 @@ def parseFullRecord(finnarecord):
 
     # <inscriptionsWrap><inscriptions><inscriptionDescription><descriptiveNoteValue>Kirjoitus..
     # may have things like physical description and so on 
+    #descriptive_notes = root.findall("./inscriptionDescription/descriptiveNoteValue")
     descriptive_notes = root.findall(".//descriptiveNoteValue")
     for note in descriptive_notes:
         if (note.text != None):
             print("note: ", html.unescape(note.text))
 
     # <relatedWorkSet><relatedWork><displayObject>Hufvudstadsbladet 16.6.1940, s. 4</displayObject>
+    #related_works = root.findall("./relatedWork/displayObject")
     related_works = root.findall(".//displayObject")
     for work in related_works:
         if (work.text != None):
             print("work: ", html.unescape(work.text))
 
     # classificationWrap><classification><term lang="fi" label="luokitus">
+    #classifications = root.findall("./classification/term")
     classifications = root.findall(".//term")
     for clf in classifications:
         if (clf.text != None):
@@ -3978,6 +4003,10 @@ def getcategoriesforsubjects(pywikibot, finnarecord, existingcategories, incepti
         if ('Suomi' in t):
             isInFinland = True
 
+    # not in subjects like usual
+    #if ('Lamminahon talo' in placeslist):
+        #extracatstoadd.add("'Lamminaho House")
+
     isInPortraits = False
     for subject in subjectlist:
         #print("DEBUG: subject '", subject ,"' in finna record")
@@ -4150,6 +4179,7 @@ def getcategoriesforauthors(pywikibot, photographers, existingcategories):
         'Atelier Universal' : 'Photographs by Atelier Universal',
         'Atelier Nyblin' : 'Photographs by Atelier Nyblin',
         'Atelier Paris' : 'Photographs by Atelier Paris',
+        'Charles Riis' : 'Photographs by Charles Riis',
         'Valokuvaamo Tenhovaara' : 'Photographs by Valokuvaamo Tenhovaara'
     }
 
@@ -4164,7 +4194,7 @@ def getcategoriesforauthors(pywikibot, photographers, existingcategories):
             else:
                 print("already has category ", cattext, " for author ", author)
         else:
-            print("not category for author ", author)
+            print("no category for author ", author)
     return extracatstoadd
 
 # when you need a category but there is no collection in data (museum of finnish architecture)
@@ -4199,6 +4229,23 @@ def getcategoriesforcollections(pywikibot, categories, collectiontocategory):
                 collcatstoadd.append(cattext)
 
     return collcatstoadd
+
+def cleanupCategoriesFromCommons(pywikibot, existingCategories, tmptext, categories):
+    for cattext in categories:
+        #if (cattext in existingCategories):
+            #continue
+        
+        if (cattext.find("Charles Riis") > 0):
+            if (cattext.find(" ") > 0):
+                catwithunderscore = cattext.replace(" ", "_")
+                if (catwithunderscore in existingCategories):
+                    # remove category that has underscores in it
+                    # so that there aren't duplicates and we use the current method
+                    tmp = "[[Category:" + catwithunderscore + "]]"
+                    if (tmptext.find(tmp) > 0):
+                        print("DEBUG: removing old category: ", tmp)
+                        tmptext = tmptext.replace(tmp, "")
+    return tmptext
 
 # add categories for each collection to the commons-page if they don't yet exist.
 # lookup text by qcode (parsed from finna record)
@@ -4501,13 +4548,13 @@ d_institutionqcode["Kansallisgalleria/Arkisto ja kirjasto"] = "Q2983474"
 d_institutionqcode["Ateneumin taidemuseo"] = "Q754507"
 d_institutionqcode["Sinebrychoffin taidemuseo"] = "Q1393952"
 d_institutionqcode["Tekniikan museo"] = "Q5549583"
+d_institutionqcode["Tampereen historialliset museot"] = "Q58636631"
 d_institutionqcode["Museokeskus Vapriikki"] = "Q18346706"
 d_institutionqcode["Varkauden museokeskus Konsti"] = "Q126368681"
 d_institutionqcode["Helsingin kaupunginmuseo"] = "Q2031357"
 d_institutionqcode["Helsinki City Museum"] = "Q2031357"
 d_institutionqcode["HKM Valokuva"] = "Q2031357"
 d_institutionqcode["HKM"] = "Q2031357"
-
 d_institutionqcode["Vantaan kaupunginmuseo"] = "Q26723704"
 d_institutionqcode["Keravan museopalvelut"] = "Q121266100"
 d_institutionqcode["Turun museokeskus"] = "Q18346797"
@@ -4548,6 +4595,8 @@ d_institutionqcode["Postimuseo"] = "Q5492225"
 d_institutionqcode["Nuorisotyön tallentaja Nuoperi"] = "Q125428627"
 d_institutionqcode["Arkkitehtuurimuseo"] = "Q1418116" # MFA
 d_institutionqcode["Tuusulan museo"] = "Q58636633"
+d_institutionqcode["Rauman museo"] = "Q18346695"
+
 
 # qcode of collections -> label
 #
@@ -4684,7 +4733,15 @@ d_labeltoqcode["Valokuvat/KUV/KV"] = "Q126177397"
 d_labeltoqcode["Diat/KUV/KD"] = "Q126193435"
 d_labeltoqcode["Heikki Havaksen negatiivikokoelma"] = "Q126201599"
 d_labeltoqcode["Timo Kirveen kokoelma"] = "Q126210138"
-
+d_labeltoqcode["Rauman museon kuvakokoelmat"] = "Q126487566"
+d_labeltoqcode["TKA Kosonen"] = "Q126487669"
+d_labeltoqcode["FÅA - SILJA LINE"] = "Q127135795"
+#d_labeltoqcode[" FÅA - SILJA LINE"] = "Q127135795" # preceding space
+d_labeltoqcode["Matti Poutvaaran kokoelma"] = "Q127164738"
+d_labeltoqcode["Kokemäen ulkomuseo"] = "Q127324662"
+d_labeltoqcode["Kansatieteelliset kokoelmat"] = "Q127324690"
+d_labeltoqcode["Ilomantsin Sotahistoriallisen Työryhmän kokoelma"] = "Q127599543"
+d_labeltoqcode["Oy Stockmann Ab:n kokoelma"] = "Q127699652"
 
 # collection qcode (after parsing) to commons-category
 #
@@ -4692,6 +4749,7 @@ d_collectionqtocategory = dict()
 d_collectionqtocategory["Q113292201"] = "JOKA Press Photo Archive"
 d_collectionqtocategory["Q123508786"] = "Collections of the Finnish Railway Museum"
 d_collectionqtocategory["Q123272489"] = "Media by The Maritime Museum of Finland" # Suomen merimuseon kuvakokoelma
+d_collectionqtocategory["Q127135795"] = "Effoa" # FÅA - SILJA LINE
 
 #d_collectionqtocategory["Q107388072"] = "Historical Picture Collection" # Historian kuvakokoelma
 d_collectionqtocategory["Q107388072"] = "Historical Picture Collection of The Finnish Heritage Agency" # Historian kuvakokoelma
@@ -4722,6 +4780,9 @@ d_collectionqtocategory["Q123508795"] = "Archeological Picture Collection" # Ark
 # there are no colections in museum of architecture? -> need to determine by publisher
 d_institutionqtocategory = dict()
 d_institutionqtocategory["Q1418116"] = "Files from Museum of Finnish Architecture" # 
+
+# Suomen kansallismuseo
+d_institutionqtocategory["Q1418136"] = "Collections of the National Museum of Finland" # 
 
 
 # institution qcode (after parsing) to commons-template
@@ -4842,12 +4903,36 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Tapio Kautovaara", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by C.P. Dyrendahl", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Th. Nyblin", 0)
-
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
-
-pages = getpagesrecurse(pywikibot, commonssite, "Swedish Theatre Helsinki Archive", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Atelier Central", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Oscaria Sarén", 0)
 
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Swedish Theatre Helsinki Archive", 0)
+
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Karl Emil Ståhlberg", 0)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Richard Faltin (senior)", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Edith Sohlström", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Greta Dahlström", 0)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Armas Launis", 0)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Helsinki by year", 1)
+
+pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 100)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Musical instruments of Finland", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Collections of the National Museum of Finland", 0)
+
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Aino Ackté", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Arvid Järnefelt", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Armas Järnefelt", 0)
+
+#pages = getcatpages(pywikibot, commonssite, "Category:Files uploaded by FinnaUploadBot")
+
+#pages = getcatpages(pywikibot, commonssite, "Katajanokanlaituri")
 
 cachedb = CachedImageData() 
 cachedb.opencachedb()
@@ -4904,7 +4989,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            #continue
+            continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -5057,7 +5142,10 @@ for page in pages:
             #kgtid = str(fngid['objectid'])
 
     if (len(kgtid) > 0 and len(fngacc) > 0):
-        #print("DEBUG: kansallisgalleria id found:", kgtid)
+        print("DEBUG: kansallisgalleria id found:", kgtid)
+        # skip for now
+        continue
+
         if (fngcache.findbyid(kgtid) == None or fngcache.findbyacc(fngacc) == None):
             print("WARN: db does not have matches for", kgtid, "", fngacc)
             # may or may not be invalid, some may be missing from the data
@@ -5076,6 +5164,13 @@ for page in pages:
         # should have collection Q2983474 Kansallisgalleria when adding object id
         fng_collectionqcodes = getCollectionsFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
         locationqcode = getLocationFromWikidata(pywikibot, wikidata_site, wikidataqcodes)
+
+        # can't determine in detail -> skip it
+        if (fng_collectionqcodes == None):
+            print("skipping, no fng collection codes", page.title())
+            micache.addorupdate(filepage.pageid, datetime.now(timezone.utc))
+            # skip the rest as that requires finna id and finna record
+            continue
 
         #isHamArtMuseum = False
         # if collection or institution or location is Q5710459 (HAM Helsingin taidemuseo)
@@ -5169,7 +5264,7 @@ for page in pages:
             
             # same lengths for p and d hash, keep change time from commons
             cachedb.addorupdate(commons_image_url, 
-                                commonshash[0], commonshash[1], commonshash[0], commonshash[2], 
+                                commonshash.hashlen, commonshash.phash, commonshash.hashlen, commonshash.dhash, 
                                 filepage.latest_file_info.timestamp)
 
 
@@ -5280,7 +5375,7 @@ for page in pages:
         
         # same lengths for p and d hash, keep change time from commons
         cachedb.addorupdate(commons_image_url, 
-                            commonshash[0], commonshash[1], commonshash[0], commonshash[2], 
+                            commonshash.hashlen, commonshash.phash, commonshash.hashlen, commonshash.dhash, 
                             filepage.latest_file_info.timestamp)
 
         print("Commons-image data added to cache for: " + page.title() )
@@ -5315,7 +5410,7 @@ for page in pages:
                                     filepage.latest_file_info.timestamp)
                 continue
             cachedb.addorupdate(commons_image_url, 
-                                commonshash[0], commonshash[1], commonshash[0], commonshash[2], 
+                                commonshash.hashlen, commonshash.phash, commonshash.hashlen, commonshash.dhash, 
                                 filepage.latest_file_info.timestamp)
             tpcom = cachedb.findfromcache(commons_image_url)
 
@@ -5349,6 +5444,7 @@ for page in pages:
                             filepage.latest_file_info.timestamp)
         continue
     
+    print("DEBUG: commons: " + tpcom['phashval'] + ", " + tpcom['dhashval'] + " hashed")
 
     # if we have passed, mark as none
     cachedb.setpillowbug(commons_image_url, 
@@ -5408,7 +5504,7 @@ for page in pages:
                 continue
             
             # same lengths for p and d hash
-            cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now(timezone.utc))
+            cachedb.addorupdate(finna_image_url, finnahash.hashlen, finnahash.phash, finnahash.hashlen, finnahash.dhash, datetime.now(timezone.utc))
             tpfinna = cachedb.findfromcache(finna_image_url)
         #else:
             # compare timestamp: if too old recheck the hash
@@ -5418,6 +5514,7 @@ for page in pages:
             exit(1)
         
         # Test if image is same using similarity hashing
+        print("DEBUG: comparing finna " + tpfinna['phashval'] + ", " + tpfinna['dhashval'] + " to commons ")
         if (is_same_image(tpfinna, tpcom) == True):
             match_found = True
 
@@ -5448,7 +5545,7 @@ for page in pages:
                                         'y')
                     continue
                 # same lengths for p and d hash
-                cachedb.addorupdate(finna_image_url, finnahash[0], finnahash[1], finnahash[0], finnahash[2], datetime.now(timezone.utc))
+                cachedb.addorupdate(finna_image_url, finnahash.hashlen, finnahash.phash, finnahash.hashlen, finnahash.dhash, datetime.now(timezone.utc))
                 tpfinna = cachedb.findfromcache(finna_image_url)
             #else:
                 # compare timestamp: if too old recheck the hash
@@ -5458,6 +5555,7 @@ for page in pages:
                 exit(1)
 
             # Test if image is same using similarity hashing
+            print("DEBUG: comparing finna " + tpfinna['phashval'] + ", " + tpfinna['dhashval'] + " to commons ")
             if (is_same_image(tpfinna, tpcom) == True):
                 match_found = True
                 need_index = True
@@ -5706,6 +5804,14 @@ for page in pages:
     # when you need a category but there is no collection in data (museum of finnish architecture)
     extracatstoadd += getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, publisherqcode, operatorqcode)
 
+    # cleanup those with underscore before adding categories
+    #categoriescleaned = False
+    #cleanedtmptext = cleanupCategoriesFromCommons(pywikibot, oldcategories, tmptext, extracatstoadd)
+    #if (tmptext != cleanedtmptext):
+        #print("categories cleaned for: " + finnaid)
+        #categoriescleaned = True
+        #tmptext = cleanedtmptext
+
     if (len(extracatstoadd) > 0):
         print("Adding subject categories for: ", finnaid, "categories ", str(extracatstoadd))
         res, tmptext = addCategoriesToCommons(pywikibot, oldcategories, tmptext, extracatstoadd)
@@ -5721,6 +5827,8 @@ for page in pages:
         summary = 'Fixing template fields'
     if (categoriesadded == True):
         summary += 'Adding categories'
+    #if (categoriescleaned == True):
+        #summary += 'Cleaning categories'
 
     if (oldtext != tmptext and len(summary) > 0):
         print("Saving with summary: ", summary)
