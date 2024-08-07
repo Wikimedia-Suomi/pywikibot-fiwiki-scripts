@@ -19,6 +19,9 @@ import os
 import tempfile
 from PIL import Image
 
+import pycurl
+import certifi
+
 import xml.etree.ElementTree as XEltree
 import html
 
@@ -373,7 +376,7 @@ def convert_tiff_to_gif(tiff_image):
 # note: commons at least once has thrown error due to client policy?
 # "Client Error: Forbidden. Please comply with the User-Agent policy"
 # keep an eye out for problems..
-def downloadimage(url):
+def downloadimage_req(url):
     headers={'User-Agent': 'pywikibot'}
     # Image.open(urllib.request.urlopen(url, headers=headers))
 
@@ -401,6 +404,35 @@ def downloadimage(url):
         #return None
     
     return Image.open(bio)
+
+# let's try pycurl for download:
+# it should be faster, better support for protocols
+# and possibly avoid some bugs
+#def downloadimage_curl(url):
+def downloadimage(url):
+    print("DEBUG: downloading image from url:", url)
+    
+    buffer = io.BytesIO()
+    c = pycurl.Curl()
+    c.setopt(c.URL, url)
+    c.setopt(c.WRITEDATA, buffer)
+    c.setopt(c.CAINFO, certifi.where())
+    c.setopt(c.USERAGENT, 'pywikibot')
+    #c.setopt(pycurl.TIMEOUT, 120)
+    c.perform()
+    c.close()
+
+    if (buffer.readable() == False or buffer.closed == True):
+        print("ERROR: can't read image from stream")
+        return None
+    if (buffer.getbuffer().nbytes < 100):
+        print("ERROR: less than 100 bytes in buffer")
+        return None
+
+    print("DEBUG: image downloaded, nbytes:", str(buffer.getbuffer().nbytes))
+    
+    #body = buffer.getvalue()
+    return Image.open(buffer)
 
 # ----- CachedImageData
 class CachedImageData:
@@ -4412,6 +4444,9 @@ def getpagebyname(pywikibot, commonssite, name):
 
 # simply to aid in debuggimg
 def getpagesfixedlist(pywikibot, commonssite):
+
+    fixedname = 'File:Oikeustieteen opiskelija Axel Edvard Berndtson, tuleva toimittaja, kirjailija ja taidekauppias 1877 (HK19321130-488-1877).tif'
+
     pages = list()
     #fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
 
@@ -4456,11 +4491,10 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fp = pywikibot.FilePage(commonssite, 'File:The family of Finnish actress Mirjami Kuosmanen and Finnish film director Erik Blomberg in 1953 (JOKAUAS2 2034-4).tif')
 
 
-    fp = getpagebyname(pywikibot, commonssite, 'File:Allring House 1940 (2500C; JOKAHBL3C A53-1).tif')
-
-
+    #fp = getpagebyname(pywikibot, commonssite, 'File:Allring House 1940 (2500C; JOKAHBL3C A53-1).tif')
     #fp = getpagebyname(pywikibot, commonssite, 'File:Vuorineuvos Edwin Lönnbeck.tif')
 
+    fp = getpagebyname(pywikibot, commonssite, fixedname)
     pages.append(fp)
     return pages
 
@@ -4905,20 +4939,9 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Th. Nyblin", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Atelier Central", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Oscaria Sarén", 0)
-
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Swedish Theatre Helsinki Archive", 0)
-
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Karl Emil Ståhlberg", 0)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Richard Faltin (senior)", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Edith Sohlström", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Greta Dahlström", 0)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Armas Launis", 0)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Helsinki by year", 1)
 
 pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 100)
 
@@ -4926,13 +4949,6 @@ pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by Fi
 #pages = getpagesrecurse(pywikibot, commonssite, "Collections of the National Museum of Finland", 0)
 
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Aino Ackté", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Arvid Järnefelt", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Armas Järnefelt", 0)
-
-#pages = getcatpages(pywikibot, commonssite, "Category:Files uploaded by FinnaUploadBot")
-
-#pages = getcatpages(pywikibot, commonssite, "Katajanokanlaituri")
 
 cachedb = CachedImageData() 
 cachedb.opencachedb()
