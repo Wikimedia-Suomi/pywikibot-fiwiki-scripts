@@ -2729,13 +2729,15 @@ def getFinnaAccessionIdentifier(finnarecord):
 def getTitleFromFinna(finnarecord, lang='fi'):
     records = finnarecord['records'][0]
     
-    f_title = ""
-    if "title" in records:
-        #print("DBEUG: found title in finna record: ", records['title'])
+    if "title" not in records:
+        return ""
         
-        # there is a limit to how much commons caption allows
-        if (len(records['title']) < 250):
-            f_title = records['title']
+    #print("DBEUG: found title in finna record: ", records['title'])
+    
+    f_title = ""
+    # there is a limit to how much commons caption allows
+    if (len(records['title']) < 250):
+        f_title = records['title']
 
     #if "shortTitle" in records:
         #print("DBEUG: found shortTitle in finna record: ", records['shortTitle'])
@@ -2748,6 +2750,22 @@ def getTitleFromFinna(finnarecord, lang='fi'):
 
     print("DBEUG: found title in finna record: ", f_title)
     return f_title
+
+def getSummariesFromFinna(finnarecord, lang='fi'):
+    records = finnarecord['records'][0]
+    
+    if "summary" not in records:
+        return ""
+        
+    # note: there may be multiple entries..
+    f_summary = records['summary']
+
+    summaries = ""
+    for summ in f_summary:
+        summaries += "{{" + lang + "|" + summ + "}}"
+
+    print("DBEUG: found summaries in finna record: ", summaries)
+    return summaries
 
 # check if we have normal photographic image
 # (if not artwork, drawing or something else)
@@ -3480,6 +3498,13 @@ class CommonsTemplate:
                 return template.get("museum")
         return None
 
+    def getDescriptionFromCommonsTemplate(self, template):
+        if template.has("Description"):
+            return template.get("Description")
+        if template.has("description"):
+            return template.get("description")
+        return None
+
     def getDepictedPeopleCommonsTemplate(self, template):
         if template.has("depicted people"):
             return template.get("depicted people")
@@ -3679,6 +3704,37 @@ class CommonsTemplate:
                 par.value = places + "\n"
                 self.changed = True
                 return True
+            # if it is not empty, don't do anything
+            # could append but might add duplicates by mistake
+        return False
+
+    # use finna summaries as description in commons
+    def setDescriptionSummary(self, template, newsummary):
+        if (len(newsummary) == 0):
+            return False
+        
+        par = self.getDescriptionFromCommonsTemplate(template)
+        if (par == None):
+            template.add("description", newsummary)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = newsummary + "\n"
+                self.changed = True
+                return True
+            
+            # if there is only one "line" concatenated into the description,
+            # try to replace with full summary: this was bug in some cases
+            #elif (len(newsummary) > par.value):
+                # check old one in case of effoa and that we have better (longer) description to add
+                # old one: {{fi|fyysinen kuvaus: vaaka}}
+                # {{fi|fyysinen kuvaus: pysty}}
+                #if (par.value == "{{fi|fyysinen kuvaus: vaaka}}" or par.value == "{{fi|fyysinen kuvaus: pysty}}"):
+                    #par.value = newsummary + "\n"
+                    #self.changed = True
+                    #return True
+            
             # if it is not empty, don't do anything
             # could append but might add duplicates by mistake
         return False
@@ -4445,7 +4501,8 @@ def getpagebyname(pywikibot, commonssite, name):
 # simply to aid in debuggimg
 def getpagesfixedlist(pywikibot, commonssite):
 
-    fixedname = 'File:Oikeustieteen opiskelija Axel Edvard Berndtson, tuleva toimittaja, kirjailija ja taidekauppias 1877 (HK19321130-488-1877).tif'
+    #fixedname = 'File:Oikeustieteen opiskelija Axel Edvard Berndtson, tuleva toimittaja, kirjailija ja taidekauppias 1877 (HK19321130-488-1877).tif'
+    fixedname = "File:C Grünberg 1910 (HK19321130-1413-1910).tif"
 
     pages = list()
     #fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
@@ -4943,10 +5000,13 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Karl Emil Ståhlberg", 0)
 
 
-pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 100)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 100)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Musical instruments of Finland", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "2020 in Helsinki", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Collections of the National Museum of Finland", 0)
+
+
+pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Daniel Nyblin", 1)
 
 
 
@@ -5005,7 +5065,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            continue
+            #continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -5747,6 +5807,8 @@ for page in pages:
 
     placeslist = getFinnaPlaces(finna_record)
     actorslist = getFinnaActors(finna_record)
+    
+    finnasummaries = getSummariesFromFinna(finna_record)
 
     tmptext = oldtext
     oldcategories = listExistingCommonsCategories(oldtext)
@@ -5788,7 +5850,9 @@ for page in pages:
 
                 if (ct.addOrSetDepictedPlaces(template, placeslist) == True):
                     print("Added depicted places for: " + page.title())
-                    
+
+                if (ct.setDescriptionSummary(template, finnasummaries) == True):
+                    print("Added description summaries for: " + page.title())
 
         if (ct.isChanged() == True):
             tmptext = str(ct.wikicode)
@@ -5837,20 +5901,20 @@ for page in pages:
         else:
             print("No subject categories added for: " + finnaid)
 
-    summary = ''
+    commonseditsummary = ''
     if (ct.isChanged() == True):
         print("Changed wikitext for: " + page.title())
-        summary = 'Fixing template fields'
+        commonseditsummary = 'Fixing template fields'
     if (categoriesadded == True):
-        summary += 'Adding categories'
+        commonseditsummary += 'Adding categories'
     #if (categoriescleaned == True):
-        #summary += 'Cleaning categories'
+        #commonseditsummary += 'Cleaning categories'
 
-    if (oldtext != tmptext and len(summary) > 0):
-        print("Saving with summary: ", summary)
-        pywikibot.info('Edit summary: {}'.format(summary))
+    if (oldtext != tmptext and len(commonseditsummary) > 0):
+        print("Saving with summary: ", commonseditsummary)
+        pywikibot.info('Edit summary: {}'.format(commonseditsummary))
         page.text = tmptext
-        page.save(summary)
+        page.save(commonseditsummary)
 
 
     # cache that we have recently processed this page successfully:
