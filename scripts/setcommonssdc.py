@@ -3723,17 +3723,21 @@ class CommonsTemplate:
                 par.value = newsummary + "\n"
                 self.changed = True
                 return True
-            
-            # if there is only one "line" concatenated into the description,
-            # try to replace with full summary: this was bug in some cases
-            #elif (len(newsummary) > par.value):
-                # check old one in case of effoa and that we have better (longer) description to add
-                # old one: {{fi|fyysinen kuvaus: vaaka}}
-                # {{fi|fyysinen kuvaus: pysty}}
-                #if (par.value == "{{fi|fyysinen kuvaus: vaaka}}" or par.value == "{{fi|fyysinen kuvaus: pysty}}"):
-                    #par.value = newsummary + "\n"
-                    #self.changed = True
-                    #return True
+            #else:
+                # if there is only one "line" concatenated into the description,
+                # try to replace with full summary: this was bug in some cases
+                #strparval = str(par.value)
+                #if (strparval.endswith("\n")):
+                    #strparval = strparval[:len(strparval)-1]
+                
+                #if (len(newsummary) > len(strparval)):
+                    # check old one in case of effoa and that we have better (longer) description to add
+                    # old one: {{fi|fyysinen kuvaus: vaaka}}
+                    # {{fi|fyysinen kuvaus: pysty}}
+                    #if (strparval == "{{fi|fyysinen kuvaus: vaaka}}" or strparval == "{{fi|fyysinen kuvaus: pysty}}"):
+                        #par.value = newsummary + "\n"
+                        #self.changed = True
+                        #return True
             
             # if it is not empty, don't do anything
             # could append but might add duplicates by mistake
@@ -4285,22 +4289,34 @@ def getcategoriesforauthors(pywikibot, photographers, existingcategories):
             print("no category for author ", author)
     return extracatstoadd
 
+def should_skip_institution_category(instqcode, collectionqcodes):
+    if (instqcode == "Q1418136" and "Q123313922" in collectionqcodes):
+        # national museum of finland and antellin kokoelmat -> 
+        # only add per collection category
+        return True
+    return False
+
 # when you need a category but there is no collection in data (museum of finnish architecture)
 #extracatstoadd = getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, finna_record)
-def getcategoriesforinstitutions(pywikibot, institutionqtocategory, pubqcode, opqcode):
+def getcategoriesforinstitutions(pywikibot, collectionqcodes, institutionqtocategory, pubqcode, opqcode):
     extracatstoadd = list()
+
+    # note: if "antellin kokoelmat" (Q123313922) don't add to "collection from national museum of finland"
+    # since that is a subcategory
 
     #for pub in pubqcode:
     if pubqcode in institutionqtocategory: # skip unknown tags
-        cattext = institutionqtocategory[pubqcode]
-        if cattext not in extracatstoadd: # avoid duplicates
-            extracatstoadd.append(cattext)
+        if (should_skip_institution_category(pubqcode, collectionqcodes) == False):
+            cattext = institutionqtocategory[pubqcode]
+            if cattext not in extracatstoadd: # avoid duplicates
+                extracatstoadd.append(cattext)
 
     #for op in opqcode:
     if opqcode in institutionqtocategory: # skip unknown tags
-        cattext = institutionqtocategory[opqcode]
-        if cattext not in extracatstoadd: # avoid duplicates
-            extracatstoadd.append(cattext)
+        if (should_skip_institution_category(opqcode, collectionqcodes) == False):
+            cattext = institutionqtocategory[opqcode]
+            if cattext not in extracatstoadd: # avoid duplicates
+                extracatstoadd.append(cattext)
 
     return extracatstoadd
 
@@ -4502,7 +4518,10 @@ def getpagebyname(pywikibot, commonssite, name):
 def getpagesfixedlist(pywikibot, commonssite):
 
     #fixedname = 'File:Oikeustieteen opiskelija Axel Edvard Berndtson, tuleva toimittaja, kirjailija ja taidekauppias 1877 (HK19321130-488-1877).tif'
-    fixedname = "File:C Grünberg 1910 (HK19321130-1413-1910).tif"
+    #fixedname = "File:C Grünberg 1910 (HK19321130-1413-1910).tif"
+    
+    #fixedname = 'File:M s Inari (SMK200627-1260).tif'
+    fixedname = 'File:Coin of Eric XIV of Sweden c 1565 (reverse).jpg'
 
     pages = list()
     #fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
@@ -4863,6 +4882,8 @@ d_collectionqtocategory["Q122414127"] = "Ethnographic Collection of The Finnish 
 d_collectionqtocategory["Q123508795"] = "Archeological Picture Collection" # Arkeologian kuvakokoelma
 #d_collectionqtocategory["Q123508795"] = "Arkeologian kuvakokoelma" # 
 
+d_collectionqtocategory["Q123313922"] = "Files from the Antellin kokoelma" # Antellin kokoelma
+
 
 # note! only add this if not already in one of the subcategories below this one
 # -> TODO: check the hierarchy of categories
@@ -5002,11 +5023,16 @@ commonssite.login()
 
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 100)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "2020 in Helsinki", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "2024 in Helsinki", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Collections of the National Museum of Finland", 0)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Historical Picture Collection of The Finnish Heritage Agency", 0)
 
-pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Daniel Nyblin", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Daniel Nyblin", 1)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Effoa", 0)
+
+pages = getcatpages(pywikibot, commonssite, "Category:Files uploaded by FinnaUploadBot", False)
 
 
 
@@ -5881,8 +5907,11 @@ for page in pages:
     # categories for well-known non-presenter authors
     extracatstoadd += getcategoriesforauthors(pywikibot, photographers, oldcategories)
 
+    # note: if "antellin kokoelmat" (Q123313922) don't add to "collection from national museum of finland"
+    # since that is a subcategory
+
     # when you need a category but there is no collection in data (museum of finnish architecture)
-    extracatstoadd += getcategoriesforinstitutions(pywikibot, d_institutionqtocategory, publisherqcode, operatorqcode)
+    extracatstoadd += getcategoriesforinstitutions(pywikibot, collectionqcodes, d_institutionqtocategory, publisherqcode, operatorqcode)
 
     # cleanup those with underscore before adding categories
     #categoriescleaned = False
