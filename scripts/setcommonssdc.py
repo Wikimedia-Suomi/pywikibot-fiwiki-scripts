@@ -431,8 +431,26 @@ def downloadimage(url):
 
     print("DEBUG: image downloaded, nbytes:", str(buffer.getbuffer().nbytes))
     
+    # pillow might not be able to open the file:
+    # just give a buffer and call some helper to maybe convert image
     #body = buffer.getvalue()
-    return Image.open(buffer)
+    return buffer
+
+def openimagebuffer(buffer):
+    # pillow might not be able to handle the image
+    # so detect that, maybe call a conversion helper
+    # until then, just catch exception and skip image
+    
+    if (buffer == None):
+        print("not valid buffer")
+        return None
+
+    try:
+        return Image.open(buffer)
+    except:
+        print("ERROR: pillow failed to open image from buffer")
+        return None
+    
 
 # ----- CachedImageData
 class CachedImageData:
@@ -2986,9 +3004,12 @@ def reuploadImage(finnaid, file_info, imagesExtended, need_index, file_page, fin
     hires = imagesExtended['highResolution']['original'][0]
     
     commons_image_url = file_page.get_file_url()
-    commons_image = downloadimage(commons_image_url)
-    if (commons_image == None):
+    commons_buffer = downloadimage(commons_image_url)
+    if (commons_buffer == None):
         print("WARN: Failed to download commons-image: " + commons_image_url )
+        return False
+    commons_image = openimagebuffer(commons_buffer)
+    if (commons_image == None):
         return False
 
     # Select which file to upload.
@@ -3002,30 +3023,33 @@ def reuploadImage(finnaid, file_info, imagesExtended, need_index, file_page, fin
         print("converting image from tiff to jpeg") # log it
         if (need_index == False):
             finna_image_url = hires['url']
-        local_image = downloadimage(finna_image_url)
-        if (local_image == None):
+        local_image_buffer = downloadimage(finna_image_url)
+        if (local_image_buffer == None):
             print("WARN: Failed to download finna-image: " + finna_image_url )
             return False
+        local_image = openimagebuffer(local_image_buffer)
         image_file_name = convert_tiff_to_jpg(local_image)
         local_file=True    
     elif hires["format"] == "tif" and file_info.mime == 'image/png':
         print("converting image from tiff to png") # log it
         if (need_index == False):
             finna_image_url = hires['url']
-        local_image = downloadimage(finna_image_url)
-        if (local_image == None):
+        local_image_buffer = downloadimage(finna_image_url)
+        if (local_image_buffer == None):
             print("WARN: Failed to download finna-image: " + finna_image_url )
             return False
+        local_image = openimagebuffer(local_image_buffer)
         image_file_name = convert_tiff_to_png(local_image)
         local_file=True    
     #elif hires["format"] == "tif" and file_info.mime == 'image/gif':
         #print("converting image from tiff to gif") # log it
         #if (need_index == False):
             #finna_image_url = hires['url']
-        #local_image = downloadimage(finna_image_url)
-        #if (local_image == None):
+        #local_image_buffer = downloadimage(finna_image_url)
+        #if (local_image_buffer == None):
             #print("WARN: Failed to download finna-image: " + finna_image_url )
             #continue
+        #local_image = openimagebuffer(local_image_buffer)
         #image_file_name = convert_tiff_to_gif(local_image)
         #local_file=True    
     elif hires["format"] == "jpg" and file_info.mime == 'image/jpeg':
@@ -3048,10 +3072,11 @@ def reuploadImage(finnaid, file_info, imagesExtended, need_index, file_page, fin
         # get full image before trying to upload:
         # code above might have switched to another
         # from multiple different images
-        local_image = downloadimage(finna_image_url)
-        if (local_image == None):
+        local_image_buffer = downloadimage(finna_image_url)
+        if (local_image_buffer == None):
             print("WARN: Failed to download finna-image: " + finna_image_url )
             return False
+        local_image = openimagebuffer(local_image_buffer)
 
         # if image is identical by sha-hash -> commons won't allow again
         if (isidentical(local_image, commons_image) == True):
@@ -5021,18 +5046,12 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Karl Emil Ståhlberg", 0)
 
 
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 100)
+pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 10)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "2024 in Helsinki", 1)
+
 #pages = getpagesrecurse(pywikibot, commonssite, "Collections of the National Museum of Finland", 0)
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Historical Picture Collection of The Finnish Heritage Agency", 0)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Daniel Nyblin", 1)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Effoa", 0)
-
-pages = getcatpages(pywikibot, commonssite, "Category:Files uploaded by FinnaUploadBot", False)
+#pages = getcatpages(pywikibot, commonssite, "Category:Files uploaded by FinnaUploadBot", False)
 
 
 
@@ -5091,7 +5110,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            #continue
+            continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -5353,10 +5372,14 @@ for page in pages:
         if (tpcom == None):
             # get image from commons for comparison:
             # try to use same size
-            commons_image = downloadimage(commons_image_url)
-            if (commons_image == None):
+            commons_buffer = downloadimage(commons_image_url)
+            if (commons_buffer == None):
                 print("WARN: Failed to download commons-image: " + page.title() )
                 continue
+            commons_image = openimagebuffer(commons_buffer)
+            if (commons_image == None):
+                continue
+
             print("DEBUG: commons image bands", commons_image.getbands())
             
             commonshash = getimagehash(commons_image)
@@ -5460,9 +5483,12 @@ for page in pages:
     if (tpcom == None):
         # get image from commons for comparison:
         # try to use same size
-        commons_image = downloadimage(commons_image_url)
-        if (commons_image == None):
+        commons_image_buffer = downloadimage(commons_image_url)
+        if (commons_image_buffer == None):
             print("WARN: Failed to download commons-image: " + page.title() )
+            continue
+        commons_image = openimagebuffer(commons_image_buffer)
+        if (commons_image == None):
             continue
         print("DEBUG: commons image bands", commons_image.getbands())
         
@@ -5497,9 +5523,12 @@ for page in pages:
         # only difference is that other is marked zulu-time and other is marked +0.
         if (tpcom['timestamp'].replace(tzinfo=timezone.utc) < filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc)):
             print("Updating cached data for Commons-image: " + page.title() )
-            commons_image = downloadimage(commons_image_url)
-            if (commons_image == None):
+            commons_image_buffer = downloadimage(commons_image_url)
+            if (commons_image_buffer == None):
                 print("WARN: Failed to download commons-image: " + page.title() )
+                continue
+            commons_image = openimagebuffer(commons_image_buffer)
+            if (commons_image == None):
                 continue
             print("DEBUG: commons image bands", commons_image.getbands())
             
@@ -5591,10 +5620,11 @@ for page in pages:
         if (tpfinna == None):
             # get image from finnafor comparison:
             # try to use same size
-            finna_image = downloadimage(finna_image_url)
-            if (finna_image == None):
+            finna_image_buffer = downloadimage(finna_image_url)
+            if (finna_image_buffer == None):
                 print("WARN: Failed to download finna-image: " + page.title() )
                 continue
+            finna_image = openimagebuffer(finna_image_buffer)
             print("DEBUG: finna image bands", finna_image.getbands(), finna_image_url)
             
             finnahash = getimagehash(finna_image)
@@ -5633,10 +5663,11 @@ for page in pages:
             if (tpfinna == None):
                 # get image from finnafor comparison:
                 # try to use same size
-                finna_image = downloadimage(finna_image_url)
-                if (finna_image == None):
+                finna_image_buffer = downloadimage(finna_image_url)
+                if (finna_image_buffer == None):
                     print("WARN: Failed to download finna-image: " + page.title() )
                     continue
+                finna_image = openimagebuffer(finna_image_buffer)
                 print("DEBUG: finna image bands", finna_image.getbands(), finna_image_url)
                     
                 finnahash = getimagehash(finna_image)
