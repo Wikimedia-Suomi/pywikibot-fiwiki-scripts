@@ -69,6 +69,9 @@ def convertColTemplates(oldtext):
     if '{{Palstoitus alkaa|leveä}}' in oldtext:
         oldtext = oldtext.replace("{{Palstoitus alkaa|leveä}}", "{{Monta palstaa|100%}}")
         startreplaced = True
+    if '{{palsta alku|leveä}}' in oldtext:
+        oldtext = oldtext.replace("{{palsta alku|leveä}}", "{{Monta palstaa|100%}}")
+        startreplaced = True
 
 
     if '{{palstanvaihto}}' in oldtext:
@@ -80,6 +83,11 @@ def convertColTemplates(oldtext):
         oldtext = oldtext.replace("{{palstoitus loppuu}}", "{{Monta palstaa-loppu}}")
     if '{{Palstoitus loppuu}}' in oldtext:
         oldtext = oldtext.replace("{{Palstoitus loppuu}}", "{{Monta palstaa-loppu}}")
+
+    if '{{Palstoitus päättyy}}' in oldtext:
+        oldtext = oldtext.replace("{{Palstoitus päättyy}}", "{{Monta palstaa-loppu}}")
+    if '{{palstoitus päättyy}}' in oldtext:
+        oldtext = oldtext.replace("{{palstoitus päättyy}}", "{{Monta palstaa-loppu}}")
     
     
     if '{{palsta alku}}' in oldtext:
@@ -152,6 +160,10 @@ def convertColTemplates(oldtext):
 
     if '{{Monta palstaa-katko}}\n{{Monta palstaa-loppu}}' in oldtext:
         oldtext = oldtext.replace("{{Monta palstaa-katko}}\n{{Monta palstaa-loppu}}", "{{Monta palstaa-loppu}}")
+
+    # fix duplicates
+    if '{{Monta palstaa-katko}}\n{{Monta palstaa-katko}}' in oldtext:
+        oldtext = oldtext.replace("{{Monta palstaa-katko}}\n{{Monta palstaa-katko}}", "{{Monta palstaa-katko}}")
 
     
     # if there is a combination of two rows, replace with just one
@@ -277,7 +289,7 @@ def getpagesfrompetscan(pywikibot, site, psid, limit=6000):
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
-pages = getpagesfrompetscan(pywikibot, site,  29465786)
+pages = getpagesfrompetscan(pywikibot, site,  29466415)
 
 #pages = getpagesrecurse(pywikibot, site, "Koripallon maailmanmestaruuskilpailut", 2)
 #pages = getpagesrecurse(pywikibot, site, "Jääpallon Ruotsin 1. divisioonan kaudet 1931-1981", 2)
