@@ -71,20 +71,88 @@ def convertColTemplates(oldtext):
         startreplaced = True
 
 
-    if '{{palstoitus loppuu}}' in oldtext:
-        oldtext = oldtext.replace("{{palstoitus loppuu}}", "{{Monta palstaa-loppu}}")
-    if '{{Palstoitus loppuu}}' in oldtext:
-        oldtext = oldtext.replace("{{Palstoitus loppuu}}", "{{Monta palstaa-loppu}}")
-
     if '{{palstanvaihto}}' in oldtext:
         oldtext = oldtext.replace("{{palstanvaihto}}", "{{Monta palstaa-katko}}")
     if '{{Palstanvaihto}}' in oldtext:
         oldtext = oldtext.replace("{{Palstanvaihto}}", "{{Monta palstaa-katko}}")
-    
 
+    if '{{palstoitus loppuu}}' in oldtext:
+        oldtext = oldtext.replace("{{palstoitus loppuu}}", "{{Monta palstaa-loppu}}")
+    if '{{Palstoitus loppuu}}' in oldtext:
+        oldtext = oldtext.replace("{{Palstoitus loppuu}}", "{{Monta palstaa-loppu}}")
+    
+    
+    if '{{palsta alku}}' in oldtext:
+        oldtext = oldtext.replace("{{palsta alku}}", "{{Monta palstaa|75%}}")
+        startreplaced = True
+    if '{{Palsta alku}}' in oldtext:
+        oldtext = oldtext.replace("{{Palsta alku}}", "{{Monta palstaa|75%}}")
+        startreplaced = True
+
+    if '{{palsta loppu}}' in oldtext:
+        oldtext = oldtext.replace("{{palsta loppu}}", "{{Monta palstaa-loppu}}")
+    if '{{Palsta loppu}}' in oldtext:
+        oldtext = oldtext.replace("{{Palsta loppu}}", "{{Monta palstaa-loppu}}")
+
+    if '{{Multicol}}' in oldtext:
+        oldtext = oldtext.replace("{{Multicol}}", "{{Monta palstaa}}")
+        startreplaced = True
+    if '{{multicol}}' in oldtext:
+        oldtext = oldtext.replace("{{multicol}}", "{{Monta palstaa}}")
+        startreplaced = True
+    if '{{multicol|' in oldtext:
+        # reduce pointless variations
+        oldtext = oldtext.replace("{{multicol|", "{{Monta palstaa|")
+        startreplaced = True
+    if '{{Multicol|' in oldtext:
+        # reduce pointless variations
+        oldtext = oldtext.replace("{{Multicol|", "{{Monta palstaa|")
+        startreplaced = True
+        
+    if '{{Multicol|80%}}' in oldtext:
+        # reduce pointless variations
+        oldtext = oldtext.replace("{{Multicol|80%}}", "{{Monta palstaa|75%}}")
+        startreplaced = True
+    if '{{Multicol|90%}}' in oldtext:
+        # reduce pointless variations
+        oldtext = oldtext.replace("{{Multicol|90%}}", "{{Monta palstaa|75%}}")
+        startreplaced = True
+    if '{{multicol|100%}}' in oldtext:
+        oldtext = oldtext.replace("{{multicol|100%}}", "{{Monta palstaa|100%}}")
+        startreplaced = True
+    if '{{Multicol|100%}}' in oldtext:
+        oldtext = oldtext.replace("{{Multicol|100%}}", "{{Monta palstaa|100%}}")
+        startreplaced = True
+        
+    if '{{Multicol-break}}' in oldtext:
+        oldtext = oldtext.replace("{{Multicol-break}}", "{{Monta palstaa-katko}}")
+    if '{{multicol-break}}' in oldtext:
+        oldtext = oldtext.replace("{{multicol-break}}", "{{Monta palstaa-katko}}")
+    if '{{Multicol-end}}' in oldtext:
+        oldtext = oldtext.replace("{{Multicol-end}}", "{{Monta palstaa-loppu}}")
+    if '{{multicol-end}}' in oldtext:
+        oldtext = oldtext.replace("{{multicol-end}}", "{{Monta palstaa-loppu}}")
+
+    if '{{Multicol-break|' in oldtext:
+        oldtext = oldtext.replace("{{Multicol-break|", "{{Monta palstaa-katko|")
+    if '{{multicol-break|' in oldtext:
+        oldtext = oldtext.replace("{{multicol-break|", "{{Monta palstaa-katko|")
+    if '{{Multicol-end|' in oldtext:
+        oldtext = oldtext.replace("{{Multicol-end|", "{{Monta palstaa-loppu|")
+    if '{{multicol-end|' in oldtext:
+        oldtext = oldtext.replace("{{multicol-end|", "{{Monta palstaa-loppu|")
+
+
+    if '{{Monta palstaa}}\n{{Monta palstaa-katko}}' in oldtext:
+        oldtext = oldtext.replace("{{Monta palstaa}}\n{{Monta palstaa-katko}}", "{{Monta palstaa}}")
+        startreplaced = True
     if '{{Monta palstaa|75%}}\n{{Monta palstaa-katko}}' in oldtext:
         oldtext = oldtext.replace("{{Monta palstaa|75%}}\n{{Monta palstaa-katko}}", "{{Monta palstaa|75%}}")
         startreplaced = True
+
+    if '{{Monta palstaa-katko}}\n{{Monta palstaa-loppu}}' in oldtext:
+        oldtext = oldtext.replace("{{Monta palstaa-katko}}\n{{Monta palstaa-loppu}}", "{{Monta palstaa-loppu}}")
+
     
     # if there is a combination of two rows, replace with just one
     if '{{palsta-a}}\n{{palsta-2}}' in oldtext:
@@ -204,13 +272,16 @@ def getpagesfrompetscan(pywikibot, site, psid, limit=6000):
 
     return pages
 
+## main()
 
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
-pages = getpagesfrompetscan(pywikibot, site,  29463732)
+pages = getpagesfrompetscan(pywikibot, site,  29465786)
 
 #pages = getpagesrecurse(pywikibot, site, "Koripallon maailmanmestaruuskilpailut", 2)
+#pages = getpagesrecurse(pywikibot, site, "Jääpallon Ruotsin 1. divisioonan kaudet 1931-1981", 2)
+
 
 
 rivinro = 1
