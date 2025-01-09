@@ -150,8 +150,6 @@ def get_nearby_wikidata_items(lat: float, lon: float, radius=1.0, lang='fi') -> 
       ...
     ]
     """
-    # Build the SPARQL query. 
-    # Remember WKT wants "Point(lon lat)"
     sparql_query = f"""
 SELECT ?place ?placeLabel ?distance
 WHERE {{
@@ -187,7 +185,6 @@ LIMIT 10
         dist_val = row.get("distance", {}).get("value", "")
         qid = item_uri.split("/")[-1] if "entity/" in item_uri else None
         
-        # Convert distance to float
         try:
             dist_float = float(dist_val)
         except ValueError:
@@ -216,30 +213,32 @@ def fuzzy_match_label(target_label: str, candidates: List[Dict[str, str]], thres
             best_score = sim
             best_match = c
 
-    # Only return it if above threshold
     if best_score >= threshold:
         return best_match
     else:
         return {}
 
 # ------------------------------------------------------
-# FUNCTION TO CREATE A NEW WIKIDATA ITEM (WITH CONFIRMATION)
+# FUNCTION TO CREATE A NEW WIKIDATA ITEM (WITH CONFIRMATION + PREVIEW)
 # ------------------------------------------------------
 
 def create_new_wikidata_item(building: Dict) -> str:
     """
-    Creates a new Wikidata item for the given building dictionary,
-    returns the new QID. 
+    Creates a new Wikidata item for the given building dictionary.
+    Prints all info and asks the user for confirmation.
     NOTE: Must be logged in and have write permissions to Wikidata.
     """
-
+    # Print building info for review
+    print("\nNo Wikidata item found for this building. Here are the details:\n")
+    for key, value in building.items():
+        print(f"  {key}: {value}")
+    
     # Ask user for confirmation before proceeding
-    confirmation = input(f"\nNo Wikidata item found for '{building['label']}'. Create a new item? [y/N]: ")
+    confirmation = input("\nCreate a new Wikidata item for this building? [y/N]: ")
     if confirmation.strip().lower() != 'y':
-        print("Skipping creation of a new Wikidata item.")
+        print("Skipping creation of a new Wikidata item.\n")
         return None
     
-    # Proceed with creation if confirmed
     site = pywikibot.Site('wikidata', 'wikidata')
     repo = site.data_repository()
     
@@ -250,7 +249,6 @@ def create_new_wikidata_item(building: Dict) -> str:
     labels = {"fi": building['label']}
     descriptions = {"fi": "Rakennus Suomenlinnassa"}
     
-    # We use editEntity() to set initial labels and descriptions.
     new_item.editEntity({
         'labels': labels,
         'descriptions': descriptions
@@ -259,7 +257,7 @@ def create_new_wikidata_item(building: Dict) -> str:
     new_qid = new_item.title()
     print(f"Created new Wikidata item: {new_qid}")
     
-    # Example: Add coordinate location (P625), if lat/lon are available
+    # Add coordinate location (P625), if lat/lon are available
     lat_str = building.get('lat')
     lon_str = building.get('lon')
     if lat_str and lon_str:
@@ -270,7 +268,7 @@ def create_new_wikidata_item(building: Dict) -> str:
             coord_target = pywikibot.Coordinate(
                 lat_f, 
                 lon_f, 
-                precision=0.0001,  # you can adjust precision
+                precision=0.0001,
                 site=repo
             )
             coord_claim.setTarget(coord_target)
@@ -279,9 +277,9 @@ def create_new_wikidata_item(building: Dict) -> str:
         except ValueError:
             pass
     
-    # Example: Add an instance of "architectural structure" (Q811979)
+    # Add an instance of "architectural structure" (Q811979)
     instance_claim = pywikibot.Claim(repo, 'P31')  # P31 = instance of
-    instance_target = pywikibot.ItemPage(repo, 'Q811979')  # Q811979 = architectural structure
+    instance_target = pywikibot.ItemPage(repo, 'Q811979')
     instance_claim.setTarget(instance_target)
     new_item.addClaim(instance_claim)
     print(f"  - Added P31 (architectural structure) to {new_qid}")
@@ -367,14 +365,12 @@ def parse_suomenlinna_table() -> List[Dict]:
                             lon_f = None
                         
                         if lat_f is not None and lon_f is not None:
-                            # Fetch the 10 nearest items within 1km
                             candidates = get_nearby_wikidata_items(
                                 lat=lat_f,
                                 lon=lon_f,
                                 radius=1.0,
                                 lang='fi'
                             )
-                            # Fuzzy match
                             best_match = fuzzy_match_label(building['label'], candidates, threshold=0.8)
                             
                             if best_match:
@@ -389,8 +385,8 @@ def parse_suomenlinna_table() -> List[Dict]:
                         building['fuzzy_wikidata_qid'] = None
                     
                     # ------------------------------------------------
-                    # If there's no existing item in column #8 (am_wikidata)
-                    # and no fuzzy match, offer to create a new Wikidata item
+                    # If there's no existing WD item and no fuzzy match,
+                    # offer to create a new Wikidata item
                     # ------------------------------------------------
                     if not building.get('am_wikidata') and not building.get('fuzzy_wikidata_qid'):
                         new_qid = create_new_wikidata_item(building)
