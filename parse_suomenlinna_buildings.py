@@ -1,3 +1,5 @@
+from symbol import pass_stmt
+
 import pywikibot
 import mwparserfromhell
 from typing import List, Dict
@@ -7,7 +9,7 @@ import urllib.parse
 
 from difflib import SequenceMatcher  # standard library fuzzy approach
 
-SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"n
+SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 
 def clean_text(text: str) -> str:
     """Remove HTML tags, excessive spaces, etc."""
@@ -52,8 +54,7 @@ def parse_country_cell(cell_contents: str) -> (str, str):
     wikicode = mwparserfromhell.parse(cell_contents)
     links = wikicode.filter_wikilinks()
 
-    # article = None
-    article = Suomi
+    article = None
     label = None
 
     if links:
@@ -256,7 +257,39 @@ def create_new_wikidata_item(building: Dict) -> str:
     if confirmation.strip().lower() != 'y':
         print("Skipping creation of a new Wikidata item.\n")
         return None
-    
+
+    # Add island Kuninkaansaari
+
+    saari = "Viapori"
+    saari = (building['identifier'][0])
+    if saari == "A":
+        # instance_target = pywikibot.ItemPage(repo, 'Q5399296')  # Kustaanmiekka (Q5399296)
+        muuttuja276 = 'Q5399296'
+        print('Kustaanmiekka')
+    elif saari == "B":
+        # instance_target = pywikibot.ItemPage(repo, 'Q16928377')  # Susisaari (Q16928377)
+        muuttuja276 = 'Q16928377'
+        print('Susisaari')
+    elif saari == "C":
+        # instance_target = pywikibot.ItemPage(repo, 'Q11865193')  # Iso Mustasaari (Q11865193)
+        muuttuja276 = 'Q11865193'
+        print('Iso Mustasaari')
+    elif saari == "D":
+        # instance_target = pywikibot.ItemPage(repo, 'Q11888097')  # Pikku-Musta (Q11888097)
+        muuttuja276 = 'Q11888097'
+        print('Pikku Musta')
+    elif saari == "E":
+        # instance_target = pywikibot.ItemPage(repo, 'Q11880027')  # Länsi-Musta (Q11880027)
+        muuttuja276 = 'Q11880027'
+        print('Länsi Musta')
+
+    else:
+        print('tuntematon arvo')
+        exit(1)
+
+    # if 1:
+    #    print (building['identifier'])
+    #    exit(1)
     site = pywikibot.Site('wikidata', 'wikidata')
     repo = site.data_repository()
     
@@ -315,6 +348,13 @@ def create_new_wikidata_item(building: Dict) -> str:
     instance_claim.setTarget(instance_target)
     new_item.addClaim(instance_claim)
     print(f"  - Added P1757 (Helsinki) to {new_qid}")
+
+    # Add island
+    instance_claim = pywikibot.Claim(repo, 'P276')  # sijainti (P276)
+    instance_target = pywikibot.ItemPage(repo, muuttuja276)  # Suomenlinnan saari
+    instance_claim.setTarget(instance_target)
+    new_item.addClaim(instance_claim)
+    print(f"  - Added P276 (location) to {new_qid}")
 
     return new_qid
 
