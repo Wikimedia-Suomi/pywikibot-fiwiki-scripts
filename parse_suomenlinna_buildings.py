@@ -9,6 +9,8 @@ import urllib.parse
 
 from difflib import SequenceMatcher  # standard library fuzzy approach
 
+from pywikibot import WbMonolingualText
+
 SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 
 def clean_text(text: str) -> str:
@@ -251,7 +253,10 @@ def create_new_wikidata_item(building: Dict) -> str:
     print("\nNo Wikidata item found for this building. Here are the details:\n")
     for key, value in building.items():
         print(f"  {key}: {value}")
-    
+
+    # if not building['am_commons']:
+    #    return
+
     # Ask user for confirmation before proceeding
     confirmation = input("\nCreate a new Wikidata item for this building? [y/N]: ")
     if confirmation.strip().lower() != 'y':
@@ -265,30 +270,50 @@ def create_new_wikidata_item(building: Dict) -> str:
     if saari == "A":
         # instance_target = pywikibot.ItemPage(repo, 'Q5399296')  # Kustaanmiekka (Q5399296)
         muuttuja276 = 'Q5399296'
+        commons_category_value = 'Kustaanmiekka'
         print('Kustaanmiekka')
     elif saari == "B":
         # instance_target = pywikibot.ItemPage(repo, 'Q16928377')  # Susisaari (Q16928377)
         muuttuja276 = 'Q16928377'
+        commons_category_value = 'Susisaari'
         print('Susisaari')
     elif saari == "C":
         # instance_target = pywikibot.ItemPage(repo, 'Q11865193')  # Iso Mustasaari (Q11865193)
         muuttuja276 = 'Q11865193'
+        commons_category_value = 'Iso Mustasaari'
         print('Iso Mustasaari')
     elif saari == "D":
         # instance_target = pywikibot.ItemPage(repo, 'Q11888097')  # Pikku-Musta (Q11888097)
         muuttuja276 = 'Q11888097'
+        commons_category_value = 'Pikku Mustasaari'
         print('Pikku Musta')
     elif saari == "E":
         # instance_target = pywikibot.ItemPage(repo, 'Q11880027')  # Länsi-Musta (Q11880027)
         muuttuja276 = 'Q11880027'
+        commons_category_value = 'Länsi Mustasaari'
         print('Länsi Musta')
 
     else:
         print('tuntematon arvo')
         exit(1)
 
+    if building['am_commons']:
+        commons_category_value = building['am_commons']
+
+    monolingual_text_value = WbMonolingualText(text='Suomenlinna ' + building['identifier'], language='fi')
+
+    rakennusvuosi = ""
+    if building['built']:
+        # etsitään kaikki nelinumeroiset luvut merkkijonosta
+        try:
+            rakennusvuosi = int(building['built'])
+            print('rakennusvuosi on ', rakennusvuosi)
+        except:
+            print('useita vuosilukuja tai tunnistamaton teksti')
+
+
     # if 1:
-    #    print (building['identifier'])
+    #    print (building)
     #    exit(1)
     site = pywikibot.Site('wikidata', 'wikidata')
     repo = site.data_repository()
@@ -355,6 +380,47 @@ def create_new_wikidata_item(building: Dict) -> str:
     instance_claim.setTarget(instance_target)
     new_item.addClaim(instance_claim)
     print(f"  - Added P276 (location) to {new_qid}")
+
+    # Add Wikimedia Commons category (island)  P373
+    # muuttuja276 sisältää kohdesaaren Q-koodin esim. Susisaari (Q16928377)
+    instance_claim = pywikibot.Claim(repo, 'P373')    # Commons-luokka P373
+    #
+    instance_claim.setTarget(commons_category_value)
+    new_item.addClaim(instance_claim)
+    print(f"  - Added P373 (Commons category) to {new_qid}")
+
+    # Add address katuosoite (P6375)
+    instance_claim = pywikibot.Claim(repo, 'P6375')     # katuosoite (P6375)
+    # address = 'Suomenlinna ' + building['identifier'] tietoon tarvitaan myös language = fi
+    address = monolingual_text_value
+    # instance_target = pywikibot.ItemPage(repo, address)     # postiosoite
+    instance_claim.setTarget(address)
+    new_item.addClaim(instance_claim)
+    print(f"  - Added P6375 (Street address) to {new_qid}")
+
+    # add image kuva (P18)
+    if building['image']:
+        instance_claim = pywikibot.Claim(repo, 'P18')  # image kuva (P18)
+        commonssite = pywikibot.Site('commons')
+        imagename = building['image']
+        imagelink = pywikibot.Link(imagename, source=commonssite, default_namespace=6)
+        image = pywikibot.FilePage(imagelink)
+        if image.isRedirectPage():
+            image = pywikibot.FilePage(image.getRedirectTarget())
+        if not image.exists():
+            pywikibot.info(f"{image} doesn't exist so I can't link to it")
+            exit(1)
+        instance_claim.setTarget(image)
+        new_item.addClaim(instance_claim)
+
+    # add rakennusvuosi luomisajankohta (P571) inception
+    if rakennusvuosi:
+        rv = int(rakennusvuosi)
+        instance_claim = pywikibot.Claim(repo, 'P571')  # luomisajankohta (P571) inception
+        instance_target = pywikibot.WbTime(year=rv, precision=9) # vuosiluku
+        instance_claim.setTarget(instance_target)
+        new_item.addClaim(instance_claim)
+        print(f"  - Added P571 (Inception) to {new_qid}")
 
     return new_qid
 
