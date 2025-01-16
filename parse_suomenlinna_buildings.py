@@ -223,11 +223,14 @@ def fuzzy_match_label(target_label: str, candidates: List[Dict[str, str]], thres
         return {}
 
 
-def create_new_wikidata_item(building: Dict) -> str:
+def create_new_wikidata_item(building: Dict, rev_id: int) -> str:
     """
     Creates a new Wikidata item for the given building dictionary.
     Prints all info, asks the user for confirmation, and then
     edits the item with relevant statements.
+
+    :param building: Rakennuksen tiedot dictinä
+    :param rev_id: Wikipedia-sivun nykyinen revisio-ID (käytetään lähde-URL:n rakentamiseen)
     """
     print("\nNo Wikidata item found for this building. Here are the details:\n")
     for key, value in building.items():
@@ -237,6 +240,10 @@ def create_new_wikidata_item(building: Dict) -> str:
         print("Skipping creation of a new Wikidata item.\n")
         return None
 
+    # Pysyvä URL tämänhetkiseen versioon
+    perm_url = f"https://fi.wikipedia.org/w/index.php?title=Luettelo_Suomenlinnan_rakennuksista&oldid={rev_id}"
+
+    # Saaren tunnistus
     saari = (building['identifier'][0]) if building['identifier'] else ""
     if saari == "A":
         muuttuja276 = 'Q5399296'
@@ -262,10 +269,16 @@ def create_new_wikidata_item(building: Dict) -> str:
         print('tuntematon arvo')
         return None
 
+    # Jos AM-solussa on commons-luokka, priorisoidaan se
     if building['am_commons']:
         commons_category_value = building['am_commons']
 
-    monolingual_text_value = WbMonolingualText(text='Suomenlinna ' + building['identifier'], language='fi')
+    # Valmistellaan katuosoite-claim
+    monolingual_text_value = WbMonolingualText(
+        text='Suomenlinna ' + building['identifier'],
+        language='fi'
+    )
+
     rakennusvuosi = ""
     if building['built']:
         try:
@@ -281,98 +294,106 @@ def create_new_wikidata_item(building: Dict) -> str:
     labels = {"fi": building['label']}
     descriptions = {"fi": "Rakennus Suomenlinnassa"}
 
+    # UUSI KOHTA: luodaan osoite aliakseksi (esim. "Suomenlinna A")
+    address_alias = 'Suomenlinna ' + building['identifier']
+    aliases = {"fi": [address_alias]}
+
     new_item.editEntity({
         'labels': labels,
-        'descriptions': descriptions
+        'descriptions': descriptions,
+        'aliases': aliases
     })
 
     new_qid = new_item.title()
     print(f"Created new Wikidata item: {new_qid}")
 
-    # Koordinaatit
+    #
+    # Apufunktio referenssin lisäämiseen
+    #
+    def add_claim_with_reference(claim_property: str, target_value):
+        """
+        Lisää claimin annettuun propertyyn ja lisää kaksi referenssiä:
+           - P143 = Q175482 (tuotu suomenkielisestä Wikipediasta)
+           - Wikimedia-tuonnin URL (P4656)
+        """
+        claim = pywikibot.Claim(repo, claim_property)
+        claim.setTarget(target_value)
+        new_item.addClaim(claim)
+
+        # Rakennetaan referenssit
+        source_claim_P143 = pywikibot.Claim(repo, 'P143')
+        source_claim_P143.setTarget(pywikibot.ItemPage(repo, 'Q175482'))  # suomenkielinen Wikipedia
+
+        source_claim_P4656 = pywikibot.Claim(repo, 'P4656')
+        source_claim_P4656.setTarget(perm_url)
+
+        # Lisätään referenssit claimiin
+        claim.addSources([source_claim_P143, source_claim_P4656])
+        return claim
+
+    #
+    # Koordinaatit (P625)
+    #
     lat_str = building.get('lat')
     lon_str = building.get('lon')
     if lat_str and lon_str:
         try:
             lat_f = float(lat_str.replace(",", "."))
             lon_f = float(lon_str.replace(",", "."))
-            coord_claim = pywikibot.Claim(repo, 'P625')  # coordinate location
             coord_target = pywikibot.Coordinate(
                 lat_f,
                 lon_f,
                 precision=0.0001,
                 site=repo
             )
-            coord_claim.setTarget(coord_target)
-            new_item.addClaim(coord_claim)
+            add_claim_with_reference('P625', coord_target)
             print(f"  - Added P625 (coordinate location) to {new_qid}")
         except ValueError:
             pass
 
-    # instance of
-    instance_claim = pywikibot.Claim(repo, 'P31')
-    instance_target = pywikibot.ItemPage(repo, 'Q811979')  # architectural structure
-    instance_claim.setTarget(instance_target)
-    new_item.addClaim(instance_claim)
+    # instance of (P31)
+    add_claim_with_reference('P31', pywikibot.ItemPage(repo, 'Q811979'))  # architectural structure
     print(f"  - Added P31 (architectural structure) to {new_qid}")
 
-    # country = Finland
-    instance_claim = pywikibot.Claim(repo, 'P17')
-    instance_target = pywikibot.ItemPage(repo, 'Q33')
-    instance_claim.setTarget(instance_target)
-    new_item.addClaim(instance_claim)
+    # country = Finland (P17)
+    add_claim_with_reference('P17', pywikibot.ItemPage(repo, 'Q33'))
     print(f"  - Added P17 (country) to {new_qid}")
 
-    # municipality = Helsinki
-    instance_claim = pywikibot.Claim(repo, 'P131')
-    instance_target = pywikibot.ItemPage(repo, 'Q1757')
-    instance_claim.setTarget(instance_target)
-    new_item.addClaim(instance_claim)
+    # municipality = Helsinki (P131)
+    add_claim_with_reference('P131', pywikibot.ItemPage(repo, 'Q1757'))
     print(f"  - Added P131 (Helsinki) to {new_qid}")
 
-    # location (island)
-    instance_claim = pywikibot.Claim(repo, 'P276')
-    instance_target = pywikibot.ItemPage(repo, muuttuja276)
-    instance_claim.setTarget(instance_target)
-    new_item.addClaim(instance_claim)
+    # location (island) (P276)
+    add_claim_with_reference('P276', pywikibot.ItemPage(repo, muuttuja276))
     print(f"  - Added P276 (location) to {new_qid}")
 
     # Commons-luokka (P373)
-    instance_claim = pywikibot.Claim(repo, 'P373')
-    instance_claim.setTarget(commons_category_value)
-    new_item.addClaim(instance_claim)
+    add_claim_with_reference('P373', commons_category_value)
     print(f"  - Added P373 (Commons category) to {new_qid}")
 
     # katuosoite (P6375)
-    instance_claim = pywikibot.Claim(repo, 'P6375')
-    address = monolingual_text_value
-    instance_claim.setTarget(address)
-    new_item.addClaim(instance_claim)
+    add_claim_with_reference('P6375', monolingual_text_value)
     print(f"  - Added P6375 (Street address) to {new_qid}")
 
     # image (P18)
     if building['image']:
-        instance_claim = pywikibot.Claim(repo, 'P18')
         commonssite = pywikibot.Site('commons')
         imagename = building['image']
         imagelink = pywikibot.Link(imagename, source=commonssite, default_namespace=6)
-        image = pywikibot.FilePage(imagelink)
-        if image.isRedirectPage():
-            image = pywikibot.FilePage(image.getRedirectTarget())
-        if not image.exists():
-            pywikibot.info(f"{image} doesn't exist so I can't link to it")
+        image_page = pywikibot.FilePage(imagelink)
+        if image_page.isRedirectPage():
+            image_page = pywikibot.FilePage(image_page.getRedirectTarget())
+        if not image_page.exists():
+            pywikibot.info(f"{image_page} doesn't exist so I can't link to it")
         else:
-            instance_claim.setTarget(image)
-            new_item.addClaim(instance_claim)
+            add_claim_with_reference('P18', image_page)
             print(f"  - Added P18 (image) to {new_qid}")
 
     # rakennusvuosi (inception, P571)
     if rakennusvuosi:
         rv = int(rakennusvuosi)
-        instance_claim = pywikibot.Claim(repo, 'P571')
-        instance_target = pywikibot.WbTime(year=rv, precision=9)
-        instance_claim.setTarget(instance_target)
-        new_item.addClaim(instance_claim)
+        inception_value = pywikibot.WbTime(year=rv, precision=9)
+        add_claim_with_reference('P571', inception_value)
         print(f"  - Added P571 (Inception) to {new_qid}")
 
     return new_qid
@@ -384,12 +405,13 @@ def parse_suomenlinna_table() -> List[Dict]:
 
     # ### UUTTA: Tallennetaan alkuperäinen teksti diffin näyttämistä varten
     old_text = page.text
+    # ### UUTTA: Otetaan talteen sivun nykyinen revisio-ID
+    rev_id = page.latest_revision_id
 
     wikicode = mwparserfromhell.parse(page.text)
     tables = wikicode.filter_tags(matches=lambda node: node.tag == 'table')
 
     buildings = []
-
     stoppi = 'n'
     for table in tables:
         if stoppi.strip().lower() == 'y':
@@ -401,7 +423,6 @@ def parse_suomenlinna_table() -> List[Dict]:
                 if stoppi.strip().lower() == 'y':
                     break
 
-                # Muussa tapauksessa oletamme data-rivin
                 cells = row.contents.filter_tags(matches=lambda node: node.tag == 'td')
                 cell_list = list(cells)
 
@@ -448,7 +469,7 @@ def parse_suomenlinna_table() -> List[Dict]:
                 building['am_commons'] = am_data.get('am_commons')
                 building['am_wikidata'] = am_data.get('am_wikidata')
 
-                # Fuzzy search, etsitään mahdollisesti lähellä olevia WD-kohteita
+                # Fuzzy search: etsitään mahdollisesti lähellä olevia WD-kohteita
                 lat_str = building['lat']
                 lon_str = building['lon']
                 if lat_str and lon_str:
@@ -479,33 +500,31 @@ def parse_suomenlinna_table() -> List[Dict]:
                 else:
                     building['fuzzy_wikidata_qid'] = None
 
-                # Luodaan uusi WD-kohde, jos sellaista ei ole lainkaan
+                # Luodaan uusi WD-kohde, jos sellaista ei ole
                 if not building.get('am_wikidata') and not building.get('fuzzy_wikidata_qid'):
-                    new_qid = create_new_wikidata_item(building)
+                    new_qid = create_new_wikidata_item(building, rev_id)
                     building['created_wikidata_qid'] = new_qid
                 else:
                     building['created_wikidata_qid'] = None
 
-                # Jos loimme uuden Wikidata-kohteen, lisätään se rivin viimeiseen soluun
+                # Jos loimme uuden Wikidata-kohteen, lisätään linkki rivin viimeiseen soluun
                 if building['created_wikidata_qid']:
-                    wikidata_link = f" [[Tiedosto:Wikidata-logo.svg|30px|link=:d:{building['created_wikidata_qid']}]]\n"
+                    wikidata_link = (
+                        f" [[Tiedosto:Wikidata-logo.svg|30px|link="
+                        f":d:{building['created_wikidata_qid']}]]\n"
+                    )
                     original_cell_content = str(cell_list[7].contents)
                     new_cell_content = original_cell_content.strip() + wikidata_link
                     cell_list[7].contents = new_cell_content
                     stoppi = input("\nKeskeytetäänkö tähän tallennukseen? [y/N]: ")
 
-
                 buildings.append(building)
 
-
-
-    # ### UUTTA: Luodaan new_text uudesta wikicode-rakenteesta
+    # Luodaan new_text uudesta wikicode-rakenteesta
     new_text = str(wikicode)
-
-    # ### UUTTA: Näytetään diff
+    # Näytetään diff
     pywikibot.showDiff(old_text, new_text)
-
-    # ### UUTTA: Kysytään tallennusvarmistus
+    # Tallennusvarmistus
     confirm = input("\nHaluatko tallentaa muutokset? [y/N]: ")
     if confirm.strip().lower() == 'y':
         page.text = new_text
