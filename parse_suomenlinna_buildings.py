@@ -248,22 +248,37 @@ def create_new_wikidata_item(building: Dict, rev_id: int) -> str:
     if saari == "A":
         muuttuja276 = 'Q5399296'
         commons_category_value = 'Kustaanmiekka'
+        kuvaus_fi = "rakennus Kustaanmiekassa, Suomenlinna"
+        kuvaus_en = "building in Kustaanmiekka, Suomenlinna, Finland"
+        kuvaus_sv = "byggnat på Gustavssvärd, Sveaborg, Finland"
         print('Kustaanmiekka')
     elif saari == "B":
         muuttuja276 = 'Q16928377'
         commons_category_value = 'Susisaari'
+        kuvaus_fi = "rakennus Susisaaressa, Suomenlinna"
+        kuvaus_en = "building in Susisaari, Suomenlinna, Finland"
+        kuvaus_sv = "byggnat på Vargö, Sveaborg, Finland"
         print('Susisaari')
     elif saari == "C":
         muuttuja276 = 'Q11865193'
         commons_category_value = 'Iso Mustasaari'
+        kuvaus_fi = "rakennus Suomenlinnassa, Iso Mustasaari"
+        kuvaus_en = "building in Iso Mustasaari, Suomenlinna, Finland"
+        kuvaus_sv = "byggnat på Stora Östersvartö, Sveaborg, Finland"
         print('Iso Mustasaari')
     elif saari == "D":
         muuttuja276 = 'Q11888097'
         commons_category_value = 'Pikku Mustasaari'
+        kuvaus_fi = "rakennus Suomenlinnassa, Pikku-Musta"
+        kuvaus_en = "building in Pikku-Musta, Suomenlinna, Finland"
+        kuvaus_sv = "byggnat på Lilla Östersvartö, Sveaborg, Finland"
         print('Pikku Musta')
     elif saari == "E":
         muuttuja276 = 'Q11880027'
-        commons_category_value = 'Länsi Mustasaari'
+        commons_category_value = 'Länsi-Mustasaari'
+        kuvaus_fi = "rakennus Suomenlinnassa, Länsi-Mustasaari"
+        kuvaus_en = "building in Länsi-Mustasaari, Suomenlinna, Finland"
+        kuvaus_sv = "byggnat på Västersvartö, Sveaborg, Finland"
         print('Länsi Musta')
     else:
         print('tuntematon arvo')
@@ -290,13 +305,18 @@ def create_new_wikidata_item(building: Dict, rev_id: int) -> str:
     site = pywikibot.Site('wikidata', 'wikidata')
     repo = site.data_repository()
 
-    new_item = pywikibot.ItemPage(repo)
-    labels = {"fi": building['label']}
-    descriptions = {"fi": "Rakennus Suomenlinnassa"}
-
     # UUSI KOHTA: luodaan osoite aliakseksi (esim. "Suomenlinna A")
-    address_alias = 'Suomenlinna ' + building['identifier']
-    aliases = {"fi": [address_alias]}
+    address_fi = 'Suomenlinna ' + building['identifier']
+    address_sv = 'Sveaborg ' + building['identifier']
+    aliases = {"fi": [address_fi]}
+
+    new_item = pywikibot.ItemPage(repo)
+    labels = {"fi": building['label'],
+              "en": address_fi,
+              "sv": address_sv}
+    descriptions = {"fi": kuvaus_fi,
+                    "en": kuvaus_en,
+                    "sv": kuvaus_sv}
 
     new_item.editEntity({
         'labels': labels,
@@ -480,7 +500,8 @@ def parse_suomenlinna_table() -> List[Dict]:
                         lat_f = None
                         lon_f = None
 
-                    if lat_f is not None and lon_f is not None:
+                    # if lat_f is not None and lon_f is not None:
+                    if not building.get('am_wikidata') and lat_f is not None and lon_f is not None:
                         candidates = get_nearby_wikidata_items(
                             lat=lat_f,
                             lon=lon_f,
