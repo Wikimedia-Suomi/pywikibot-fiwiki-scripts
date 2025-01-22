@@ -45,8 +45,10 @@ def is_building_in_list(results, target_address, target_lat, target_lon, max_dis
     Tarkistaa, löytyykö results-listasta item, jolla on:
       1) sama osoite target_address
       2) koordinaatti alle max_distance metrin päässä (target_lat, target_lon)
-    Palauttaa True, jos sopiva item löytyy, muuten False.
+    Palauttaa True, jos sopiva item löytyy, muuten False tai palauttaa tuloslaskurin,
+    kuinka monta löytyi.
     """
+    tuloslaskuri = 0
     for row in results:
         osoite = row.get("osoite")
         coords_literal = row.get("coords")
@@ -66,8 +68,10 @@ def is_building_in_list(results, target_address, target_lat, target_lon, max_dis
             # Lasketaan etäisyys metreissä
             distance = haversine_distance(target_lat, target_lon, lat, lon)
             if distance <= max_distance:
-                return True
-    return False
+                tuloslaskuri += 1
+                print(f"{tuloslaskuri}.    osoite: {osoite}")
+                # return True
+    return tuloslaskuri
 
 
 def main():
@@ -101,10 +105,10 @@ def main():
     results = sq.select(query)
 
     # Esimerkki: Tarkistetaan, löytyykö listasta osoite "Esimerkkikatu 1" lähellä (60.1699, 24.9384)
-    test_address = "Esimerkkikatu 1"
-    test_lat = 60.1699
-    test_lon = 24.9384
-    max_dist = 20  # 20 metriä
+    test_address = "Suomenlinna B 1"     # Suomenlinna B 1
+    test_lat = 60.1447                 # 60.144738, 24.986561
+    test_lon = 24.9865                #
+    max_dist = 20 # 20 metriä
 
     # Kutsutaan tarkistusfunktiota
     found_building = is_building_in_list(
@@ -124,6 +128,7 @@ def main():
 
     # Voit halutessasi myös tulostaa kaikki tulokset
     # (kommentoi pois, jos listan tulostus ei ole tarpeen)
+    """
     for row in results:
         place_fi = row.get("place_fi", "")
         coords = row.get("coords", "")
@@ -147,7 +152,7 @@ def main():
         print(f"vtjprt: {vtjprt}")
         print(f"description_fi: {description_fi}")
         print(f"label_en: {label_en}")
-
+    """
 
 if __name__ == "__main__":
     main()
