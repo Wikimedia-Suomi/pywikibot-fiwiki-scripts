@@ -7,6 +7,68 @@ import math
 import csv
 from pyproj import Transformer
 
+def tallenna_helsingin_rakennustunnus(muuttuja1, muuttuja2):
+    """
+    Tarkistaa, onko Wikidatassa jo arvo P8355 (Helsingin rakennustunnus).
+    Ellei ole, kysyy halutaanko lisätä. Jos on, varoittaa, mikäli arvo poikkeaa
+    uudesta, ja kysyy halutaanko arvo korvata.
+    """
+
+    # Alustetaan yhteys Wikidataan
+    site = pywikibot.Site("wikidata", "wikidata")
+    repo = site.data_repository()
+
+    # Poimitaan Q-id muuttuja1-datasta
+    item_url = muuttuja1.get('item')
+    if not item_url:
+        print("Virhe: muuttuja1['item'] puuttuu.")
+        return
+
+    item_id = item_url.split('/')[-1]  # esim. 'Q131519923'
+    item_page = pywikibot.ItemPage(repo, item_id)
+
+    # Haetaan nykyinen itemin sisältö
+    item_page.get()
+
+    # Poimitaan lisättävä arvo muuttuja2-datasta
+    helsingin_rakennustunnus = muuttuja2.get('helsingin_rakennustunnus')
+    if not helsingin_rakennustunnus:
+        print("Virhe: muuttuja2['helsingin_rakennustunnus'] puuttuu tai on tyhjä.")
+        return
+
+    # Katsotaan, onko P8355-ominaisuudesta jo claimia
+    claims = item_page.claims.get('P8355', [])
+
+    if not claims:
+        # Jos ominaisuutta ei ole lisätty
+        print(f"Wikidatassa ei ole vielä Helsingin rakennustunnusta (P8355). ")
+        print(f"Uusi arvo olisi: {helsingin_rakennustunnus}")
+        vahvistus = input("Tallennetaanko uusi arvo (K/E)? ").strip().lower()
+        if vahvistus == 'k':
+            claim = pywikibot.Claim(repo, 'P8355')
+            claim.setTarget(helsingin_rakennustunnus)
+            item_page.addClaim(claim, summary="Lisätään Helsingin rakennustunnus (P8355).")
+            print("Arvo tallennettu.")
+        else:
+            print("Tallennus peruutettu.")
+    else:
+        # Ominaisuus on jo olemassa, verrataan arvoja
+        nykyinen_arvo = claims[0].getTarget()
+        if nykyinen_arvo == helsingin_rakennustunnus:
+            print(f"Helsingin rakennustunnus (P8355) on jo asetettu arvoon {nykyinen_arvo}.")
+            print("Ei muutoksia.")
+        else:
+            print("VAROITUS: Wikidatassa on jo arvo "
+                  f"{nykyinen_arvo} Helsingin rakennustunnukselle (P8355).")
+            print(f"Uusi arvo olisi: {helsingin_rakennustunnus}")
+            vahvistus = input("Korvataanko vanha arvo uudella (K/E)? ").strip().lower()
+            if vahvistus == 'k':
+                claims[0].changeTarget(helsingin_rakennustunnus,
+                                       summary="Päivitetään Helsingin rakennustunnus (P8355).")
+                print("Arvo päivitetty.")
+            else:
+                print("Päivitys peruutettu.")
+
 def lue_csv_dict_ja_nayta_sisalto_lisatty_wgs84(tiedoston_nimi, results):
     # Luo koordinaattimuunnin ETRS-GK25FIN (EPSG:3879) -> WGS84 (EPSG:4326)
     transformer = Transformer.from_crs("EPSG:3879", "EPSG:4326", always_xy=True)
@@ -67,8 +129,10 @@ def lue_csv_dict_ja_nayta_sisalto_lisatty_wgs84(tiedoston_nimi, results):
             # print(f"#{rivi['osoite_suomeksi']}#")
             if found_building:
                 print(found_building)
-                print("\t".join(arvot_listana))
-                exit(1)
+                print(rivi)
+                # print("\t".join(arvot_listana))
+                tallenna_helsingin_rakennustunnus(found_building, rivi)
+                # exit(1)
 
 def parse_wikidata_coord(coord_literal: str):
     pass
