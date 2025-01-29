@@ -23,15 +23,19 @@ def tallenna_helsingin_rakennustunnus(muuttuja1, muuttuja2):
     if not item_url:
         print("Virhe: muuttuja1['item'] puuttuu.")
         return
+    # else:
+    #    print("muuttuja1.get('item') on  ", item_url)
 
     item_id = item_url.split('/')[-1]  # esim. 'Q131519923'
     item_page = pywikibot.ItemPage(repo, item_id)
 
     # Haetaan nykyinen itemin sisältö
     item_page.get()
+    # print("Itemin sisältö: ", item_page.get())
 
     # Poimitaan lisättävä arvo muuttuja2-datasta
     helsingin_rakennustunnus = muuttuja2.get('helsingin_rakennustunnus')
+    vtj_prt = muuttuja2.get('vtj_prt')       # oletetaan molempien olevan olemassa jos toinen on
     if not helsingin_rakennustunnus:
         print("Virhe: muuttuja2['helsingin_rakennustunnus'] puuttuu tai on tyhjä.")
         return
@@ -60,6 +64,21 @@ def tallenna_helsingin_rakennustunnus(muuttuja1, muuttuja2):
 
             item_page.addClaim(claim, summary="Lisätään Helsingin rakennustunnus (P8355).")
             print("Arvo tallennettu.")
+
+            # Lähtökohtana on että kun kohteella on RATU niin silloin sillä on myös toinenkin rakennustunnus.
+            # pysyvä rakennustunnus VTJ-PRT: P3824
+            # 'vtj_prt'
+            source_claim_P8355 = pywikibot.Claim(repo, 'P8355')
+            source_claim_P8355.setTarget(helsingin_rakennustunnus)
+
+            claim = pywikibot.Claim(repo, 'P3824')
+            claim.setTarget(vtj_prt)
+
+            # Lisätään referenssit claimiin
+            claim.addSources([source_claim_P8355])
+
+            item_page.addClaim(claim, summary="Lisätään pysyvä rakennustunnus VTJ-PRT (P3824).")
+            print("Arvo tallennettu VTJ-PRT.")
 
         else:
             print("Tallennus peruutettu.")
