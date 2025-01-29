@@ -47,8 +47,20 @@ def tallenna_helsingin_rakennustunnus(muuttuja1, muuttuja2):
         if vahvistus == 'k':
             claim = pywikibot.Claim(repo, 'P8355')
             claim.setTarget(helsingin_rakennustunnus)
+
+            # Lisätään myös lähde: 'Helsingin pysyvä rakennustunnus RATU {helsingin_rakennustunnus}
+            # Malliteksti: P143 = Q175482 tuotu Wikimedia-projektista    suomenkielinen Wikipedia
+            # Wikimedia-tuonnin URL (P4656)
+            # RATU: P8355 = esim.nro 12345 helsingin_rakennustunnus
+            source_claim_P8355 = pywikibot.Claim(repo, 'P8355')
+            source_claim_P8355.setTarget(helsingin_rakennustunnus)
+
+            # Lisätään referenssit claimiin
+            claim.addSources([source_claim_P8355])
+
             item_page.addClaim(claim, summary="Lisätään Helsingin rakennustunnus (P8355).")
             print("Arvo tallennettu.")
+
         else:
             print("Tallennus peruutettu.")
     else:
