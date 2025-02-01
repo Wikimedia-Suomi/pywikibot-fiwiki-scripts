@@ -105,8 +105,8 @@ def lue_csv_dict_ja_nayta_sisalto_lisatty_wgs84(tiedoston_nimi, results):
     transformer = Transformer.from_crs("EPSG:3879", "EPSG:4326", always_xy=True)
 
     with open(tiedoston_nimi, 'r', encoding='utf-8') as csv_tiedosto:
-        csv_dictlukija = csv.DictReader(csv_tiedosto, delimiter='\t')
-
+        # tsv   csv_dictlukija = csv.DictReader(csv_tiedosto, delimiter='\t')
+        csv_dictlukija = csv.DictReader(csv_tiedosto, delimiter=';')
         # Tulostetaan ensin otsikkorivit + lisätyt WGS84-sarakkeet
         # (DictReader-olio ei itsessään tallenna otsikoita listana,
         #  mutta voimme muodostaa sen csv_dictlukija.fieldnames:stä)
@@ -117,6 +117,9 @@ def lue_csv_dict_ja_nayta_sisalto_lisatty_wgs84(tiedoston_nimi, results):
             print("\t".join(uudet_otsikot))
 
         for rivi in csv_dictlukija:
+            # if 1:
+            #    print(rivi)
+            #    exit(1)
             # Poimitaan pohjois- ja itäkoordinaatit (koordinaatti_p, koordinaatti_i)
             # ja yritetään muuntaa ne liukuluvuiksi.
             try:
@@ -328,7 +331,8 @@ def main():
 
 if __name__ == "__main__":
     results = sparqlhaku()
-    tiedosto = "Datatabletsv.tsv"         # Datatabletsv.tsv
+    # tiedosto = "Datatabletsv.tsv"         # Datatabletsv.tsv
+    tiedosto = "datatable.csv"
     lue_csv_dict_ja_nayta_sisalto_lisatty_wgs84(tiedosto, results)
     # main()
 
