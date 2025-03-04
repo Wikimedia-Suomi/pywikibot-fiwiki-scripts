@@ -57,10 +57,14 @@ def findisbnend(source, start, end):
         # something else that should not be there
         #if (ch == ")"):
         #    return -1
+        # broken tag? don't make things worse -> abort
         if (ch == ">"):
             return -1
+
+        # within link-text? -> abort
         if (ch == "]"):
             return -1
+        # might be html &nbsp, or url parameter..
         #if (ch == "&"):
         #    return -1
 
