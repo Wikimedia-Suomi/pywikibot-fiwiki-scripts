@@ -1,6 +1,7 @@
 windows install
 
-Tavoite:	Python-kieliset ohjelmat ja 'import pywikibot' toimii PyCharm-					ohjelmointiympäristössä (sekä virtuaaliympäristössä),   
+Tavoite:	Python-kieliset ohjelmat ja 'import pywikibot' toimii PyCharm-					
+		ohjelmointiympäristössä (sekä virtuaaliympäristössä),   
 		MS windows -käyttöjärjestelmässä kiintolevyllä (D-asemalla).
 
 Lähdekoodi:	https://github.com/Wikimedia-Suomi/pywikibot-fiwiki-scripts
@@ -22,7 +23,8 @@ kielen		pythonin ja pip-paketinhallinnan. Ruksaa asennuksessa Add Python
 asennus 	x.yz to PATH, missä x.yz on Pythonin versio. Näissä ohjeissa versio on 3.12.
 		Valitse seuraavaksi Customize installation ja tarkista, että kaikki valinnaiset 
 		ominaisuudet on valittu.
-		Next-nappi avaa tehokäyttäjän valinnat. Valitse Install Python x.yz for all 			users, jolloin Python asennetaan järjestelmän kaikille käyttäjille. 
+		Next-nappi avaa tehokäyttäjän valinnat. Valitse Install Python x.yz for all 			
+		users, jolloin Python asennetaan järjestelmän kaikille käyttäjille. 
 			Asennus D-asemalle D:\python312 tai esim. D:\python
 --------------------------------------------------------------------------------------------------
 
@@ -64,7 +66,8 @@ virtualenv	Virtuaaliympäristön käynnistys
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 asennusten 	MS windowsin powershell tai MS visual studio coden python-tulkki ei tunne
-eroja		'source' -komentoa. Linux-järjestelmän bin-hakemiston sijaan on scripts-			hakemisto.
+eroja		'source' -komentoa. Linux-järjestelmän bin-hakemiston sijaan on scripts-			
+		hakemisto.
 		Windowsissa pythonin virtuaaliympäristän päällepanoon on 'activate.bat' ja 
 		poispäältä 'deactivate.bat'. Ne löytyvät hakemistosta scripts .
 		Git bash tuntee source-komennon ja ei tunne bat-komentojonotiedostoja.
@@ -107,7 +110,10 @@ asetukset	-	fonttikoko	esim. 13
 		Tehdään aluksi muutos kohtaan Editor ⇨ => Code Style. 
 		Aseta kenttään Hard wrap at arvon 120 paikalle 80 (ohjelmointirivinpituus).
 		
-		Paitsi nyt alussa niin aina uusissa projekteissa tarkista että UTF-8 on ko. 			kolmessa kohdassa. Editor ⇨ => File Encodings: Aseta kenttíin Global Encoding, 			Project Encoding ja "Default encoding for properties files" valikoista arvo 			UTF-8.
+		Paitsi nyt alussa niin aina uusissa projekteissa tarkista että UTF-8 on ko. 			
+		kolmessa kohdassa. Editor ⇨ => File Encodings: Aseta kenttíin Global Encoding, 			
+		Project Encoding ja "Default encoding for properties files" valikoista arvo 			
+		UTF-8.
 ----------------------------------------------------------------------------------------------------
 
 2.C  		 Add interpreter ja virtuaaliympäristö PyCharmissa
@@ -149,9 +155,12 @@ missä?		(PyCharmin ollessa käynnissä valitsemalla ylävalikosta File ⇨ => S
 3.A 		Uudella projektilla PyCharmissa on pythonin pakettimanageri pip.
 
 Python  	Vasemmassa reunassa on pino-ikoni josta voi katsoa projektin python paketit.
-Packages  	Jos haluaa käyttää komentoa import pywikibot, niin sen täytyy olla mukana 			projektissa.
-   		Mistä tahansa importilla kutsutusta paketista tulee error, jos koodipaketti 			puuttuu projektilta.
-		Esimerkiksi uudella projektilla jonka nimeämme Project: helmikuu on vain 			'Installed  pip' eikä vielä muita python-koodipaketteja.
+Packages  	Jos haluaa käyttää komentoa import pywikibot, niin sen täytyy olla mukana 			
+		projektissa.
+   		Mistä tahansa importilla kutsutusta paketista tulee error, jos koodipaketti 			
+		puuttuu projektilta.
+		Esimerkiksi uudella projektilla jonka nimeämme Project: helmikuu on vain 			
+		'Installed  pip' eikä vielä muita python-koodipaketteja.
 ----------------------------------------------------------------------------------------------------
 
 3.B 		Lisätään projektille helmikuu pythonpaketti pywikibot.
@@ -164,11 +173,13 @@ projektille  	ja alla    	  + - nuoli silmä
      				  pip
 		Paketin lisäys tapahtuu valitsemalla +-merkki hiirellä ja syöttämällä
 		halutun paketin nimi; pywikibot.
-  		Hiiriklikkaus nappulaan Install Package. Saat vahvistuksen onnistuneesta 			asennuksesta.
+  		Hiiriklikkaus nappulaan Install Package. Saat vahvistuksen onnistuneesta 			
+		asennuksesta.
 		Voit myös tarkistaa asian Python Packages listasta projektille.
 ------------------------------------------------------------------------------------------------------
 
-3.C  		Projekti pywikibot_2025 mikä on klooni (lähdekoodi https://github.com/Wikimedia-		Suomi/pywikibot-fiwiki-scripts.git)
+3.C  		Projekti pywikibot_2025 mikä on klooni (lähdekoodi https://github.com/Wikimedia-		
+							Suomi/pywikibot-fiwiki-scripts.git)
 
 Python  	Vasemmassa reunassa on pino-ikoni josta voi katsoa projektin python paketit.
 Packages  	Jos haluaa käyttää komentoa import pywikibot, niin sen täytyy olla mukana projektissa.
