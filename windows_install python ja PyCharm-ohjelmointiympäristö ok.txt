@@ -1,0 +1,237 @@
+windows install
+
+Tavoite:	Python-kieliset ohjelmat ja 'import pywikibot' toimii PyCharm-					ohjelmointiympäristössä (sekä virtuaaliympäristössä),   
+		MS windows -käyttöjärjestelmässä kiintolevyllä (D-asemalla).
+
+Lähdekoodi:	https://github.com/Wikimedia-Suomi/pywikibot-fiwiki-scripts
+
+1.A		Tarkistetaan python komentokehotteessa tai powershellissä:
+			D:	<enter>
+			D:\> py -3 --version  	<enter>
+		joko vastaus on	 D:\> Python 3.12.0
+		tai ilmoitus ettei Pythonia ole koneella.
+
+		Polun tarkistus
+			D:\> path	<enter>
+		Pythonin pitää olla mukana, esimerkiksi asennettuna D-asemalle:
+			PATH=D:\python\scripts\;D:\python;
+
+python 		Uuden pythonin haku koneelle internetistä: www.python.org .
+ohjelmointi-		Asenna koneelle esim. python-3.12.0-amd64 joka sisältää uuden
+kielen		pythonin ja pip-paketinhallinnan. Ruksaa asennuksessa Add Python
+asennus 	x.yz to PATH, missä x.yz on Pythonin versio. Näissä ohjeissa versio on 3.12.
+		Valitse seuraavaksi Customize installation ja tarkista, että kaikki valinnaiset 
+		ominaisuudet on valittu.
+		Next-nappi avaa tehokäyttäjän valinnat. Valitse Install Python x.yz for all 			users, jolloin Python asennetaan järjestelmän kaikille käyttäjille. 
+			Asennus D-asemalle D:\python312 tai esim. D:\python
+--------------------------------------------------------------------------------------------------
+
+1.B		Git-versionhallinta asennuksen mukana tulee 'git bash' -komentoriviohjelma.
+		Sitä kannattaa käyttää python-projektissa windowsin powershellin sijasta. 
+		Myöhemmin voi käyttää ohjelma-ajoon PyCharmin komentorivi-ikkunaa.
+		Asennusversio	git 2.42.0 64-bit version of Git for Windows
+lähdekoodi			https://git-scm.com/download/win
+
+GitHub		GitHub löytyy: https://github.com  & https://desktop.github.com
+		Myös käyttäjätunnus GitHubiin on tarpeellinen luoda jos sellainen puuttuu.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+git bash 	-	Avaa Git Bash esimerkiksi työpöydällä olevasta pikakuvakkeesta.
+			Sitten sinulla on MINGW64-niminen musta ikkuna ja jossa on 
+			dollarimerkki '$'.
+		-	Kirjoita cd /d	<enter>
+		-	Kirjoita Git Bashissa alla oleva rivi + <enter>
+			$ cd ..			<enter>
+			$ dir tai ls		<enter>
+			Näet hakemistolistauksen.
+--------------------------------------------------------------------------------------------
+
+virtualenv	Virtuaaliympäristön käynnistys
+			$ py -3 -m venv venv	<enter>
+			$ cd venv		<enter>
+			$ dir tai ls		<enter>
+			$ source scripts/activate	<enter> 
+			(venv)
+		Nyt virtuaaliympäristö on päällä. 
+
+		Hakemistolistauksesta näet alihakemistot.
+			$ cd ..			<enter>
+			$ dir tai ls		<enter>
+		
+		Välillä näkyy sulkeissa oleva sana '(venv)' josta tiedät olevasi 
+		virtuaaliympäristössä.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+asennusten 	MS windowsin powershell tai MS visual studio coden python-tulkki ei tunne
+eroja		'source' -komentoa. Linux-järjestelmän bin-hakemiston sijaan on scripts-			hakemisto.
+		Windowsissa pythonin virtuaaliympäristän päällepanoon on 'activate.bat' ja 
+		poispäältä 'deactivate.bat'. Ne löytyvät hakemistosta scripts .
+		Git bash tuntee source-komennon ja ei tunne bat-komentojonotiedostoja.
+		Jos saat virheilmoituksen windowsissa komennosta 'python' tai 'python3', niin
+		käytä sen sijaan 'py -3'.	
+--------------------------------------------------------------------------------------------------
+
+ohjelmointiympäristö Python-ohjelmointiin PyCharm community
+
+PyCharm       	Asenna PyCharm tietokoneeseen pääkäyttäjänä sen jälkeen kun python-ohjelmointikieli 
+asennus		on jo koneessa. 
+
+2.A		PyCharm-asennuspaketin lataaminen, versio PyCharm Community on ilmainen.
+			 https://www.jetbrains.com/pycharm/download/other.html
+
+		Käynnistä asennusohjelma ja valitse, mihin kansioon haluat PyCharmin asentaa:
+			esim. D:\pycharm
+
+		Ruksaa seuraavat asennusvaihtoehdot:
+		- 	create associations (.py)   	python ohjelmien tunnus 
+		- 	PyCharm Community Edition 	käynnistysikoni työpöydälle
+		-	update contex-menu   		lisää project -kansion
+
+		Klikkaa lopuksi Install-nappia.
+
+		'Completing PyCharm Community Edition Setup' -ikkuna kun on asennettu.
+		- Ruksaa 	Run PyCharm Community Edition
+		- hiiriklikkaus nappulaan 'finish'
+----------------------------------------------------------------------------------------------------
+
+2.B		Aluksi on pakko tehdä eräitä säätöjä, koska tavoitteena on välttää syntax errorit 
+		käytettäessä pywikibot-pythonpakettia ja windowsia. PyCharmin aloitusikkunan 
+		Customise-valinnalla pääsee vaikuttamaan asetuksiin. 
+
+PyCharm		-	käyttöliittymän väriteema esim. dark tai oletus
+asetukset	-	fonttikoko	esim. 13
+		-	keymap		windows
+
+		PyCharmin ollessa käynnissä valitsemalla ylävalikosta File ⇨ => Settings.
+		Tehdään aluksi muutos kohtaan Editor ⇨ => Code Style. 
+		Aseta kenttään Hard wrap at arvon 120 paikalle 80 (ohjelmointirivinpituus).
+		
+		Paitsi nyt alussa niin aina uusissa projekteissa tarkista että UTF-8 on ko. 			kolmessa kohdassa. Editor ⇨ => File Encodings: Aseta kenttíin Global Encoding, 			Project Encoding ja "Default encoding for properties files" valikoista arvo 			UTF-8.
+----------------------------------------------------------------------------------------------------
+
+2.C  		 Add interpreter ja virtuaaliympäristö PyCharmissa
+
+Python Interpreter	Kun asensit pythonin koneelle, niin se on tässä PyCharmilla.	
+
+		Voit tehdä kiintolevylle tyhjän kansion pywikibot_2025. 
+Lähdekoodi:	https://github.com/Wikimedia-Suomi/pywikibot-fiwiki-scripts
+
+----------------------------------------------------------------------------------------------------
+
+2.D  		Lähdekoodi omalle koneelle GitHubista käyttäen PyCharmia
+
+Get from 	tämä => 	  Repository URL
+Version		Version control:  Git
+Control  	URL:		  https://github.com/Wikimedia-Suomi/pywikibot-fiwiki-scripts.git
+  		Directory: 	  D:\pywikibot_2025
+
+		Hiiriklikkaus nappulaan Clone.	
+
+		Pian sinulle pitäisi näkyä README.md: Finnish Wikipedia Pywikipedia scripts 
+		ja tällöin lähdekoodi on onnistuneesti saatu kiintolevylle.
+
+		git config --global --add safe.directory D:/pywikibot_2025    
+----------------------------------------------------------------------------------------------------
+
+2.E		Add Python interpreter ja virtuaaliympäristö PyCharmissa
+
+oikeat		tämä => Virtualenv Environment  Environment    ruksi New	
+säädöt 		Location:	 		D:\pywikibot_2025\.venv
+		Base interpreter:  		Python 3.12  D:\python\python.exe
+		
+
+missä?		(PyCharmin ollessa käynnissä valitsemalla ylävalikosta File ⇨ => Settings.
+		Mennään valikon kohtaan Project ⇨ => Python interpreter. Tästä löytyy 
+		Add Python interpreter ja virtuaaliympäristö PyCharmissa.)	
+----------------------------------------------------------------------------------------------------
+
+3.A 		Uudella projektilla PyCharmissa on pythonin pakettimanageri pip.
+
+Python  	Vasemmassa reunassa on pino-ikoni josta voi katsoa projektin python paketit.
+Packages  	Jos haluaa käyttää komentoa import pywikibot, niin sen täytyy olla mukana 			projektissa.
+   		Mistä tahansa importilla kutsutusta paketista tulee error, jos koodipaketti 			puuttuu projektilta.
+		Esimerkiksi uudella projektilla jonka nimeämme Project: helmikuu on vain 			'Installed  pip' eikä vielä muita python-koodipaketteja.
+----------------------------------------------------------------------------------------------------
+
+3.B 		Lisätään projektille helmikuu pythonpaketti pywikibot.
+
+paketin  	PyCharmin ollessa käynnissä valitsemalla ylävalikosta File ⇨ => Settings.
+lisääminen	Mennään valikon kohtaan Project: helmikuu ⇨ => Python interpreter. 
+PyCharmissa  	jossa on seuraavasti:  Python Interpreter: Python 3.12 (helmikuu)
+projektille  	ja alla    	  + - nuoli silmä
+                          	  Package
+     				  pip
+		Paketin lisäys tapahtuu valitsemalla +-merkki hiirellä ja syöttämällä
+		halutun paketin nimi; pywikibot.
+  		Hiiriklikkaus nappulaan Install Package. Saat vahvistuksen onnistuneesta 			asennuksesta.
+		Voit myös tarkistaa asian Python Packages listasta projektille.
+------------------------------------------------------------------------------------------------------
+
+3.C  		Projekti pywikibot_2025 mikä on klooni (lähdekoodi https://github.com/Wikimedia-		Suomi/pywikibot-fiwiki-scripts.git)
+
+Python  	Vasemmassa reunassa on pino-ikoni josta voi katsoa projektin python paketit.
+Packages  	Jos haluaa käyttää komentoa import pywikibot, niin sen täytyy olla mukana projektissa.
+
+		Lisätään projektille pywikibot_2025 pythonpaketti pywikibot, jos se puuttuu.
+                                                                  *************************        
+paketin  	PyCharmin ollessa käynnissä valitsemalla ylävalikosta File ⇨ => Settings.
+lisääminen	Mennään valikon kohtaan Project: pywikibot_2025 ⇨ => Python interpreter. 
+PyCharmissa  	jossa on seuraavasti:  Python Interpreter: Python 3.12 (pywikibot_2025)
+projektille  	ja alla    	  + - nuoli silmä
+                          	  Package
+     				  pip jne paljon eri python-paketteja
+		Paketin lisäys tapahtuu valitsemalla +-merkki hiirellä ja syöttämällä
+		halutun paketin nimi; pywikibot.
+  		Hiiriklikkaus nappulaan Install Package. Saat vahvistuksen onnistuneesta asennuksesta.
+		Voit myös tarkistaa asian Python Packages listasta projektille.
+------------------------------------------------------------------------------------------------------
+
+4.A 		Testataan toimiiko ohjelmankirjoitus PyCharmissa
+
+ohjelmatesti	- tehdään uusi tiedosto; python file
+		- nimeksi user-config  <enter>
+
+		koodirivit 1 ja 2:
+		1	usernames['wikipedia']['fi'] = 'ZacheBot'
+		2	put_throttle = 5
+
+		pythonohjelman nimi user-config.py
+		Kopioidaan examples alihakemistosta myscript.py projektin pywikibot_2025 päätasolle, 
+		missä on README.md ja äsken kirjoitettu user-config.py .
+
+		Avaa myscript.py näkyviin, jolloin huomaat sen alussa rivin import pywikibot.
+		Koetetaan ajaa myscript.py PyCharmin komentorivi-ikkunassa. (ikoni neliössä >_)
+			python myscript.py    <enter>
+
+		Ohjelmatesti onnistui ja lisäsi käyttäjälle yhden sanan hiekkalaatikkosivulle.
+		Alla ohjelmatestin tulostus näytölle:
+		" 	(.venv) PS D:\pywikibot_2025> python myscript.py                   
+
+			@@ -26 +26 @@
+			- {{Viitteet}}
+			+ {{Viitteet}}Foobar
+
+			Edit summary: summary
+			Do you want to accept these changes? ([y]es, [N]o): y
+			Page [[fi:Ohje:Hiekkalaatikko]] saved
+			(.venv) PS D:\pywikibot_2025> 
+
+------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+			
+			
+
