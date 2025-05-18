@@ -38,12 +38,31 @@ repo = site.data_repository()
 
 # Mapping of art type descriptions to Wikidata Q-items
 ART_TYPE_MAP = {
+    'keskeytä': '0',
     'veistos': 'Q860861',
     'muraali': 'Q219423',
     'muistomerkki': 'Q5003624',
     'muistokivi': 'Q11734477',
     'muistolaatta': 'Q721747'
 }
+
+# Mapping of Finnish art type terms to English and Swedish translations
+ART_TYPE_TRANSLATIONS = {
+    'veistos': {'en': 'sculpture', 'sv': 'skulptur'},
+    'muraali': {'en': 'mural', 'sv': 'muralmålning'},
+    'muistomerkki': {'en': 'memorial', 'sv': 'minnesmärke'},
+    'muistokivi': {'en': 'memorial stone', 'sv': 'minnessten'},
+    'muistolaatta': {'en': 'memorial plaque', 'sv': 'minnesplakett'}
+}
+
+# Mapping of Finnish art type terms to English translations
+# ART_TYPE_TRANSLATIONS = {
+#    'veistos': 'sculpture',
+#    'muraali': 'mural',
+#    'muistomerkki': 'monument',
+#    'muistokivi': 'memorial stone',
+#    'muistolaatta': 'memorial plaque'
+#}
 
 # Source page and import URL (filled in main)
 SOURCE_PAGE_TITLE = 'Luettelo Liedon julkisista taideteoksista ja muistomerkeistä'
@@ -106,6 +125,8 @@ def create_wikidata_item(entry):
             break
         print("Invalid choice.")
     instance_q = ART_TYPE_MAP[art_type]
+    if instance_q == "0":
+        return
 
     # Create new Wikidata item
     item = pywikibot.ItemPage(repo)
@@ -120,11 +141,26 @@ def create_wikidata_item(entry):
     add_claim_with_sources('P31', pywikibot.ItemPage(repo, instance_q), 'Add instance of (artwork type)')
 
     # Descriptions
+    # art_type englanniksi
+    # Get the English translation of the art type
+    # art_type_en = ART_TYPE_TRANSLATIONS.get(art_type, art_type)  # Default to Finnish if no translation exists
+    # Get the English and Swedish translations of the art type
+    art_type_en = ART_TYPE_TRANSLATIONS.get(art_type, {}).get('en', art_type)
+    art_type_sv = ART_TYPE_TRANSLATIONS.get(art_type, {}).get('sv', art_type)
+
+    # Descriptions
     item.editDescriptions(
         {'fi': f"{art_type} Liedossa, Finland",
-         'en': f"{art_type} in Lieto, Finland"},
+         'en': f"{art_type_en} in Lieto, Finland",
+         'sv': f"{art_type_sv} i Lundo, Finland"},
         summary='Add description'
     )
+    # item.editDescriptions(
+    #    {'fi': f"{art_type} Liedossa, Finland",
+    #     'en': f"{art_type} in Lieto, Finland",
+    #     'sv': f"{art_type_sv} i Lundo, Finland"},
+    #    summary='Add description'
+    #)
 
     # P17 Country → Finland
     add_claim_with_sources('P17', pywikibot.ItemPage(repo, 'Q33'), 'Add country')
