@@ -23,6 +23,8 @@ def replacebetween(oldtext, newstring, begin, end):
     newtext = oldtext[:begin] + newstring + oldtext[end:]
     return newtext
 
+def getsubstr(text, begin, end):
+    return text[begin:end]
 
 # try to catch if there is plain yyyy AA format in page name?
 def istemporaryname(name):
@@ -286,6 +288,172 @@ def checkwikidata(wdsite, itemqcode):
     
     return None
 
+# verify that we can get just plain number
+def getplainnumber(basenum):
+    
+    isnumb = True
+    l = len(basenum)
+    i = 0
+    while (i < l):
+        #if (isalpha(basenum[i]) == True):
+        if (basenum[i].isnumeric() == False):
+            # not plain number
+            isnumb = False
+        
+        i = i +1
+        
+    if (isnumb == True):
+        return int(basenum)
+    return 0
+
+def processlines(oldtext, mpclist):
+    pagelen = len(oldtext)
+
+    print("mpc list has:", len(mpclist))
+
+    #print("DEBUG list: ", mpclist)
+
+    # TODO: additional verifications for table-context (avoid potential templates) ?
+        # could verify a line is within a table?
+        #ixtablestart = oldtext.find("\n{|", ixline)
+        #ixtableend = oldtext.find("\n|}", ixline)
+        # verify line is within a table row to avoid confusion with other templates?
+        # but row markers may be omitted at end of table.. -> need table parsing?
+        #lenrowmarker = len("\n|-")
+        #ixrowstart = oldtext.find("\n|-", ixline)
+        #if (ixrowstart >= 0):
+        #    ixrowend = oldtext.find("\n|-", ixrowstart+lenrowmarker)
+    # table column separator checks , temporary name check and line-end check together may suffice ?
+
+    
+    ixline = 1
+    while (ixline > 0):
+       
+        lenstart = len("\n| ")
+        ixline = oldtext.find("\n| ", ixline)
+        if (ixline < 0):
+            #print("line start missing or end of file?")
+            break
+        
+        ixlineend = oldtext.find("\n", ixline+2)
+        if (ixlineend < 0):
+            #print("line end missing or end of file?")
+            break
+
+        # should also check that line is within a table
+        # and not in some other template? but the articles are simple..
+        # skip line with table row
+        #if (oldtext[ixline+1] == "-"):
+        #    continue
+
+        
+        #print("Debug: parsing table line: ", getsubstr(oldtext, ixline+1, ixlineend))
+        
+        # between number and temporary name
+        lenseparator = len("||")
+        ixfirst = oldtext.find("||", ixline+2) 
+        if (ixfirst < 0 or ixfirst > ixlineend):
+            # no more or wrapped around -> bail out
+            # might be a table row
+            #print("name end separator missing?")
+            ixline = ixlineend
+            continue
+        
+        # after temporary name
+        ixsecond = oldtext.find("||", ixfirst+2)
+        if (ixsecond < 0 or ixsecond > ixlineend):
+            # no more or wrapped around -> bail out
+            # might be split over multiple lines?
+            print("temporary name end separator missing?")
+            ixline = ixlineend
+            continue
+
+        basename = getsubstr(oldtext, ixline+lenstart, ixfirst)
+        tempname = getsubstr(oldtext, ixfirst+lenseparator, ixsecond)
+        #print("DEBUG: table row has name: [", basename ,"] tempname::", tempname)
+
+        if (basename.find("|") > 0):
+            # wikilink? skip to end of line
+            ixline = ixlineend
+            #print("DEBUG: skipping line, already named entry")
+            continue
+        
+        if (basename.find("[") > 0 or basename.find("]") > 0):
+            # wikilink: see if it is plain number linked ?
+            
+            tablen = basename.replace("[", "").replace("]", "")
+            plain_base_num = getplainnumber(tablen)
+            if (plain_base_num > 0):
+                print("DEBUG: plain number in a wikilink? [", tablen ,"] tempname::", tempname)
+            #else:
+                #print("DEBUG: not a plain number in a wikilink")
+            
+            # skip to end of line
+            ixline = ixlineend
+            #print("DEBUG: skipping line, already named entry")
+            continue
+        
+        # might be plain number currently
+        basename = basename.lstrip().rstrip()
+        tempname = tempname.lstrip().rstrip()
+
+        #print("DEBUG: looking for mpc number: [", basename ,"] tempname::", tempname)
+        
+        plain_base_num = getplainnumber(basename)
+        if (plain_base_num == 0):
+            # skip to end of line
+            ixline = ixlineend
+            continue
+
+        # ok, we might have something with plain number currently
+        #print("DEBUG: plain number found: [", basename ,"] tempname::", tempname)
+
+        tup_mpc = mpclist.get(plain_base_num)
+        if (tup_mpc != None):
+            #print("DEBUG: entry found in mpc list for plain number: [", basename ,"] tempname:", tempname)
+
+            mpc_new_name = tup_mpc[0]
+            mpc_temp_name = tup_mpc[1]
+
+            #if (len(mpc_new_name) < 1):
+            #    print("DEBUG: no name for: [", basename ,"] tempname:", mpc_temp_name)
+            if (mpc_temp_name != tempname):
+                print("WARN: temporary name does not match for: [", basename ,"] tempname:", mpc_temp_name)
+
+            # also double check with temporary from table and mpc list
+            if (mpc_temp_name == tempname and len(mpc_new_name) > 0):
+                print("DEBUG: new name found, temporary name match: [", basename ,"] tempname:", mpc_temp_name)
+
+                ixbaseend = oldtext.find(" ", ixline+lenstart+len(basename))
+                if (ixbaseend > 0 and ixbaseend < ixsecond):
+                    # add name if we have found one (parsed from list)
+                    print("Adding name for: ", basename , " tempname::", tempname)
+
+                    oldtext = insertat(oldtext, ixbaseend, " ")
+                    oldtext = insertat(oldtext, ixbaseend+1, mpc_new_name)
+        else:
+            print("DEBUG: number not found in list for: [", basename ,"] tempname:", tempname)
+                
+
+        # skip to end of line
+        ixline = ixlineend
+
+        
+    return oldtext
+
+
+def isluettelopage(pagename):
+    ix = pagename.find(":")
+    if (ix < 0):
+        print("no semicolon in name")
+        return False
+
+    namepart = pagename[:ix].lower()
+    if (namepart.find("luettelo pikkuplaneetoista") < 0):
+        print("no basepart in name")
+        return False
+    return True
+
 
 # ei rivinvaihtoa viitemallineen perässä? -> lisätään puuttuva
 def addnewline(oldtext):
@@ -305,6 +473,15 @@ def addnewline(oldtext):
     else:
         # add one linefeed (beginning .. newline .. rest)
         return oldtext[:index+strlen] + "\n" + oldtext[index+strlen:]
+
+def getpagebyname(pywikibot, site, name):
+    pages = list()
+    
+    p = pywikibot.Page(site, name)
+
+    pages.append(p)
+    return pages
+
 
 def getpagesrecurse(pywikibot, site, maincat, depth=1):
     #final_pages = list()
@@ -413,23 +590,98 @@ def getsearchpages(pywikibot, site, searchstring):
 
     return pages 
 
+def read_mpc_numberedlist(filename):
+    f = open(filename, "r")
+
+    dlist = dict()
+    line = f.readline()
+    while (line):
+        lenline = len(line)
+        
+        num = getsubstr(line, 0, 8)
+        name = getsubstr(line, 8, 32)
+        tempname = getsubstr(line, 32, 44)
+        ddate = getsubstr(line, 44, 56)
+        dplace = getsubstr(line, 56, 81)
+        discoverer = getsubstr(line, 81, lenline-1)
+        
+        plainnum = num.replace("(", "").replace(")", "")
+        plainnum = plainnum.lstrip().rstrip()
+        
+        name = name.lstrip().rstrip()
+        tempname = tempname.lstrip().rstrip()
+        ddate = ddate.lstrip().rstrip()
+        dplace = dplace.lstrip().rstrip()
+        discoverer = discoverer.lstrip().rstrip()
+        
+        # make iso-order
+        #dplace.replace(" ", "-")
+
+        # must have a name
+        #if (len(name) > 0):
+            #print("name found for num: [",num,"] name:[",name,"] temp:[",tempname,"]")
+            
+        mpc_num = getplainnumber(plainnum)
+        if (mpc_num > 0):
+            dlist[mpc_num] = tuple((name, tempname, ddate, dplace, discoverer))
+        #else:
+        #    print("no name for num: [",num,"]  temp:[",tempname,"]")
+            
+
+        
+        line = f.readline()
+
+    f.close()
+    return dlist
+
+def generate_wikitable(mpclist):
+
+    print("count: ", len(mpclist))
+
+    it_entry = iter(mpclist)
+    k_entry = next(it_entry)
+    while (k_entry):
+        val_entry = mpclist[k_entry]
+        
+        #print(val_entry)
+        isodate = val_entry[2].replace(" ", "-") # add separator
+        isodate = isodate.replace("*", "") # ends with asterisk?
+        if (len(val_entry[0]) > 0): 
+            # has name in addition to mpc number
+            entryname = str(k_entry) + " " + val_entry[0]
+        else
+            # just mpc number
+            entryname = str(k_entry)
+        
+        print("|-")
+        print("| ", entryname ," || ", val_entry[1] ," || ", isodate ," || ", val_entry[3], " || ", val_entry[4] )
+
+        #it_entry = next(mpclist)
+        k_entry = next(it_entry, None)
+        if not k_entry:
+            break
+
+    #for k, v in mpclist.items():
+
 ## main()
+
+# read numbered list from file:
+# use local list to avoid overloading the mpc servers..
+#
+mpclist = read_mpc_numberedlist("NumberedMPs.txt")
+
+print("mpc list has:", len(mpclist))
+
+#generate_wikitable(mpclist)
 
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
-wdsite = pywikibot.Site('wikidata', 'wikidata')
-wdsite.login()
+#wdsite = pywikibot.Site('wikidata', 'wikidata')
+#wdsite.login()
 
 
-pages = getnewestpagesfromcategory(pywikibot, site, "Päävyöhykkeen asteroidit", 30)
-
-#pages = getnewestpagesfromcategory(pywikibot, site, "Marsin radan leikkaaja-asteroidit", 10)
-
-#pages = getnewestpagesfromcategory(pywikibot, site, "Jupiterin troijalaiset", 10)
-
-#pages = getpagesrecurse(pywikibot, site, "Mahdolliset kääpiöplaneetat", 0)
-
+pages = getpagesrecurse(pywikibot, site, "Luettelot pikkuplaneetoista", 0)
 
 
 rivinro = 1
@@ -440,9 +692,7 @@ for page in pages:
     if (page.namespace() != 0):  
         print("Skipping " + page.title() + " - wrong namespace.")
         continue
-    
-    
-    #page=pywikibot.Page(site, row['title'])
+
     oldtext=page.text
 
     print(" ////////", rivinro, "/", len(pages), ": [ " + page.title() + " ] ////////")
@@ -455,25 +705,15 @@ for page in pages:
         print("Skipping " + page.title() + " - bot-restricted.")
         continue
 
-    if (hassorting(oldtext) == True and isincategory(oldtext) == True):
-        print("Skipping " + page.title() + " - has sorting and category.")
+    if (isluettelopage(page.title()) == False):
+        print("Skipping " + page.title() + " - not listpage.")
         continue
     
-    # get entity id of page
-    pageqid = page.data_item().getID()
-    print("Page " + page.title() + " has id: ", pageqid)
-
-    # try to get MPC number from wikidata:
-    # if it does not have one -> only temporary identification 
-    mpcnumber = checkwikidata(wdsite, pageqid)
-    if (mpcnumber == None):
-        print("Skipping page: " + page.title() + " - not suitable type or no MPC number.")
-        continue
 
     temptext = oldtext
 
-    summary='Lisätään luokittelu ja aakkostus'
-    temptext = parsenameaddcat(temptext, mpcnumber, page.title())
+    summary = 'Päivitetään luetteloa Minor Planet Centerin luettelon mukaan (ladattu: https://www.minorplanetcenter.net/iau/lists/NumberedMPs.html)'
+    temptext = processlines(temptext, mpclist)
 
     
     if oldtext == temptext:
@@ -489,6 +729,7 @@ for page in pages:
         exit()
 
     if (commitall == True):
+        #print("commitall not enabled currently.")
         page.text=temptext
         page.save(summary)
     else:
@@ -509,6 +750,7 @@ for page in pages:
             commitall = True
 
         if choice == 'y' or choice == 'a':
+            #print("saving not enabled currently.")
             page.text=temptext
             page.save(summary)
 
