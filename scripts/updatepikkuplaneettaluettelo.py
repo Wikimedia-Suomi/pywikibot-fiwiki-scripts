@@ -267,6 +267,26 @@ def checkwikidata(wdsite, itemqcode):
             print("instance ok, found near earth asteroid id: ", claim.getTarget().id)
             knowntype = True
 
+        if (claim.getTarget().id == 'Q6635'):
+            print("instance ok, found resonant transneptune object id: ", claim.getTarget().id)
+            knowntype = True
+
+        if (claim.getTarget().id == 'Q645924'):
+            print("instance ok, found cubewano id: ", claim.getTarget().id)
+            knowntype = True
+
+        if (claim.getTarget().id == 'Q6599'):
+            print("instance ok, found plutino id: ", claim.getTarget().id)
+            knowntype = True
+
+        if (claim.getTarget().id == 'Q2517684'):
+            print("instance ok, found twotino id: ", claim.getTarget().id)
+            knowntype = True
+
+        if (claim.getTarget().id == 'Q1621992'):
+            print("instance ok, found damocloid id: ", claim.getTarget().id)
+            knowntype = True
+
         # Q2199 kääpiöplaneetta
         # Q645924 cubewano 
         #Maan lähelle tuleva kappale (Q265392)
@@ -590,6 +610,8 @@ def getsearchpages(pywikibot, site, searchstring):
 
     return pages 
 
+# parse text file from MPC
+#
 def read_mpc_numberedlist(filename):
     f = open(filename, "r")
 
@@ -694,6 +716,13 @@ def mpc_date_to_wiki_date(entry):
     else:
         return stryear
 
+def get_page_heading_text(istartnum):
+    return "Tämä on '''luettelo''' [[Aurinkokunta|Aurinkokunnan]] numeroiduista '''[[pikkuplaneetta|pikkuplaneetoista]]''' numerojärjestyksessä alkaen "+ str(istartnum) +":stä ja päättyen "+ str(istartnum+999) +":een. Kokonaisen luettelon löytää katsomalla [[Luettelo pikkuplaneetoista]].\n\n"
+
+def get_page_ending_text():
+    return "==Lähteet==\n*[http://www.minorplanetcenter.org/iau/lists/NumberedMPs.html Discovery Circumstances: Numbered Minor Planets: IAU Minor Planet Center] {{en}}}\n\n[[Luokka:Luettelot pikkuplaneetoista]]\n\n"
+
+
 def generate_wikitable(mpclist, filename=""):
 
     print("count: ", len(mpclist))
@@ -731,6 +760,9 @@ def generate_wikitable(mpclist, filename=""):
         print(strrowdata)
 
         if (f != None):
+            if (totals == 0):
+                f.write(get_page_heading_text(impcnumber))
+
             if (count == 0):
                 f.write('== ' + str(impcnumber) + '-' + str(impcnumber + 99)  + ' ==\n')
                 f.write('{| class="wikitable" \n')
@@ -745,6 +777,12 @@ def generate_wikitable(mpclist, filename=""):
                 count = 0
             else:
                 count = count + 1
+
+            if (totals == 999):
+                f.write(get_page_ending_text())
+                f.write("\n\n ---------------- cut here -------------------- \n\n")
+                totals = 0
+            else:
                 totals = totals + 1
 
 
@@ -758,8 +796,145 @@ def generate_wikitable(mpclist, filename=""):
     if (f != None):
         f.close()
 
+def ask_page_save(site):
+
+    choice = ""
+
+    if site.userinfo['messages']:
+        print("Warning: Talk page messages. Exiting.")
+        exit()
+
+    question='Do you want to accept these changes?'
+    choice = pywikibot.input_choice(
+                question,
+                [('Yes', 'y'),('No', 'N'),('All', 'a'),('Quit', 'q')],
+                default='N',
+                automatic_quit=False
+            )
+
+    pywikibot.info(choice)
+    if choice == 'q':
+        print("Asked to exit. Exiting.")
+        exit()
+
+    return choice
+
+
+def is_restrictions_in_page(pagetext, page):
+    if (pagetext.find("#OHJAUS") >= 0 or pagetext.find("#REDIRECT") >= 0):
+        print("Skipping ", page.title() ," - redirect-page.")
+        return True
+    if (pagetext.find("{{bots") > 0 or pagetext.find("{{nobots") > 0):
+        print("Skipping ", page.title() ," - bot-restricted.")
+        return True
+    return False
+
+# update articles
+def add_article_sorting_and_categories(mpclist):
+
+    site = pywikibot.Site("fi", "wikipedia")
+    site.login()
+
+    wdsite = pywikibot.Site('wikidata', 'wikidata')
+    wdsite.login()
+
+    commitall = False
+
+    it_entry = iter(mpclist)
+    k_entry = next(it_entry)
+    while (k_entry):
+        impcnumber = int(k_entry)
+        val_entry = mpclist[k_entry]
+
+        entryname = ""
+        if (len(val_entry[0]) > 0): 
+            # has name in addition to mpc number
+            entryname = str(k_entry) + " " + val_entry[0]
+        else:
+            # mpc number + temporary name
+            entryname = "(" + str(k_entry) + ") " + val_entry[1]
+        
+        print("DEBUG: looking for article: ", entryname)
+        
+        # What happens if page does not exist yet?
+        page = pywikibot.Page(site, entryname)
+        if (page == None):
+            print("Could not open page: ", page.title() ,".")
+
+            k_entry = next(it_entry, None)
+            continue
+        
+        oldtext = page.text
+        
+        if (is_restrictions_in_page(page.text, page) == True):
+            print("Skipping ", page.title() ,".")
+
+            k_entry = next(it_entry, None)
+            continue
+
+
+        if (hassorting(oldtext) == True and isincategory(oldtext) == True):
+            print("Skipping ", page.title() ," - has sorting and category.")
+
+            k_entry = next(it_entry, None)
+            continue
+        
+        # get entity id of page
+        pageqid = page.data_item().getID()
+        print("Page " + page.title() + " has id: ", pageqid)
+
+        # try to get MPC number from wikidata:
+        # if it does not have one -> only temporary identification 
+        mpcnumber = checkwikidata(wdsite, pageqid)
+        if (mpcnumber == None):
+            print("Skipping page: ", page.title() ," - not suitable type or no MPC number.")
+
+            k_entry = next(it_entry, None)
+            continue
+
+        temptext = oldtext
+
+        summary='Lisätään luokittelu ja aakkostus'
+        temptext = parsenameaddcat(temptext, mpcnumber, page.title())
+        
+        if oldtext == temptext:
+            print("Skipping. ", page.title() ," - old and new are equal.")
+
+            k_entry = next(it_entry, None)
+            continue
+
+        pywikibot.info('----')
+        pywikibot.showDiff(oldtext, temptext,2)
+        pywikibot.info('Edit summary: {}'.format(summary))
+
+        if (commitall == True):
+            page.text = temptext
+            page.save(summary)
+        else:
+
+            choice = ask_page_save(site)
+
+            if choice == 'q':
+                print("Asked to exit. Exiting.")
+                exit()
+
+            if choice == 'a':
+                commitall = True
+
+            if choice == 'y' or choice == 'a':
+                page.text = temptext
+                page.save(summary)
+
+
+
+        k_entry = next(it_entry, None)
+        if not k_entry:
+            break
+
 
 ## main()
+
+# sys.argv -> find --dump
 
 # read numbered list from file:
 # use local list to avoid overloading the mpc servers..
@@ -768,8 +943,16 @@ mpclist = read_mpc_numberedlist("NumberedMPs.txt")
 
 print("mpc list has:", len(mpclist))
 
-#generate_wikitable(mpclist, "000-Gen-Numbered-MPC-list-into-wikitable.text")
+#generate_wikitable(mpclist, "001-Gen-Numbered-MPC-list-into-wikitable.text")
 #exit(1)
+
+# sys.argv -> find --catupdate
+#add_article_sorting_and_categories(mpclist)
+#exit(1)
+
+
+# sys.argv -> find --listupdate
+
 
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
@@ -787,23 +970,20 @@ commitall = False
 for page in pages:
     # skip user-pages, only main article namespace
     if (page.namespace() != 0):  
-        print("Skipping " + page.title() + " - wrong namespace.")
+        print("Skipping ", page.title() ," - wrong namespace.")
         continue
 
-    oldtext=page.text
+    oldtext = page.text
 
     print(" ////////", rivinro, "/", len(pages), ": [ " + page.title() + " ] ////////")
     rivinro += 1
 
-    if (oldtext.find("#OHJAUS") >= 0 or oldtext.find("#REDIRECT") >= 0):
-        print("Skipping " + page.title() + " - redirect-page.")
-        continue
-    if (oldtext.find("{{bots") > 0 or oldtext.find("{{nobots") > 0):
-        print("Skipping " + page.title() + " - bot-restricted.")
+    if (is_restrictions_in_page(page.text, page) == True):
+        print("Skipping ", page.title() ,".")
         continue
 
     if (isluettelopage(page.title()) == False):
-        print("Skipping " + page.title() + " - not listpage.")
+        print("Skipping ", page.title() ," - not listpage.")
         continue
     
 
@@ -814,7 +994,7 @@ for page in pages:
 
     
     if oldtext == temptext:
-        print("Skipping. " + page.title() + " - old and new are equal.")
+        print("Skipping. ", page.title() ," - old and new are equal.")
         continue
 
     pywikibot.info('----')
@@ -827,18 +1007,12 @@ for page in pages:
 
     if (commitall == True):
         #print("commitall not enabled currently.")
-        page.text=temptext
+        page.text = temptext
         page.save(summary)
     else:
-        question='Do you want to accept these changes?'
-        choice = pywikibot.input_choice(
-                    question,
-                    [('Yes', 'y'),('No', 'N'),('All', 'a'),('Quit', 'q')],
-                    default='N',
-                    automatic_quit=False
-                )
 
-        pywikibot.info(choice)
+        choice = ask_page_save(site)
+
         if choice == 'q':
             print("Asked to exit. Exiting.")
             exit()
@@ -848,6 +1022,6 @@ for page in pages:
 
         if choice == 'y' or choice == 'a':
             #print("saving not enabled currently.")
-            page.text=temptext
+            page.text = temptext
             page.save(summary)
 

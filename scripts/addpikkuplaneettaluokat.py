@@ -443,7 +443,7 @@ wdsite = pywikibot.Site('wikidata', 'wikidata')
 wdsite.login()
 
 
-pages = getnewestpagesfromcategory(pywikibot, site, "Päävyöhykkeen asteroidit", 30)
+#pages = getnewestpagesfromcategory(pywikibot, site, "Päävyöhykkeen asteroidit", 10)
 
 #pages = getpagesrecurse(pywikibot, site, "Päävyöhykkeen asteroidit", 0)
 
@@ -473,9 +473,9 @@ pages = getnewestpagesfromcategory(pywikibot, site, "Päävyöhykkeen asteroidit
 #pages = getpagesrecurse(pywikibot, site, "Plutinot", 0)
 #pages = getpagesrecurse(pywikibot, site, "Twotinot", 0)
 
-#pages = getpagesrecurse(pywikibot, site, "Kentaurit (pikkuplaneetat)", 0)
+pages = getpagesrecurse(pywikibot, site, "Kentaurit (pikkuplaneetat)", 0)
 
-pages = getpagesrecurse(pywikibot, site, "Kaukaisten pikkuplaneettojen ryhmät", 1)
+#pages = getpagesrecurse(pywikibot, site, "Kaukaisten pikkuplaneettojen ryhmät", 1)
 
 
 #pages = getpagesrecurse(pywikibot, site, "Mahdolliset kääpiöplaneetat", 0)
