@@ -265,6 +265,27 @@ def checkwikidata(wdsite, itemqcode):
             print("instance ok, found near earth asteroid id: ", claim.getTarget().id)
             knowntype = True
 
+        if (claim.getTarget().id == 'Q6635'):
+            print("instance ok, found resonant transneptune object id: ", claim.getTarget().id)
+            knowntype = True
+
+        if (claim.getTarget().id == 'Q645924'):
+            print("instance ok, found cubewano id: ", claim.getTarget().id)
+            knowntype = True
+
+        if (claim.getTarget().id == 'Q6599'):
+            print("instance ok, found plutino id: ", claim.getTarget().id)
+            knowntype = True
+
+        if (claim.getTarget().id == 'Q2517684'):
+            print("instance ok, found twotino id: ", claim.getTarget().id)
+            knowntype = True
+
+        if (claim.getTarget().id == 'Q1621992'):
+            print("instance ok, found damocloid id: ", claim.getTarget().id)
+            knowntype = True
+
+        #resonantti transneptuninen kohde ()
         # Q2199 kääpiöplaneetta
         # Q645924 cubewano 
         #Maan lähelle tuleva kappale (Q265392)
@@ -424,9 +445,38 @@ wdsite.login()
 
 pages = getnewestpagesfromcategory(pywikibot, site, "Päävyöhykkeen asteroidit", 30)
 
+#pages = getpagesrecurse(pywikibot, site, "Päävyöhykkeen asteroidit", 0)
+
+#pages = getpagesrecurse(pywikibot, site, "Marsin radan leikkaaja-asteroidit", 1)
+
 #pages = getnewestpagesfromcategory(pywikibot, site, "Marsin radan leikkaaja-asteroidit", 10)
 
+#pages = getpagesrecurse(pywikibot, site, "Maan lähelle tulevat asteroidit", 1)
+
+#pages = getpagesrecurse(pywikibot, site, "Asteroidiryhmät", 1)
+
+#pages = getpagesrecurse(pywikibot, site, "Jupiterin troijalaiset", 0)
+
 #pages = getnewestpagesfromcategory(pywikibot, site, "Jupiterin troijalaiset", 10)
+
+#pages = getpagesrecurse(pywikibot, site, "Troijalaiset pikkuplaneetat", 1)
+
+#pages = getpagesrecurse(pywikibot, site, "Asteroidit", 0)
+
+
+#pages = getpagesrecurse(pywikibot, site, "Hajanaisen kiekon kohteet", 0)
+
+#pages = getnewestpagesfromcategory(pywikibot, site, "Transneptuniset kohteet", 10)
+
+#pages = getpagesrecurse(pywikibot, site, "Transneptuniset kohteet", 1)
+#pages = getpagesrecurse(pywikibot, site, "Cubewanot", 0)
+#pages = getpagesrecurse(pywikibot, site, "Plutinot", 0)
+#pages = getpagesrecurse(pywikibot, site, "Twotinot", 0)
+
+#pages = getpagesrecurse(pywikibot, site, "Kentaurit (pikkuplaneetat)", 0)
+
+pages = getpagesrecurse(pywikibot, site, "Kaukaisten pikkuplaneettojen ryhmät", 1)
+
 
 #pages = getpagesrecurse(pywikibot, site, "Mahdolliset kääpiöplaneetat", 0)
 
