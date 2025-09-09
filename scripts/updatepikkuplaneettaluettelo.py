@@ -602,11 +602,16 @@ def read_mpc_numberedlist(filename):
         name = getsubstr(line, 8, 32)
         tempname = getsubstr(line, 32, 44)
         ddate = getsubstr(line, 44, 56)
-        dplace = getsubstr(line, 56, 81)
+        #dplace = getsubstr(line, 56, 81)
+        dplace = getsubstr(line, 56, 75) # there is some number in between, skip it for now
         discoverer = getsubstr(line, 81, lenline-1)
         
         plainnum = num.replace("(", "").replace(")", "")
         plainnum = plainnum.lstrip().rstrip()
+        
+        imultispaceplace = dplace.rfind("   ")
+        if (imultispaceplace > 0):
+            dplace = dplace[:imultispaceplace].lstrip().rstrip()
         
         name = name.lstrip().rstrip()
         tempname = tempname.lstrip().rstrip()
@@ -634,27 +639,114 @@ def read_mpc_numberedlist(filename):
     f.close()
     return dlist
 
-def generate_wikitable(mpclist):
+def mpc_date_to_wiki_date(entry):
+    daymons = ["tammikuuta",
+              "helmikuuta",
+              "maaliskuuta",
+              "huhtikuuta",
+              "toukokuuta",
+              "kesäkuuta",
+              "heinäkuuta",
+              "elokuuta",
+              "syyskuuta",
+              "lokakuuta",
+              "marraskuuta",
+              "joulukuuta"]
+    mons = ["tammikuu",
+              "helmikuu",
+              "maaliskuu",
+              "huhtikuu",
+              "toukokuu",
+              "kesäkuu",
+              "heinäkuu",
+              "elokuu",
+              "syyskuu",
+              "lokakuu",
+              "marraskuu",
+              "joulukuu"]
+    
+    stryear = ""
+    strmon = ""
+    strday = ""
+    
+    ixyearend = entry.find(" ")
+    if (ixyearend > 0):
+        stryear = getsubstr(entry, 0, ixyearend).lstrip().rstrip()
+        ixmonend = entry.find(" ", ixyearend+1)
+        if (ixmonend > 0):
+            strmon = getsubstr(entry, ixyearend, ixmonend).lstrip().rstrip()
+            strday = entry[ixmonend:]
+            strday = strday.replace("*", "") # ends with asterisk?
+            strday = strday.lstrip().rstrip()
+    else:
+        stryear = entry.lstrip().rstrip()
+    
+    if (len(stryear) > 0 and len(strmon) > 0 and len(strday) > 0):
+        # strip zero if first character in day
+        if (strday[0] == "0"):
+            iday = int(strday)
+            strday = str(iday)
+        imon = int(strmon)-1
+        return "" + strday + ". " + daymons[imon] + " " + stryear
+    elif (len(stryear) > 0 and len(strmon) > 0):
+        imon = int(strmon)-1
+        return "" + mons[imon] + " " + stryear
+    else:
+        return stryear
+
+def generate_wikitable(mpclist, filename=""):
 
     print("count: ", len(mpclist))
+    
+    f = None
+    if (len(filename) > 0):
+        f = open(filename, "w")
+
+    strheaderrow ='! Nimi !! Tilapäinen nimi !! Löytöaika !! Löytöpaikka !! Löytäjä(t)'
+    strrowseparator = '|-'
+    count = 0
+    totals = 0
 
     it_entry = iter(mpclist)
     k_entry = next(it_entry)
     while (k_entry):
+        impcnumber = int(k_entry)
         val_entry = mpclist[k_entry]
         
         #print(val_entry)
         isodate = val_entry[2].replace(" ", "-") # add separator
         isodate = isodate.replace("*", "") # ends with asterisk?
+        wikidate = mpc_date_to_wiki_date(val_entry[2])
+        
+        entryname = ""
         if (len(val_entry[0]) > 0): 
             # has name in addition to mpc number
             entryname = str(k_entry) + " " + val_entry[0]
-        else
+        else:
             # just mpc number
             entryname = str(k_entry)
+
+        strrowdata = "| "+ entryname +" || "+ val_entry[1] +" || "+ wikidate +" || "+ val_entry[3] +" || "+ val_entry[4]
         
-        print("|-")
-        print("| ", entryname ," || ", val_entry[1] ," || ", isodate ," || ", val_entry[3], " || ", val_entry[4] )
+        print(strrowdata)
+
+        if (f != None):
+            if (count == 0):
+                f.write('== ' + str(impcnumber) + '-' + str(impcnumber + 99)  + ' ==\n')
+                f.write('{| class="wikitable" \n')
+                f.write(strrowseparator + "\n")
+                f.write(strheaderrow + "\n")
+            
+            f.write(strrowseparator + "\n")
+            f.write(strrowdata + "\n")
+
+            if (count == 99):
+                f.write('|}\n\n')
+                count = 0
+            else:
+                count = count + 1
+                totals = totals + 1
+
 
         #it_entry = next(mpclist)
         k_entry = next(it_entry, None)
@@ -662,6 +754,10 @@ def generate_wikitable(mpclist):
             break
 
     #for k, v in mpclist.items():
+
+    if (f != None):
+        f.close()
+
 
 ## main()
 
@@ -672,7 +768,8 @@ mpclist = read_mpc_numberedlist("NumberedMPs.txt")
 
 print("mpc list has:", len(mpclist))
 
-#generate_wikitable(mpclist)
+#generate_wikitable(mpclist, "000-Gen-Numbered-MPC-list-into-wikitable.text")
+#exit(1)
 
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
