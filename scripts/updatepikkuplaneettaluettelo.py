@@ -329,7 +329,7 @@ def getplainnumber(basenum):
 def processlines(oldtext, mpclist):
     pagelen = len(oldtext)
 
-    print("mpc list has:", len(mpclist))
+    #print("mpc list has:", len(mpclist))
 
     #print("DEBUG list: ", mpclist)
 
@@ -461,6 +461,36 @@ def processlines(oldtext, mpclist):
         
     return oldtext
 
+def addnavtemplateforluettelopage(oldtext, impcnum):
+    
+    if (impcnum <= 1001):
+        # skip
+        return oldtext
+
+    if (oldtext.find("{{Edeltäjä-seuraaja") > 0):
+        # don't re-add the template
+        #print("DEBUG: already had navtemplate")
+        return oldtext
+
+    ixfirstcat = oldtext.find("[[Luokka:")
+    if (ixfirstcat < 0):
+        # no category? -> skip
+        return oldtext
+
+    iPrevstart = impcnum-1000
+    iPrevend = iPrevstart+999
+
+    iNextstart = impcnum+1000
+    iNextend = iNextstart+999
+        
+    newtemplate = "{{Edeltäjä-seuraaja\n | Edeltäjä = [[Luettelo pikkuplaneetoista: "+ str(iPrevstart) +"–"+ str(iPrevend) +"]]\n | Titteli = [[Luettelo pikkuplaneetoista]]\n | Seuraaja = [[Luettelo pikkuplaneetoista: "+ str(iNextstart) +"–"+ str(iNextend) +"]]\n}}\n"
+
+
+    return insertat(oldtext, ixfirstcat, newtemplate)
+
+    #return oldtext
+    
+
 
 def isluettelopage(pagename):
     ix = pagename.find(":")
@@ -473,6 +503,21 @@ def isluettelopage(pagename):
         print("no basepart in name")
         return False
     return True
+
+def getfirstmpcnumfromluettelotitle(pagename):
+    ix = pagename.find(":")
+    if (ix < 0):
+        print("no semicolon in name")
+        return 0
+    ixdash = pagename.find("–", ix+1)
+    if (ix < 0):
+        print("no dash found in name")
+        return 0
+
+    mpcnum = getsubstr(pagename, ix+1, ixdash)
+    mpcnum = mpcnum.lstrip().rstrip()
+    inum = int(mpcnum)
+    return inum
 
 
 # ei rivinvaihtoa viitemallineen perässä? -> lisätään puuttuva
@@ -720,7 +765,7 @@ def get_page_heading_text(istartnum):
     return "Tämä on '''luettelo''' [[Aurinkokunta|Aurinkokunnan]] numeroiduista '''[[pikkuplaneetta|pikkuplaneetoista]]''' numerojärjestyksessä alkaen "+ str(istartnum) +":stä ja päättyen "+ str(istartnum+999) +":een. Kokonaisen luettelon löytää katsomalla [[Luettelo pikkuplaneetoista]].\n\n"
 
 def get_page_ending_text():
-    return "==Lähteet==\n*[http://www.minorplanetcenter.org/iau/lists/NumberedMPs.html Discovery Circumstances: Numbered Minor Planets: IAU Minor Planet Center] {{en}}}\n\n[[Luokka:Luettelot pikkuplaneetoista]]\n\n"
+    return "==Lähteet==\n*[http://www.minorplanetcenter.org/iau/lists/NumberedMPs.html Discovery Circumstances: Numbered Minor Planets: IAU Minor Planet Center] {{en}}\n\n[[Luokka:Luettelot pikkuplaneetoista]]\n\n"
 
 
 def generate_wikitable(mpclist, filename=""):
@@ -755,7 +800,13 @@ def generate_wikitable(mpclist, filename=""):
             # just mpc number
             entryname = str(k_entry)
 
-        strrowdata = "| "+ entryname +" || "+ val_entry[1] +" || "+ wikidate +" || "+ val_entry[3] +" || "+ val_entry[4]
+        # in some cases there are vertical lines, wikify them
+        entryname = entryname.replace('|', '{{!}}')
+        temporaryname = val_entry[1].replace('|', '{{!}}')
+        location = val_entry[3].replace('|', '{{!}}')
+        discoverer = val_entry[4].replace('|', '{{!}}')
+
+        strrowdata = "| "+ entryname +" || "+ temporaryname +" || "+ wikidate +" || "+ location +" || "+ discoverer
         
         print(strrowdata)
 
@@ -985,12 +1036,28 @@ for page in pages:
     if (isluettelopage(page.title()) == False):
         print("Skipping ", page.title() ," - not listpage.")
         continue
-    
 
     temptext = oldtext
+    summary = ""
+    
 
-    summary = 'Päivitetään luetteloa Minor Planet Centerin luettelon mukaan (ladattu: https://www.minorplanetcenter.net/iau/lists/NumberedMPs.html)'
     temptext = processlines(temptext, mpclist)
+    if (temptext != oldtext):
+        summary = 'Päivitetään luetteloa Minor Planet Centerin luettelon mukaan (ladattu: https://www.minorplanetcenter.net/iau/lists/NumberedMPs.html)'
+        
+    temptext = temptext.replace("{{en}}}", "{{en}}")
+    if (temptext != oldtext):
+        summary += 'Korjataan kielimalline'
+
+    ipagempcnum = getfirstmpcnumfromluettelotitle(page.title())
+    if (ipagempcnum == 0):
+        print("Could not find first number in", page.title() ,".")
+        #continue
+    else:
+        #print("DEBUG: First number is: ", ipagempcnum, " in: ", page.title() ,".")
+        temptext = addnavtemplateforluettelopage(temptext, ipagempcnum)
+        if (temptext != oldtext):
+            summary += 'Lisätään navigaatiomalline'
 
     
     if oldtext == temptext:
