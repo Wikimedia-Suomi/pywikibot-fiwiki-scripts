@@ -19,6 +19,9 @@ def insertat(oldtext, pos, string):
 # - does not need to be same length
 # 
 def replacebetween(oldtext, newstring, begin, end):
+    if (begin > end):
+        print("BUG: beginning is after ending")
+        exit(1)
     
     newtext = oldtext[:begin] + newstring + oldtext[end:]
     return newtext
@@ -179,7 +182,7 @@ def parsenameaddcat(oldtext, wdmpcnumber, title):
         namedcat = "[[Luokka:Nimetyt pikkuplaneetat|" + name + "]]"
         oldtext = oldtext + "\n" + namedcat + "\n"
     else:
-        print("DEBUG: already in named category")
+        print("DEBUG: already in named category or not named yet")
 
     return oldtext
 
@@ -308,6 +311,40 @@ def checkwikidata(wdsite, itemqcode):
     
     return None
 
+def is_existing_page(site, title):
+
+    # note: what to do with redirect page?
+    # 
+    try:
+        # What happens if page does not exist yet?
+        page = pywikibot.Page(site, title)
+        
+        # is None returned?
+        if (page != None):
+            # might throw exception if page does not exist in wikidata?
+            pageqid = page.data_item().getID()
+            print("DEBUG: Page " + page.title() + " has id: ", pageqid)
+            return True
+    except:
+        print("Failed opening page: ", title ,".")
+        return False
+        
+
+    if (page == None):
+        print("Could not open page: ", title ,".")
+
+    return False
+
+# make page name for checking if article exists for the minor planet
+def make_page_name(mpcnum, name, temporary):
+    #
+    if (len(name) > 0 and mpcnum > 0):
+        return "" + str(mpcnum) + " " + name
+    elif (mpcnum > 0 and len(temporary) > 0):
+        return "(" + str(mpcnum) + ") " + temporary
+    else:
+        return temporary
+
 # verify that we can get just plain number
 def getplainnumber(basenum):
     
@@ -326,7 +363,7 @@ def getplainnumber(basenum):
         return int(basenum)
     return 0
 
-def processlines(oldtext, mpclist):
+def processwikilines(oldtext, mpclist):
     pagelen = len(oldtext)
 
     #print("mpc list has:", len(mpclist))
@@ -399,12 +436,15 @@ def processlines(oldtext, mpclist):
             continue
         
         if (basename.find("[") > 0 or basename.find("]") > 0):
-            # wikilink: see if it is plain number linked ?
+            # wikilink: just skip
             
-            tablen = basename.replace("[", "").replace("]", "")
-            plain_base_num = getplainnumber(tablen)
-            if (plain_base_num > 0):
-                print("DEBUG: plain number in a wikilink? [", tablen ,"] tempname::", tempname)
+            # is it a plain number linked ?
+            # these were mostly fixed already?
+            # -> no need for this any more
+            #tablen = basename.replace("[", "").replace("]", "")
+            #plain_base_num = getplainnumber(tablen)
+            #if (plain_base_num > 0):
+            #    print("DEBUG: plain number in a wikilink? [", tablen ,"] tempname::", tempname)
             #else:
                 #print("DEBUG: not a plain number in a wikilink")
             
@@ -412,37 +452,38 @@ def processlines(oldtext, mpclist):
             ixline = ixlineend
             #print("DEBUG: skipping line, already named entry")
             continue
-        
+
+       
         # might be plain number currently
         basename = basename.lstrip().rstrip()
         tempname = tempname.lstrip().rstrip()
 
-        #print("DEBUG: looking for mpc number: [", basename ,"] tempname::", tempname)
-        
         plain_base_num = getplainnumber(basename)
         if (plain_base_num == 0):
+            # not a plain number in the field:
+            # if is number with name see if should make a wikilink
+            # if there is an article for it
+            
             # skip to end of line
             ixline = ixlineend
             continue
 
-        # ok, we might have something with plain number currently
-        #print("DEBUG: plain number found: [", basename ,"] tempname::", tempname)
-
         tup_mpc = mpclist.get(plain_base_num)
         if (tup_mpc != None):
-            #print("DEBUG: entry found in mpc list for plain number: [", basename ,"] tempname:", tempname)
 
             mpc_new_name = tup_mpc[0]
             mpc_temp_name = tup_mpc[1]
 
-            #if (len(mpc_new_name) < 1):
-            #    print("DEBUG: no name for: [", basename ,"] tempname:", mpc_temp_name)
             if (mpc_temp_name != tempname):
                 print("WARN: temporary name does not match for: [", basename ,"] tempname:", mpc_temp_name)
 
             # also double check with temporary from table and mpc list
             if (mpc_temp_name == tempname and len(mpc_new_name) > 0):
                 print("DEBUG: new name found, temporary name match: [", basename ,"] tempname:", mpc_temp_name)
+
+                # if there is already article with correct name:
+                # add link while updating name for it (don't change if in a different name)
+                #if (minorplanetexists == True):
 
                 ixbaseend = oldtext.find(" ", ixline+lenstart+len(basename))
                 if (ixbaseend > 0 and ixbaseend < ixsecond):
@@ -458,8 +499,9 @@ def processlines(oldtext, mpclist):
         # skip to end of line
         ixline = ixlineend
 
-        
     return oldtext
+
+# / processwikilines()
 
 def addnavtemplateforluettelopage(oldtext, impcnum):
     
@@ -489,8 +531,8 @@ def addnavtemplateforluettelopage(oldtext, impcnum):
     return insertat(oldtext, ixfirstcat, newtemplate)
 
     #return oldtext
-    
 
+# / addnavtemplateforluettelopage()    
 
 def isluettelopage(pagename):
     ix = pagename.find(":")
@@ -847,6 +889,9 @@ def generate_wikitable(mpclist, filename=""):
     if (f != None):
         f.close()
 
+# / generate_wikitable()
+
+
 def ask_page_save(site):
 
     choice = ""
@@ -880,6 +925,31 @@ def is_restrictions_in_page(pagetext, page):
         return True
     return False
 
+def get_existing_page(site, title):
+
+    # note: what to do with redirect page?
+    # 
+    try:
+        # What happens if page does not exist yet?
+        page = pywikibot.Page(site, title)
+        
+        # is None returned?
+        if (page != None):
+            # might throw exception if page does not exist in wikidata?
+            pageqid = page.data_item().getID() 
+            print("DEBUG: Page " + page.title() + " has id: ", pageqid)
+            return page
+    except:
+        print("Failed opening page: ", title ,".")
+        return None
+        
+
+    if (page == None):
+        print("Could not open page: ", title ,".")
+
+    return None
+
+
 # update articles
 def add_article_sorting_and_categories(mpclist):
 
@@ -907,10 +977,10 @@ def add_article_sorting_and_categories(mpclist):
         
         print("DEBUG: looking for article: ", entryname)
         
-        # What happens if page does not exist yet?
-        page = pywikibot.Page(site, entryname)
+        # check if page exists
+        page = get_existing_page(site, entryname)
         if (page == None):
-            print("Could not open page: ", page.title() ,".")
+            print("Could not open page: ", entryname ,".")
 
             k_entry = next(it_entry, None)
             continue
@@ -922,7 +992,6 @@ def add_article_sorting_and_categories(mpclist):
 
             k_entry = next(it_entry, None)
             continue
-
 
         if (hassorting(oldtext) == True and isincategory(oldtext) == True):
             print("Skipping ", page.title() ," - has sorting and category.")
@@ -977,11 +1046,11 @@ def add_article_sorting_and_categories(mpclist):
                 page.save(summary)
 
 
-
         k_entry = next(it_entry, None)
         if not k_entry:
             break
 
+# / add_article_sorting_and_categories()
 
 ## main()
 
@@ -994,7 +1063,7 @@ mpclist = read_mpc_numberedlist("NumberedMPs.txt")
 
 print("mpc list has:", len(mpclist))
 
-#generate_wikitable(mpclist, "001-Gen-Numbered-MPC-list-into-wikitable.text")
+#generate_wikitable(mpclist, "002-Gen-Numbered-MPC-list-into-wikitable.text")
 #exit(1)
 
 # sys.argv -> find --catupdate
@@ -1002,8 +1071,8 @@ print("mpc list has:", len(mpclist))
 #exit(1)
 
 
-# sys.argv -> find --listupdate
 
+# sys.argv -> find --listupdate
 
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
@@ -1012,7 +1081,10 @@ site.login()
 #wdsite.login()
 
 
-pages = getpagesrecurse(pywikibot, site, "Luettelot pikkuplaneetoista", 0)
+
+#pages = getpagesrecurse(pywikibot, site, "Luettelot pikkuplaneetoista", 0)
+
+pages = getnewestpagesfromcategory(pywikibot, site, "Luettelot pikkuplaneetoista", 50)
 
 
 rivinro = 1
@@ -1039,15 +1111,18 @@ for page in pages:
 
     temptext = oldtext
     summary = ""
-    
 
-    temptext = processlines(temptext, mpclist)
+    # note: might be better to query potential articles to link with
+    # earlier in case pywikibot confuses edit context?
+
+    temptext = processwikilines(temptext, mpclist)
     if (temptext != oldtext):
         summary = 'Päivitetään luetteloa Minor Planet Centerin luettelon mukaan (ladattu: https://www.minorplanetcenter.net/iau/lists/NumberedMPs.html)'
-        
-    temptext = temptext.replace("{{en}}}", "{{en}}")
-    if (temptext != oldtext):
-        summary += 'Korjataan kielimalline'
+
+    # these were fixed already, not needed
+    #temptext = temptext.replace("{{en}}}", "{{en}}")
+    #if (temptext != oldtext and len(summary) == 0):
+    #    summary += 'Korjataan kielimalline'
 
     ipagempcnum = getfirstmpcnumfromluettelotitle(page.title())
     if (ipagempcnum == 0):
@@ -1056,7 +1131,7 @@ for page in pages:
     else:
         #print("DEBUG: First number is: ", ipagempcnum, " in: ", page.title() ,".")
         temptext = addnavtemplateforluettelopage(temptext, ipagempcnum)
-        if (temptext != oldtext):
+        if (temptext != oldtext and len(summary) == 0):
             summary += 'Lisätään navigaatiomalline'
 
     

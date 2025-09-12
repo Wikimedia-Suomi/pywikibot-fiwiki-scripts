@@ -19,10 +19,15 @@ def insertat(oldtext, pos, string):
 # - does not need to be same length
 # 
 def replacebetween(oldtext, newstring, begin, end):
-    
+    if (begin > end):
+        print("BUG: beginning is after ending")
+        exit(1)
+
     newtext = oldtext[:begin] + newstring + oldtext[end:]
     return newtext
 
+def getsubstr(text, begin, end):
+    return text[begin:end]
 
 # try to catch if there is plain yyyy AA format in page name?
 def istemporaryname(name):
@@ -177,7 +182,7 @@ def parsenameaddcat(oldtext, wdmpcnumber, title):
         namedcat = "[[Luokka:Nimetyt pikkuplaneetat|" + name + "]]"
         oldtext = oldtext + "\n" + namedcat + "\n"
     else:
-        print("DEBUG: already in named category")
+        print("DEBUG: already in named category or not named yet")
 
     return oldtext
 
@@ -464,7 +469,7 @@ wdsite.login()
 #pages = getpagesrecurse(pywikibot, site, "Asteroidit", 0)
 
 
-#pages = getpagesrecurse(pywikibot, site, "Hajanaisen kiekon kohteet", 0)
+pages = getpagesrecurse(pywikibot, site, "Hajanaisen kiekon kohteet", 0)
 
 #pages = getnewestpagesfromcategory(pywikibot, site, "Transneptuniset kohteet", 10)
 
@@ -473,10 +478,9 @@ wdsite.login()
 #pages = getpagesrecurse(pywikibot, site, "Plutinot", 0)
 #pages = getpagesrecurse(pywikibot, site, "Twotinot", 0)
 
-pages = getpagesrecurse(pywikibot, site, "Kentaurit (pikkuplaneetat)", 0)
+#pages = getpagesrecurse(pywikibot, site, "Kentaurit (pikkuplaneetat)", 0)
 
 #pages = getpagesrecurse(pywikibot, site, "Kaukaisten pikkuplaneettojen ryhmät", 1)
-
 
 #pages = getpagesrecurse(pywikibot, site, "Mahdolliset kääpiöplaneetat", 0)
 
