@@ -8,6 +8,29 @@ from urllib.request import urlopen
 
 import requests
 
+def getcategoryfortno(tnoqcode):
+    d_tnocat = dict()
+    d_tnocat["Q645924"] = "Cubewanot"
+    d_tnocat["Q6599"] = "Plutinot"
+    d_tnocat["Q6599"] = "Twotinot"
+    
+    d_tnocat["Q2447669"] = "Haumea-ryhmä"
+    d_tnocat["Q180380"] = "Hajanaisen kiekon kohteet"
+
+    # damocloidit, kentaurit, sednoidit
+    # haumea-ryhmä, hajanainen kiekko
+    # resonantit kohteet?
+
+    if (tnoqcode == None):
+        return ""
+
+    if (len(tnoqcode) == 0):
+        return ""
+    
+    if tnoqcode in d_tnocat: # skip unknown tags
+        return d_tnocat[tnoqcode]
+
+    return ""
 
 def insertat(oldtext, pos, string):
     # just insert, otherwise no modification (don't skip or remove anything)
@@ -88,7 +111,7 @@ def istemporaryname(name):
 
     return istempname
 
-def parsenameaddcat(oldtext, wdmpcnumber, title):
+def parsenameaddcat(oldtext, wdmpcnumber, wdtnoqid, title):
     
     hasname = False
     if (title.find("(") >= 0 or title.find(")") >= 0 ):
@@ -184,6 +207,16 @@ def parsenameaddcat(oldtext, wdmpcnumber, title):
     else:
         print("DEBUG: already in named category or not named yet")
 
+    tnocat = getcategoryfortno(wdtnoqid)
+    if (len(tnocat) > 0):
+        # don't add second time for same group,
+        # haumea-group might need to be a sub-group -> don't add per article cat for those
+        if (oldtext.find(":"+ tnocat +"") < 0 and oldtext.find("Luokka:Haumea-ryhmä") < 0):
+            tnocat = "[[Luokka:" + tnocat+ "]]"
+            oldtext = oldtext + "\n" + tnocat + "\n"
+        else:
+            print("DEBUG: already in TNO sub-category for:", tnocat)
+
     return oldtext
 
 
@@ -223,21 +256,64 @@ def getmpcnumber(itemfound):
             return target
             #return target.lstrip().rstrip()
     return None
-    
 
-def checkwikidata(wdsite, itemqcode):
+# get type of transneptunian object (tno):
+# cubewano, plutino or twotino
+def gettnotypewd(itemfound):
 
-    repo = wdsite.data_repository()
-    
-    itemfound = pywikibot.ItemPage(repo, itemqcode)
     if (itemfound.isRedirectPage() == True):
-        return False
+        return None
     
-    dictionary = itemfound.get()
+    target = ""
+
+    instance_of = itemfound.claims.get('P31', [])
+    for claim in instance_of:
+        if (claim.getTarget().id == 'Q645924'):
+            print("instance ok, found cubewano id: ", claim.getTarget().id)
+            target = claim.getTarget().id
+            break
+
+        if (claim.getTarget().id == 'Q6599'):
+            print("instance ok, found plutino id: ", claim.getTarget().id)
+            target = claim.getTarget().id
+            break
+
+        if (claim.getTarget().id == 'Q2517684'):
+            print("instance ok, found twotino id: ", claim.getTarget().id)
+            target = claim.getTarget().id
+            break
+        
+        # Q6592 == transneptuninen kohde
+
+    # if asteroidiperhe P744 == Haumea-ryhmä Q2447669
+    # if asteroidiperhe P744 == hajanainen kiekko Q180380
+    # -> ei lisätä muuta alaluokkaa?
+
+    asteroidfamily = itemfound.claims.get('P744', [])
+    for family in asteroidfamily:
+        if (family.getTarget().id == 'Q2447669'):
+            print("found Haumea-group qid: ", family.getTarget().id)
+            return family.getTarget().id
+        if (family.getTarget().id == 'Q180380'):
+            print("found scattered disc group qid: ", family.getTarget().id)
+            return family.getTarget().id
+
+    return target
+
     
+# check item is acceptable minor planet,
+# return minor planet number (if any)
+def checkminorplanetwd(itemfound):
+
+    # redirect-entity in wikidata?
+    if (itemfound.isRedirectPage() == True):
+        return None
+
+    #dictionary = itemfound.get()
+
     # debug print
     #checkqcode(itemfound)
-    
+
     knowntype = False
     
     # check entity type (instance of)
@@ -331,6 +407,7 @@ def addnewline(oldtext):
     else:
         # add one linefeed (beginning .. newline .. rest)
         return oldtext[:index+strlen] + "\n" + oldtext[index+strlen:]
+
 
 def getpagesrecurse(pywikibot, site, maincat, depth=1):
     #final_pages = list()
@@ -448,32 +525,38 @@ wdsite = pywikibot.Site('wikidata', 'wikidata')
 wdsite.login()
 
 
-#pages = getnewestpagesfromcategory(pywikibot, site, "Päävyöhykkeen asteroidit", 10)
-
+pages = getnewestpagesfromcategory(pywikibot, site, "Päävyöhykkeen asteroidit", 20)
 #pages = getpagesrecurse(pywikibot, site, "Päävyöhykkeen asteroidit", 0)
 
-#pages = getpagesrecurse(pywikibot, site, "Marsin radan leikkaaja-asteroidit", 1)
 
 #pages = getnewestpagesfromcategory(pywikibot, site, "Marsin radan leikkaaja-asteroidit", 10)
+#pages = getpagesrecurse(pywikibot, site, "Marsin radan leikkaaja-asteroidit", 1)
+
+#pages = getnewestpagesfromcategory(pywikibot, site, "Amor-asteroidit", 10)
 
 #pages = getpagesrecurse(pywikibot, site, "Maan lähelle tulevat asteroidit", 1)
+#pages = getpagesrecurse(pywikibot, site, "Apollo-asteroidit", 0)
+#pages = getpagesrecurse(pywikibot, site, "Amor-asteroidit", 0)
+#pages = getpagesrecurse(pywikibot, site, "Aten-asteroidit", 0)
+#pages = getpagesrecurse(pywikibot, site, "Atira-asteroidit", 0)
 
 #pages = getpagesrecurse(pywikibot, site, "Asteroidiryhmät", 1)
 
-#pages = getpagesrecurse(pywikibot, site, "Jupiterin troijalaiset", 0)
 
 #pages = getnewestpagesfromcategory(pywikibot, site, "Jupiterin troijalaiset", 10)
+#pages = getpagesrecurse(pywikibot, site, "Jupiterin troijalaiset", 0)
+
 
 #pages = getpagesrecurse(pywikibot, site, "Troijalaiset pikkuplaneetat", 1)
 
 #pages = getpagesrecurse(pywikibot, site, "Asteroidit", 0)
 
 
-pages = getpagesrecurse(pywikibot, site, "Hajanaisen kiekon kohteet", 0)
+#pages = getpagesrecurse(pywikibot, site, "Hajanaisen kiekon kohteet", 0)
 
-#pages = getnewestpagesfromcategory(pywikibot, site, "Transneptuniset kohteet", 10)
+#pages = getnewestpagesfromcategory(pywikibot, site, "Transneptuniset kohteet", 20)
 
-#pages = getpagesrecurse(pywikibot, site, "Transneptuniset kohteet", 1)
+#pages = getpagesrecurse(pywikibot, site, "Transneptuniset kohteet", 0)
 #pages = getpagesrecurse(pywikibot, site, "Cubewanot", 0)
 #pages = getpagesrecurse(pywikibot, site, "Plutinot", 0)
 #pages = getpagesrecurse(pywikibot, site, "Twotinot", 0)
@@ -506,32 +589,39 @@ for page in pages:
         print("Skipping " + page.title() + " - redirect-page.")
         continue
     if (oldtext.find("{{bots") > 0 or oldtext.find("{{nobots") > 0):
-        print("Skipping " + page.title() + " - bot-restricted.")
+        print("Skipping ", page.title() ," - bot-restricted.")
         continue
 
     if (hassorting(oldtext) == True and isincategory(oldtext) == True):
-        print("Skipping " + page.title() + " - has sorting and category.")
+        print("Skipping ", page.title() ," - has sorting and category.")
         continue
     
     # get entity id of page
     pageqid = page.data_item().getID()
     print("Page " + page.title() + " has id: ", pageqid)
 
+    repo = wdsite.data_repository()
+    wditem = pywikibot.ItemPage(repo, pageqid)
+
     # try to get MPC number from wikidata:
     # if it does not have one -> only temporary identification 
-    mpcnumber = checkwikidata(wdsite, pageqid)
+    mpcnumber = checkminorplanetwd(wditem)
     if (mpcnumber == None):
-        print("Skipping page: " + page.title() + " - not suitable type or no MPC number.")
+        print("Skipping page: ", page.title() ," - not suitable type or no MPC number.")
         continue
+    
+    # try to see if it is known supported TNO sub-type (we have cats for it)
+    tnoqid = gettnotypewd(wditem)
+    if (tnoqid != None):
+        print("Found TNO qid: ", tnoqid, "for:", page.title() ," - might add extra category")
 
     temptext = oldtext
-
     summary='Lisätään luokittelu ja aakkostus'
-    temptext = parsenameaddcat(temptext, mpcnumber, page.title())
+    temptext = parsenameaddcat(temptext, mpcnumber, tnoqid, page.title())
 
     
     if oldtext == temptext:
-        print("Skipping. " + page.title() + " - old and new are equal.")
+        print("Skipping. ", page.title() ," - old and new are equal.")
         continue
 
     pywikibot.info('----')
