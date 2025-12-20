@@ -126,7 +126,7 @@ def append_finna_api_parameters(url):
 # OK: sls.%25C3%2596TA%2B112_ota112-9_foto_01536
 # ERROR: sls.%2525C3%252596TA%252B112_ota112-9_foto_01536
 
-def get_finna_record(finnaid, quoteid=True):
+def get_finna_record(frsession, finnaid, quoteid=True):
     finnaid = trimlr(finnaid)
     if (finnaid.startswith("fmp.") == True and finnaid.find("%2F") > 0):
         quoteid = False
@@ -162,8 +162,11 @@ def get_finna_record(finnaid, quoteid=True):
     url ="https://api.finna.fi/v1/record?id=" +  quotedfinnaid
     url = append_finna_api_parameters(url)
 
+    #print("DEBUG: request url", url)
+
     try:
-        response = requests.get(url)
+        #response = requests.get(url)
+        response = frsession.get(url)
         return response.json()
     except:
         print("Finna API query failed: " + url)
@@ -173,9 +176,35 @@ def get_finna_record(finnaid, quoteid=True):
 
 class HashedImageResults:
     def __init__(self):
-        self.hashlen = 0
+        #self.hashlen = 0
+        self.phashlen = 0
+        self.dhashlen = 0
         self.phash = ""
         self.dhash = ""
+
+    # convert string to base 16 integer for calculating difference
+    def converthashtoint(self, h, base=16):
+        return int(h, base)
+    
+    def getPhashInt(self):
+        return self.converthashtoint(self.phash)
+
+    def getDhashInt(self):
+        return self.converthashtoint(self.dhash)
+    
+    # convert from tuple or dict from database method
+    def fromtuple(self, tpd):
+        if ("phashval" in tpd):
+            self.phash = tpd['phashval']
+        if ("phashlen" in tpd):
+            self.phashlen = tpd['phashlen']
+        if ("dhashval" in tpd):
+            self.dhash = tpd['dhashval']
+        if ("dhashlen" in tpd):
+            self.dhashlen = tpd['dhashlen']
+
+    # compare to another instance, check appropriate accuracy
+    #def isMatchingHash(self, other):
 
 
 # Perceptual hashing 
@@ -219,14 +248,11 @@ def getimagehash(img : Image, hashlen=8):
         return None
     
     hr = HashedImageResults()
-    hr.hashlen = hashlen
+    hr.phashlen = hashlen
+    hr.dhashlen = hashlen
     hr.phash = str(phash)
     hr.dhash = str(dhash)
     return hr
-
-# convert string to base 16 integer for calculating difference
-def converthashtoint(h, base=16):
-    return int(h, base)
 
 # distance of hashes (count of bits that are different)
 def gethashdiff(hint1, hint2):
@@ -236,18 +262,20 @@ def gethashdiff(hint1, hint2):
 # method is to convert images to 64bit integers and then
 # calculate hamming distance. 
 #
-def is_same_image(imghash1, imghash2):
+# this expects input to be HashedImageResults
+#
+def is_same_image(imghash1 : HashedImageResults, imghash2 : HashedImageResults):
     
     # check that hash lengths are same
-    if (imghash1['phashlen'] != imghash2['phashlen'] or imghash1['dhashlen'] != imghash2['dhashlen']):
+    if (imghash1.phashlen != imghash2.phashlen or imghash1.dhashlen != imghash2.dhashlen):
         print("WARN: Hash length mismatch")
         return False
 
-    phash_int1 = converthashtoint(imghash1['phashval'])
-    dhash_int1 = converthashtoint(imghash1['dhashval'])
+    phash_int1 = imghash1.getPhashInt()
+    dhash_int1 = imghash1.getDhashInt()
 
-    phash_int2 = converthashtoint(imghash2['phashval'])
-    dhash_int2 = converthashtoint(imghash2['dhashval'])
+    phash_int2 = imghash2.getPhashInt()
+    dhash_int2 = imghash2.getDhashInt()
 
     if (phash_int1 == 0 or dhash_int1 == 0 or phash_int2 == 0 or dhash_int2 == 0):
         print("WARN: zero hash detected, file was not read correctly?")
@@ -259,10 +287,10 @@ def is_same_image(imghash1, imghash2):
 
     # print hamming distance
     if (phash_diff == 0 and dhash_diff == 0):
-        print("Both images have equal hashes, phash: " + imghash1['phashval'] + ", dhash: " + imghash1['dhashval'])
+        print("Both images have equal hashes, phash: " + imghash1.phash + ", dhash: " + imghash1.dhash)
     else:
-        print("Phash diff: " + str(phash_diff) + ", image1: " + imghash1['phashval'] + ", image2: " + imghash2['phashval'])
-        print("Dhash diff: " + str(dhash_diff) + ", image1: " + imghash1['dhashval'] + ", image2: " + imghash2['dhashval'])
+        print("Phash diff: " + str(phash_diff) + ", image1: " + imghash1.phash + ", image2: " + imghash2.phash)
+        print("Dhash diff: " + str(dhash_diff) + ", image1: " + imghash1.dhash + ", image2: " + imghash2.dhash)
 
     # max distance for same is that least one is 0 and second is max 3
 
@@ -275,45 +303,11 @@ def is_same_image(imghash1, imghash2):
     else:
         return False
 
-# old method, need to convert to using above for simplicity
-def is_same_image_old(img1, img2, hashlen=8):
-
-    phash1 = imagehash.phash(img1, hash_size=hashlen)
-    dhash1 = imagehash.dhash(img1, hash_size=hashlen)
-    phash1_int = converthashtoint(str(phash1))
-    dhash1_int = converthashtoint(str(dhash1))
-
-    phash2 = imagehash.phash(img2, hash_size=hashlen)
-    dhash2 = imagehash.dhash(img2, hash_size=hashlen)
-    phash2_int = converthashtoint(str(phash2))
-    dhash2_int = converthashtoint(str(dhash2))
-
-    if (phash1_int == 0 or dhash1_int == 0 or phash2_int == 0 or dhash2_int == 0):
-        print("WARN: zero hash detected, file was not read correctly?")
-        return False
-
-    # Hamming distance difference
-    phash_diff = gethashdiff(phash1_int, phash2_int)
-    dhash_diff = gethashdiff(dhash1_int, dhash2_int)
-
-    # print hamming distance
-    if (phash_diff == 0 and dhash_diff == 0):
-        print("Both images have equal hashes, phash: " + str(phash1) + ", dhash: " + str(dhash1))
-    else:
-        print("Phash diff: " + str(phash_diff) + ", image1: " + str(phash1) + ", image2: " + str(phash2))
-        print("Dhash diff: " + str(dhash_diff) + ", image1: " + str(dhash1) + ", image2: " + str(dhash2))
-
-    # max distance for same is that least one is 0 and second is max 3
-    
-    if phash_diff == 0 and dhash_diff < 4:
-        return True
-    elif phash_diff < 4 and dhash_diff == 0:
-        return True
-    elif (phash_diff + dhash_diff) <= 8:
-        return True
-    else:
-        return False
-
+def getImageShaDigest(img):
+    shaimg = hashlib.sha1()
+    shaimg.update(img.tobytes())
+    digest = shaimg.digest()
+    return digest
 
 # if image is identical (not just similar) after conversion (avoid reupload)
 def isidentical(img1, img2):
@@ -893,6 +887,20 @@ class KansallisgalleriaData:
 
 # ----- /KansallisgalleriaData
 
+# find last character before newline
+def rfindnonnewline(src):
+    index = len(src)-1
+
+    #if (src.endswith("\t")):
+    #    index = index - 1
+
+    while (index > 0):
+        ch = src[index]
+        if (ch != "\r" and ch != "\n" and ch != "\t" and ch != " "):
+            return index+1 # previous index
+        index = index -1
+    return 0
+
 
 # strip id from other things that may be after it:
 # there might be part of url or some html in same field..
@@ -983,6 +991,25 @@ def getrecordid(oldsource):
         return ""
     oldsource = oldsource[indexid+strlen:]
     return stripid(oldsource)
+
+# Normal record has /Record/<id>
+# but downloads have Record/DownloadFile/?id=<id>
+# so they need different handling
+# Also might have /Cover/ or some other format:
+# only consider /Record/ type here.
+def isNormalFinnaRecordUrl(srcvalue):
+    index = srcvalue.find("finna.fi/Record/")
+    if (index < 0):
+        return False
+    
+    index += len("finna.fi/Record/")
+    tmplen = len("DownloadFile")
+    tmpstr = srcvalue[index:index+tmplen]
+    if (tmpstr == "DownloadFile"):
+        # record with download link instead of id -> different parsing
+        return False
+    return True
+
 
 # commons source information
 def findurlbeginfromsource(source, begin):
@@ -1890,6 +1917,10 @@ def addDifferenceHashToSdcData(pywikibot, wikidata_site, hashval, comhashtime):
 # TODO: add missing qualifier to phash/dhash property in sdc data
 # for now, just checking if it exists: pywikibot api does not really support this with SDC data
 # -> need another way as usual
+#
+# property may be P9310 for perceptual hash and method Q104884110
+# property may be P12563 for difference hash and method Q124969714
+#
 def checkHashvalueInSdcData(pywikibot, wikidata_site, statements, prop, hashval, hash_methodqcode, comhashtime):
     if prop not in statements:
         return None
@@ -1903,7 +1934,7 @@ def checkHashvalueInSdcData(pywikibot, wikidata_site, statements, prop, hashval,
     # Q104884110 - Imagehash perceptual hash
     # Q124969714 - Imagehash difference hash
 
-    print("checking for hash and value", hashval)
+    print("checking SDC for hash and value, property ", prop ,", method ", hash_methodqcode ,", value ", hashval)
 
     # property ID P9310 for "pHash checksum"
     # property ID P12563 for "dHash checksum"
@@ -1929,7 +1960,7 @@ def checkHashvalueInSdcData(pywikibot, wikidata_site, statements, prop, hashval,
             for fclaim in foiquali:
                 ftarget = fclaim.getTarget()
                 if (ftarget == wbdate):
-                    print("exact timestamp for phash found")
+                    print("exact timestamp for hash found")
 
         # ok, hash should match, continue checking for qualifiers
         sourcelist = claim.getSources()
@@ -1957,23 +1988,23 @@ def checkHashvalueInSdcData(pywikibot, wikidata_site, statements, prop, hashval,
         # so, hash match, no qualifier found ->
         # add missing qualifier
         if (hashqfound == False):
-            print("adding imagehash method to phash")
+            print("adding imagehash method to hash")
             p_claim = pywikibot.Claim(wikidata_site, 'P459', is_reference=False, is_qualifier=True)
             q_targetph = pywikibot.ItemPage(wikidata_site, hash_methodqcode)
             p_claim.setTarget(q_targetph)
             claim.addQualifier(p_claim)
-            print("added imagehash method to phash")
-        else:
-            print("phash already has imagehash method")
+            print("added imagehash method to hash")
+        #else:
+        #    print("hash already has imagehash method")
 
         if (hashtimefound == False):
-            print("NOTE: should add imagehash inception to phash")
+            print("adding imagehash inception to hash")
             i_claim = pywikibot.Claim(wikidata_site, 'P571', is_reference=False, is_qualifier=True)
             i_claim.setTarget(wbdate)
             claim.addQualifier(i_claim)
-            print("added imagehash inception to phash")
-        else:
-            print("phash already has inception time")
+            print("added imagehash inception to hash")
+        #else:
+        #    print("hash already has inception time")
 
 
     # determination method: P459
@@ -2617,6 +2648,48 @@ def parseinceptionyearfromfinna(finnarecord):
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
 
+
+# this is for workaround when there is garbage in institution name
+def findspc(text, begin, end):
+    i = begin
+    while (i < end):
+        ch = text[i]
+        
+        if (ch == " " or ch == "\n" or ch == "\t"):
+            return i
+        i += 1
+    return -1
+
+# this is for workaround when there is garbage in institution name
+def findnonspc(text, begin, end):
+    i = begin
+    while (i < end):
+        ch = text[i]
+        
+        if (ch != " " and ch != "\n" and ch != "\t"):
+            return i
+        i += 1
+    return -1
+
+# this is for workaround when there is garbage in institution name
+def striprepeatespaces(text):
+    i = 0
+    end = len(text)
+    while (i < end):
+        ispc = findspc(text, i, end)
+        if (ispc > 0):
+            ins = findnonspc(text, ispc, end)
+            # only strip multiple continuous spaces
+            if (ins > 0 and (ins-ispc) > 1):
+                text = text[:ispc] + " " + text[ins:]
+                return text
+            else:
+                i = ins
+        else:
+            i = end
+    return text
+
+
 def getqcodeforfinnapublisher(finnarecord, institutionqcode):
     if "records" not in finnarecord:
         print("ERROR: no records in finna record")
@@ -2641,8 +2714,10 @@ def getqcodeforfinnapublisher(finnarecord, institutionqcode):
 
     for key, val in finnainstitutions.items():
         #print("val is: " + val)
-        if val in institutionqcode:
-            return institutionqcode[val]
+        # there may garbage in institution name, try to sanitize it
+        sanval = striprepeatespaces(val.strip())
+        if sanval in institutionqcode:
+            return institutionqcode[sanval]
         
     return ""
 
@@ -2708,6 +2783,8 @@ def isFinnaRecordOk(finnarecord, finnaid):
         print("WARN: failed to retrieve finna record for: " + finnaid)
         return False
 
+    #print("DEBUG: full record: ", str(finnarecord))
+
     if (finnarecord['status'] != 'OK'):
         print("WARN: status not OK: " + finnaid + " status: " + finnarecord['status'])
         return False
@@ -2726,6 +2803,21 @@ def isFinnaRecordOk(finnarecord, finnaid):
 
     #print("DEBUG: ", finnarecord)
     return True
+
+# get id given by Finna API (in case we use obsolete id in request)
+def getFinnaIdFromRecord(finnarecord):
+    records = finnarecord['records'][0]
+
+    # this should not happen since it is one of the fields requested
+    if "id" not in records:
+        print("WARN: no id in finna record ")
+        return ""
+
+    # there is often id even if accession number is not there
+    finna_id = records['id']
+
+    print("DBEUG: found id in finna record: ", finna_id)
+    return finna_id
 
 # get accession number / identifier string from finna
 def getFinnaAccessionIdentifier(finnarecord):
@@ -2785,6 +2877,52 @@ def getSummariesFromFinna(finnarecord, lang='fi'):
     print("DBEUG: found summaries in finna record: ", summaries)
     return summaries
 
+
+def getCopyrightTypeFromFinnaRecord(finnarecord):
+    records = finnarecord['records'][0]
+    
+    if "imageRights" not in records:
+        return ""
+
+    f_copyright = records['imageRights']['copyright']
+
+    # might be short type like "PDM"
+    return f_copyright
+
+
+def getImagerightsFromFinnaRecord(finnarecord, lang='fi'):
+    records = finnarecord['records'][0]
+    
+    if "imageRights" not in records:
+        return ""
+
+    f_imagerights = records['imageRights']
+
+    if "link" not in f_imagerights or "description" not in f_imagerights:
+        return ""
+
+    # if we have a full text or simple copyright marker?
+    # use full text or convert to template?
+    #f_copyright = f_imagerights['copyright']
+    f_link = records['imageRights']['link']
+    f_description = records['imageRights']['description']
+
+    #if (f_copyright == "PDM"):
+        # just convert to a template instead?
+
+    #if (desc.find(f_link) < 1):
+    #    descriptions = f_link + "; "
+
+    descriptions = f_link + "; "
+    for desc in f_description:
+        descriptions += "{{" + lang + "|" + desc + "}}"
+
+    descriptions = descriptions.replace("\n                ", "\n")
+    #descriptions = descriptions.replace("\n     ", "\n")
+
+    return descriptions
+
+
 # check if we have normal photographic image
 # (if not artwork, drawing or something else)
 def isFinnaFormatImage(finnarecord):
@@ -2830,6 +2968,15 @@ def getImagesExtended(finnarecord):
     imagesExtended = finnarecord['records'][0]['imagesExtended']
     if (len(imagesExtended) == 0):
         return None
+    
+    # note, might need to check that "downloadable" is 1 ?
+    #if ("downloadable" in finnarecord['records'][0]):
+    #    if (finnarecord['records'][0]['downloadable'] != "1"):
+    #        print("WARN: not marked as downloadable in finna record: " + finnaid)
+
+    # might need to use this list
+    #if "urls" in imagesExtended:
+        # should have pairs: large/medium/small and url
 
     # at least one entry exists
     return imagesExtended[0]
@@ -2846,7 +2993,7 @@ def getFinnaImagelist(finnarecord):
 
     if (len(imageList) == 0):
         return None
-
+    
     # at least one entry exists
     return imageList
 
@@ -2917,10 +3064,50 @@ def getFinnaPlaces(finnarecord):
         datalist.append(dstr)
     return datalist
 
+def getFinnaMeasurements(finnarecord):
+    datalist = list()
+    finnadata = getFinnaDatalist(finnarecord, "measurements")
+    if (finnadata == None):
+        return datalist
+    for dstr in finnadata:
+        #  sometimes there is newlines and tabs in the string -> strip them out
+        dstr = fixwhitespaces(dstr)
+
+        if (len(dstr) == 0):
+            continue
+        # sometimes data has bugs
+        if (dstr.find("Cannot get property") >= 0):
+            print("DEBUG: bugged data in places: ", finnaid)
+            continue
+        
+        datalist.append(dstr)
+    
+    #print("DEBUG: measurements from finna: ", str(datalist))
+    return datalist
+
+def getFinnaMaterials(finnarecord):
+    datalist = list()
+    finnadata = getFinnaDatalist(finnarecord, "materials")
+    if (finnadata == None):
+        return datalist
+    for dstr in finnadata:
+        #  sometimes there is newlines and tabs in the string -> strip them out
+        dstr = fixwhitespaces(dstr)
+
+        if (len(dstr) == 0):
+            continue
+        # sometimes data has bugs
+        if (dstr.find("Cannot get property") >= 0):
+            print("DEBUG: bugged data in places: ", finnaid)
+            continue
+        
+        datalist.append(dstr)
+    return datalist
+
 # "nonpresenterauthor" is "creators" in commons-speak:
 # in this case we want photographers
 # 
-def getFinnaNonPresenterAuthors(finnarecord):
+def getFinnaPhotographers(finnarecord):
     # also: pht for swedish language archive
     photographer_roles = ['kuvaaja', 'Kuvaaja', 'valokuvaaja', 'Valokuvaaja', 'pht']
 
@@ -2944,16 +3131,51 @@ def getFinnaNonPresenterAuthors(finnarecord):
             print("DEBUG: bugged data in nonpresenterauthors: ", finnaid)
             continue
 
-        print("DEBUG: nonPresenterAuthors, name: ", name ," role: ", role)
+        print("DEBUG: found Finna nonPresenterAuthors, name: ", name ," role: ", role)
 
         if role in photographer_roles:
+            datalist.append(name)
+    return datalist
+
+# creators like illustrators, book authors
+def getFinnaCreators(finnarecord):
+    # also: pht for swedish language archive
+    creator_roles = ['tekijä', 'Tekijä']
+
+    datalist = list()
+    finnadata = getFinnaDatalist(finnarecord, "nonPresenterAuthors")
+    if (finnadata == None):
+        return datalist
+    if (len(finnadata) == 0):
+        print("DEBUG: empty list in nonPresenterAuthors: ", finnaid)
+        return datalist
+
+    for entry in finnadata:
+        if ("name" not in entry or "role" not in entry):
+            continue
+        
+        name = entry["name"]
+        role = entry["role"]
+
+        # sometimes data has bugs
+        if (name.find("Cannot get property") >= 0 or role.find("Cannot get property") >= 0):
+            print("DEBUG: bugged data in nonpresenterauthors: ", finnaid)
+            continue
+
+        print("DEBUG: found Finna nonPresenterAuthors, name: ", name ," role: ", role)
+
+        if role in creator_roles:
             datalist.append(name)
     return datalist
 
 
 # check image metadata if it could be uploaded again with a higher resolution
 #
-def needReupload(file_info, finna_record, imagesExtended):
+def needReupload(file_info, finnarecord):
+    
+    imagesExtended = getImagesExtended(finnarecord)
+    if (imagesExtended == None):
+        return False
 
     if "highResolution" not in imagesExtended:
         print("WARN: 'highResolution' not found in imagesExtended: " + finnaid)
@@ -2966,12 +3188,14 @@ def needReupload(file_info, finna_record, imagesExtended):
     if "original" not in hires:
         print("WARN: 'original' not found in hires image: " + finnaid)
         return False
-            
+
+    # TODO: check if there are multiple images with different sizes?
     hires = imagesExtended['highResolution']['original'][0]
     if "data" not in hires:
         print("WARN: 'data' not found in hires image: " + finnaid)
         return False
 
+    # if there is no known format for the image uploading can't work either
     if "format" not in hires:
         print("WARN: 'format' not found in hires image: " + finnaid)
         return False
@@ -2981,28 +3205,41 @@ def needReupload(file_info, finna_record, imagesExtended):
         # it seems sizes might be missing when image is upscaled and not "original"?
         # -> verify this
         # -> skip image for now
+        print("DEBUG: 'width' or 'height' not found in hires image: " + finnaid)
         return False
-    else:
-        # verify finna image really is in better resolution than what is in commons
-        # before uploading
-        finnawidth = int(hires['data']['width']['value'])
-        finnaheight = int(hires['data']['height']['value'])
+
+    # verify finna image really is in better resolution than what is in commons
+    # before uploading
+    finnawidth = int(hires['data']['width']['value'])
+    finnaheight = int(hires['data']['height']['value'])
     
     if file_info.width >= finnawidth or file_info.height >= finnaheight:
-        print("Page " + page.title() + " has resolution equal or higher than finna: " + str(finnawidth) + "x" + str(finnaheight))
+        print("Commons page ", page.title() ," has resolution equal or higher than finna: " + str(finnawidth) + "x" + str(finnaheight))
         return False
     
-    # resolution smaller, could re-upload (assuming hashes already match)
-    print("Page " + page.title() + " has larger image available, could re-upload")
+    # resolution in commons is smaller, could re-upload (assuming hashes already match)
+    print("NOTE: Page ", page.title() ," has larger image available in finna: " + str(finnawidth) + "x" + str(finnaheight))
     return True
 
-def reuploadImage(finnaid, file_info, imagesExtended, need_index, file_page, finna_image_url):
+def reuploadImage(finnaid, file_info, finnarecord, need_index, file_page, sourceurl, finna_image_url):
 
-    finna_record_url = "https://finna.fi/Record/" + finnaid
+    #sourceurl = "https://finna.fi/Record/" + finnaid
+
+    imagesExtended = getImagesExtended(finnarecord)
+    if (imagesExtended == None):
+        return False
 
     # note: mostly validated in above (called earlier)
     hires = imagesExtended['highResolution']['original'][0]
+
+    # check earlier but might as well recheck here
+    if "format" not in hires:
+        print("WARN: 'format' not found in hires image, skipping: " + finnaid)
+        return False
     
+    # this could be replaced by locating (cached) sha-hash for the image
+    # which is used to check that image does not yet exist (identical file)
+    #
     commons_image_url = file_page.get_file_url()
     commons_buffer = downloadimage(commons_image_url)
     if (commons_buffer == None):
@@ -3028,6 +3265,9 @@ def reuploadImage(finnaid, file_info, imagesExtended, need_index, file_page, fin
             print("WARN: Failed to download finna-image: " + finna_image_url )
             return False
         local_image = openimagebuffer(local_image_buffer)
+        if (local_image == None):
+            print("WARN: Failed to open local finna-image: " + page.title() )
+            return False
         image_file_name = convert_tiff_to_jpg(local_image)
         local_file=True    
     elif hires["format"] == "tif" and file_info.mime == 'image/png':
@@ -3039,6 +3279,9 @@ def reuploadImage(finnaid, file_info, imagesExtended, need_index, file_page, fin
             print("WARN: Failed to download finna-image: " + finna_image_url )
             return False
         local_image = openimagebuffer(local_image_buffer)
+        if (local_image == None):
+            print("WARN: Failed to open local finna-image: " + page.title() )
+            return False
         image_file_name = convert_tiff_to_png(local_image)
         local_file=True    
     #elif hires["format"] == "tif" and file_info.mime == 'image/gif':
@@ -3083,14 +3326,19 @@ def reuploadImage(finnaid, file_info, imagesExtended, need_index, file_page, fin
             print("Images are identical files, skipping: " + finnaid)
             return False
 
-        local_hash = getimagehash(local_image)
-        if (local_hash == None):
+        local_hash_res = getimagehash(local_image)
+        if (local_hash_res == None):
             print("WARN: Failed to hash local image: " + finnaid )
+            return False
+        
+        comm_hash_res = getimagehash(commons_image)
+        if (comm_hash_res == None):
+            print("WARN: Failed to hash commons image: " + finnaid )
             return False
             
         # verify that the image we have picked above is the same as in earlier step:
         # internal consistency of the API has an error?
-        if (is_same_image_old(local_image, finna_image) == False):
+        if (is_same_image(local_hash_res, comm_hash_res) == False):
             print("WARN: Images are NOT same in the API! " + finnaid)
             print("DEBUG: image bands", local_image.getbands())
             return False
@@ -3107,9 +3355,23 @@ def reuploadImage(finnaid, file_info, imagesExtended, need_index, file_page, fin
         if (isidentical(converted_image, commons_image) == True):
             print("Images are identical files, skipping: " + finnaid)
             return False
+        
+        # phash and dhash of converted image:
+        # if there is a large difference conversion is bugging (pillow/tiff/python bug)
+        conv_hash_res = getimagehash(converted_image)
+        if (conv_hash_res == None):
+            print("Failed to hash converted image: " + finnaid)
+            return False
+
+        # we should already have phash and dhash from commons image
+        # but we may as well recheck here
+        comm_hash_res = getimagehash(commons_image)
+        if (comm_hash_res == None):
+            print("Failed to hash commons image: " + finnaid)
+            return False
 
         # at least one image fails in conversion, see if there are others
-        if (is_same_image_old(converted_image, commons_image) == False):
+        if (is_same_image(conv_hash_res, comm_hash_res) == False):
             print("ERROR! Images are NOT same after conversion! " + finnaid)
             print("DEBUG: image bands", local_image.getbands())
             return False
@@ -3120,19 +3382,24 @@ def reuploadImage(finnaid, file_info, imagesExtended, need_index, file_page, fin
             print("WARN: converted image is not larger than in Commons: " + finnaid)
             return False
 
-    comment = "Overwriting image with better resolution version of the image from " + finna_record_url +" ; Licence in Finna " + imagesExtended['rights']['copyright']
+    comment = "Overwriting image with better resolution version of the image from " + sourceurl +" ; Licence in Finna " + imagesExtended['rights']['copyright']
     print(comment)
 
-    # Ignore warnigs = True because we update files
-    if (local_file == False):
-        print("uploading from url: " + finna_image_url)
-        file_page.upload(finna_image_url, comment=comment,ignore_warnings=True)
-    if (local_file == True):
-        print("uploading converted local file ")
-        file_page.upload(image_file_name, comment=comment,ignore_warnings=True)
-        os.unlink(image_file_name)
+    try:
+        # Ignore warnigs = True because we update files
+        if (local_file == False):
+            print("uploading from url: " + finna_image_url)
+            file_page.upload(finna_image_url, comment=comment,ignore_warnings=True)
+        if (local_file == True):
+            print("uploading converted local file ")
+            file_page.upload(image_file_name, comment=comment,ignore_warnings=True)
+            os.unlink(image_file_name)
 
-    return True
+        return True
+    except:
+        print("Failed to re-upload file", commons_image_url, "to commons")
+        raise
+    return False
 
 
 def getFinnaLicense(imagesExtended):
@@ -3530,6 +3797,13 @@ class CommonsTemplate:
             return template.get("description")
         return None
 
+    def getPermissionFromCommonsTemplate(self, template):
+        if template.has("Permission"):
+            return template.get("Permission")
+        if template.has("permission"):
+            return template.get("permission")
+        return None
+
     def getDepictedPeopleCommonsTemplate(self, template):
         if template.has("depicted people"):
             return template.get("depicted people")
@@ -3551,6 +3825,32 @@ class CommonsTemplate:
         if template.has("depicted_place"):
             return template.get("depicted_place")
         return None
+
+    def getExhibitionHistoryCommonsTemplate(self, template):
+        if template.has("exhibition history"):
+            return template.get("exhibition history")
+        if template.has("Exhibition history"):
+            return template.get("Exhibition history")
+        if template.has("exhibition_history"):
+            return template.get("exhibition_history")
+        if template.has("Exhibition_history"):
+            return template.get("Exhibition_history")
+        return None
+
+    def getInscriptionsCommonsTemplate(self, template):
+        if template.has("inscriptions"):
+            return template.get("inscriptions")
+        if template.has("Inscriptions"):
+            return template.get("Inscriptions")
+        return None
+
+    def getDimensionsCommonsTemplate(self, template):
+        if template.has("dimensions"):
+            return template.get("dimensions")
+        if template.has("Dimensions"):
+            return template.get("Dimensions")
+        return None
+
 
     # note: page may have multiple templates
     # The template artwork has field "references"
@@ -3673,6 +3973,13 @@ class CommonsTemplate:
                 return True
             # if it is not empty, don't do anything
             # could append but might add duplicates by mistake
+            
+            # TODO: fix duplication: {{Creator:Bror Brandt}}{{Creator:Bror Brandt}} -> {{Creator:Bror Brandt}}
+            # this removes them entirely now..
+            #if (par.value.find("{{Creator:Bror Brandt}}{{Creator:Bror Brandt}}") >= 0):
+            #    par.value = par.value.replace("{{Creator:Bror Brandt}}{{Creator:Bror Brandt}}", "{{Creator:Bror Brandt}}")
+            #    self.changed = True
+            #    return True
         return False
 
 
@@ -3768,6 +4075,121 @@ class CommonsTemplate:
             # could append but might add duplicates by mistake
         return False
 
+    # image source (finna link, or other older links),
+    # add new format source if something exists
+    def addOrSetSources(self, template, newsourceurl, newsourceid):
+        if (len(newsourceurl) == 0):
+            return False
+        if (len(newsourceid) == 0):
+            return False
+        
+        imagesourcelink = "Image record page in Finna: [" + newsourceurl + " " + newsourceid + "]\n"
+        
+        par = self.getSourceFromCommonsTemplate(template)
+        if (par == None):
+            template.add("source", imagesourcelink)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = imagesourcelink #+ "\n"
+                self.changed = True
+                return True
+            else:
+                srcvalue = str(par.value)
+                indexendbeforenewline = rfindnonnewline(srcvalue)
+                newparvalue = srcvalue[:indexendbeforenewline] + "<br>"+ imagesourcelink #+ "\n"
+                par.value = newparvalue 
+                self.changed = True
+                return True
+        return False
+
+    # licensing text or template
+    def addOrSetPermissions(self, template, permissions):
+        if (len(permissions) == 0):
+            return False
+        
+        par = self.getPermissionFromCommonsTemplate(template)
+        if (par == None):
+            template.add("permission", permissions)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = permissions + "\n"
+                self.changed = True
+                return True
+        return False
+
+    def addOrSetExhibitionHistory(self, template, publicationlist):
+        if (len(publicationlist) == 0):
+            return False
+
+        # concatenate list
+        publications = ""
+        for p in publicationlist:
+            if (len(publications) > 0):
+                publications += ";"
+            publications += p
+
+        par = self.getExhibitionHistoryCommonsTemplate(template)
+        if (par == None):
+            template.add("exhibition history", publications)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = publications + "\n"
+                self.changed = True
+                return True
+        return False
+
+    def addOrSetInscriptions(self, template, inscriptionlist):
+        if (len(inscriptionlist) == 0):
+            return False
+
+        # concatenate list
+        inscriptions = ""
+        for t in inscriptionlist:
+            if (len(inscriptions) > 0):
+                inscriptions += ";"
+            inscriptions += t
+
+        par = self.getInscriptionsCommonsTemplate(template)
+        if (par == None):
+            template.add("inscriptions", inscriptions)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = inscriptions + "\n"
+                self.changed = True
+                return True
+        return False
+
+    def addOrSetDimensions(self, template, dimensionlist):
+        if (len(dimensionlist) == 0):
+            return False
+
+        # concatenate list
+        dimensions = ""
+        for t in dimensionlist:
+            if (len(dimensions) > 0):
+                dimensions += ";"
+            dimensions += t
+
+        par = self.getDimensionsCommonsTemplate(template)
+        if (par == None):
+            template.add("dimensions", dimensions)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = dimensions + "\n"
+                self.changed = True
+                return True
+        return False
+
 
     # call to initialize
     def parseTemplate(self, page_text):
@@ -3861,41 +4283,171 @@ def getwikidatacodefrompagetemplate(ct):
     return wikidatacodes
 
 
-def parseFullRecord(finnarecord):
+def parseFullRecord_get_root(finnarecord):
     if "fullRecord" not in finnarecord['records'][0]:
         print("fullRecord does not exist in finna record")
-        return
+        return None
+
     full_record_data = finnarecord['records'][0]["fullRecord"]
     if (len(full_record_data) == 0):
         print("empty full record")
         return
+
     root = XEltree.fromstring(full_record_data)
     if (root == None):
         print("root not found")
-        return
+        return None
+    
+    return root
+
+# measurements: photograph dimensions
+# note: there is also this data already in the json
+#
+def parseFullRecord_get_measurements(finnarecord, root):
+
+    measurementlist = list()
+
+    # <objectMeasurementsSet><displayObjectMeasurements lang="fi">16.5 x 10.7 cm
+
+    measurements = root.findall(".//objectMeasurementsSet/displayObjectMeasurements")
+    for mes in measurements:
+        
+        if (mes.text != None):
+            mitta = html.unescape(mes.text).strip()
+            print("DBEUG: measurement found: ", mitta)
+
+            if (mitta not in measurementlist):
+                measurementlist.append(mitta)
+        
+    return measurementlist
+
+
+def parseFullRecord_get_inscriptions(finnarecord, root):
+
+    inscriptionlist = list()
 
     # <inscriptionsWrap><inscriptions><inscriptionDescription><descriptiveNoteValue>Kirjoitus..
     # may have things like physical description and so on 
-    #descriptive_notes = root.findall("./inscriptionDescription/descriptiveNoteValue")
-    descriptive_notes = root.findall(".//descriptiveNoteValue")
+
+    # <inscriptions><inscriptionDescription><descriptiveNoteValue>omistus
+    # <inscriptions><inscriptionDescription><descriptiveNoteValue>liikemerkki: Daniel Nyblin
+    descriptive_notes = root.findall(".//inscriptionDescription/descriptiveNoteValue")
     for note in descriptive_notes:
+        
+        #foundMatchingAttrib = False
+        lang = ""
+        if (note.attrib != None):
+            for k, v in note.attrib.items():
+                key = html.unescape(k)
+                value = html.unescape(v)
+                #if (key == "label" and value == "ominaisuudet"):
+                    # text="sepia"
+                if (key == "lang"):
+                    lang = value
+                
+        #if (note.text != None and foundMatchingAttrib == True):
         if (note.text != None):
-            print("note: ", html.unescape(note.text))
+            kuvaus = html.unescape(note.text)
+            print("DBEUG: inscription note found: ", kuvaus)
 
+            if (len(lang) > 0):
+                print("DEBUG: using lang", lang, " for inscription ", kuvaus )
+                kuvaus = "{{" + lang +"|" + kuvaus + "}}"
+            
+            inscriptionlist.append(kuvaus)
+        
+
+    # label=ominaisuudet -> text="sepia"
+    # <objectDescriptionWrap><objectDescriptionSet type="description"><descriptiveNoteValue lang="sv" label="beskrivning">inneh&#xE5;llsbeskrivning:
+    #descriptive_notes = root.findall(".//objectDescriptionSet/descriptiveNoteValue")
+
+            
+    return inscriptionlist
+
+# parse information from xml embedded in the json
+#
+def parseFullRecord_get_displays(finnarecord, root):
+
+    publicationlist = list()
+
+    # we want to get those that have <displayObject label=\"julkaisu\">
     # <relatedWorkSet><relatedWork><displayObject>Hufvudstadsbladet 16.6.1940, s. 4</displayObject>
-    #related_works = root.findall("./relatedWork/displayObject")
-    related_works = root.findall(".//displayObject")
+    #related_works = root.findall(".//displayObject")
+    related_works = root.findall(".//relatedWork/displayObject")
     for work in related_works:
-        if (work.text != None):
-            print("work: ", html.unescape(work.text))
+        foundMatchingAttrib = False
+        lang = ""
+        #if (work.tag != None):
+            # should be 'displayObject'
+            #print("DEBUG: related work tag: ", html.unescape(work.tag))
+        if (work.attrib != None):
+            #attrib = work.attrib
+            #print("DEBUG: related work attrib: ", html.unescape(work.attrib))
+            for k, v in work.attrib.items():
+                key = html.unescape(k)
+                value = html.unescape(v)
+                #print("DEBUG: related work key ", key, " value ", value )
+                if (key == "label" and value == "julkaisu"):
+                    foundMatchingAttrib = True
+                if (key == "lang"):
+                    lang = value
+                
+        if (work.text != None and foundMatchingAttrib == True):
+            julkaisu = html.unescape(work.text)
+            print("DBEUG: related work found: ", julkaisu)
 
+            if (len(lang) > 0):
+                print("DEBUG: using lang", lang, " for publication ", julkaisu )
+                julkaisu = "{{" + lang +"|" + julkaisu + "}}"
+            
+            publicationlist.append(julkaisu)
+
+    # since <displayObject lang=\"fi\"> has collections which we get already, skip if attrib label is not specific
+
+
+    return publicationlist
+
+def parseFullRecord_get_classifications(finnarecord, root):
+
+    # TODO: parse classification><term lang="fi" label="luokitus"
+    # has information like >mustavalkoinen  negatiivi< that we can further categorize with later
     # classificationWrap><classification><term lang="fi" label="luokitus">
     #classifications = root.findall("./classification/term")
-    classifications = root.findall(".//term")
+    
+    # TODO: also needed ?
+    # <objectDescriptionSet><descriptiveNoteValue label="ominaisuudet">sepia
+    
+    # TODO: might also need further parsing to get what we want?:
+    # <objectMaterialsTechSet><materialsTech><termMaterialsTech..><term>..
+
+    classificationlist = list()
+
+    classifications = root.findall(".//classification/term")
     for clf in classifications:
+        foundMatchingAttrib = False
+        lang = ""
+        if (clf.attrib != None):
+            for k, v in clf.attrib.items():
+                key = html.unescape(k)
+                value = html.unescape(v)
+                #print("DEBUG: related work key ", key, " value ", value )
+                if (key == "label" and value == "luokitus"):
+                    foundMatchingAttrib = True
+                if (key == "lang"):
+                    lang = value
+        
         if (clf.text != None):
             # check attribs: {'label': 'asiasana', 'lang': 'sv'}
-            print("clf: ", html.unescape(clf.text), " ", clf.attrib)
+            luokittelu = html.unescape(clf.text)
+            print("DBEUG: classification found: ", luokittelu)
+
+            if (len(lang) > 0):
+                print("DEBUG: using lang", lang, " for classification ", luokittelu )
+                classificationlist = "{{" + lang +"|" + luokittelu + "}}"
+            
+            classificationlist.append(classificationlist)
+           
+    return classificationlist
 
 
 # helper to check if list has similar category
@@ -4510,6 +5062,10 @@ def getnewestpagesfromcategory(pywikibot, commonssite, maincat, limit=100):
     pages = list()
     for page in newest:
         #print("name: ", page.title())
+        # skip if not in file namespace?
+        if (page.namespace() != 6):  # 6 is the namespace ID for files
+            continue
+        
         fp = pywikibot.FilePage(commonssite, page.title())
         if (fp not in pages):
             pages.append(fp)
@@ -4536,6 +5092,10 @@ def getuseruploads(pywikibot,commonssite, username, limit=100):
     #listpage = pywikibot.Page(commonssite, linkpage)  # The page you're interested in
 
 def getpagebyname(pywikibot, commonssite, name):
+    # should skip categories
+    #if (page.namespace() != 6):  # 6 is the namespace ID for files
+    #    continue
+    
     return pywikibot.FilePage(commonssite, name)
 
 
@@ -4546,8 +5106,19 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fixedname = "File:C Grünberg 1910 (HK19321130-1413-1910).tif"
     
     #fixedname = 'File:M s Inari (SMK200627-1260).tif'
-    fixedname = 'File:Coin of Eric XIV of Sweden c 1565 (reverse).jpg'
-
+    #fixedname = 'File:Coin of Eric XIV of Sweden c 1565 (reverse).jpg'
+    
+    #fixedname = 'Bergan huvila-alue, Villa Jonasberg - N744 (hkm.HKMS000005-000000pq).jpg'
+    
+    #fixedname = '75th Anniversary Jubilee and Jubilee regatta of Nyländska Jaktklubben NJK 1936 (9171A; JOKAHBL3B G09-4).tif'
+    #fixedname = 'Alexandra Dock Hull 1954-08 Maritime Museum of Finland SMK200627-3056.jpg'
+    
+    #fixedname = 'AJärnefelt sig.jpg'
+    #fixedname = 'Irma Nissinen 1950 (SmF1625).jpg'
+    #fixedname = 'Arvo Airaksinen 1930 (SmF71).jpg'
+    
+    fixedname = 'Eero Rautiola 1942 in Kiestinki, Eatern Karelia.jpg'
+    
     pages = list()
     #fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
 
@@ -4615,6 +5186,10 @@ def doessdcbaseexist(page):
 
 # just catch exceptions
 def getfilepage(pywikibot, page):
+    # should skip categories
+    #if (page.namespace() != 6):  # 6 is the namespace ID for files
+    #    continue
+
     try:
         return pywikibot.FilePage(page)
         #if (filepage.latest_file_info == None):
@@ -4675,13 +5250,14 @@ d_institutionqcode["Sibelius-museo"] = "Q4306382"
 d_institutionqcode["Suomen valokuvataiteen museo"] = "Q11895148"
 d_institutionqcode["Suomen Ilmailumuseo"] = "Q1418126"
 d_institutionqcode["Suomen kansallismuseo"] = "Q1418136"
-    
+
 # or Kansallisgalleria / Ateneumin taidemuseo
 d_institutionqcode["Kansallisgalleria"] = "Q2983474"
 d_institutionqcode["Kansallisgalleria Arkistokokoelmat"] = "Q2983474"
 d_institutionqcode["Kansallisgalleria/Arkisto ja kirjasto"] = "Q2983474"
 d_institutionqcode["Ateneumin taidemuseo"] = "Q754507"
 d_institutionqcode["Sinebrychoffin taidemuseo"] = "Q1393952"
+d_institutionqcode["HAM Helsingin taidemuseo"] = "Q5710459"
 d_institutionqcode["Tekniikan museo"] = "Q5549583"
 d_institutionqcode["Tampereen historialliset museot"] = "Q58636631"
 d_institutionqcode["Museokeskus Vapriikki"] = "Q18346706"
@@ -4704,6 +5280,7 @@ d_institutionqcode["Svenska litteratursällskapet i Finland"] = "Q769544"
 d_institutionqcode["Lappeenrannan museot"] = "Q58636578"
 d_institutionqcode["Hyvinkään kaupunginmuseo"] = "Q41776741"
 d_institutionqcode["Helsingin yliopistomuseo"] = "Q3329065"
+d_institutionqcode["Tiedemuseo Liekki"] = "Q3329065"
 d_institutionqcode["Suomen Rautatiemuseo"] = "Q1138355"
 d_institutionqcode["Salon historiallinen museo"] = "Q56403058"
 d_institutionqcode["Etelä-Karjalan museo"] = "Q18346681"
@@ -4731,6 +5308,9 @@ d_institutionqcode["Nuorisotyön tallentaja Nuoperi"] = "Q125428627"
 d_institutionqcode["Arkkitehtuurimuseo"] = "Q1418116" # MFA
 d_institutionqcode["Tuusulan museo"] = "Q58636633"
 d_institutionqcode["Rauman museo"] = "Q18346695"
+d_institutionqcode["Teatterimuseo"] = "Q18346788"
+d_institutionqcode["Teatterimuseon arkisto"] = "Q18346788"
+d_institutionqcode["Teatterimuseo Teatterimuseon arkisto"] = "Q18346788"
 
 
 # qcode of collections -> label
@@ -4797,6 +5377,7 @@ d_labeltoqcode["Östnyland"] = "Q123508541"
 d_labeltoqcode["Östnyland Borgåbladet"] = "Q123508541"
 d_labeltoqcode["Västra Nyland"] = "Q124670813"
 d_labeltoqcode["Borgåbladet"] = "Q126390040"
+d_labeltoqcode["Uusimaa"] = "Q136307207"
 d_labeltoqcode["Satakunnan Kansan kuva-arkisto"] = "Q123508726"
 d_labeltoqcode["Suomen Lähetysseura ry:n kuvakokoelma"] = "Q123508491"
 d_labeltoqcode["Hyvinkään kaupunginmuseon kokoelma"] = "Q123508767"
@@ -4845,6 +5426,7 @@ d_labeltoqcode["Yleinen merivartiokokoelma"] = "Q124288898"
 d_labeltoqcode["Postimuseon kokoelmat"] = "Q124288911"
 d_labeltoqcode["Mobilia kuvat"] = "Q124325340"
 d_labeltoqcode["Karjalan Liiton kokoelma"] = "Q124289082"
+d_labeltoqcode["Helsingin kaupunginmuseo"] = "Q124299286"
 d_labeltoqcode["Helsingin kaupunginmuseon kuvakokoelma"] = "Q124299286"
 d_labeltoqcode["HKM Valokuva"] = "Q124299286"
 d_labeltoqcode["Vilho Uomalan kokoelma"] = "Q124672017"
@@ -4866,17 +5448,38 @@ d_labeltoqcode["Kulttuuriympäristön kuvakokoelma"] = "Q126163175"
 d_labeltoqcode["Digikuvakokoelma"] = "Q126173053"
 d_labeltoqcode["Valokuvat/KUV/KV"] = "Q126177397"
 d_labeltoqcode["Diat/KUV/KD"] = "Q126193435"
+d_labeltoqcode["Yleiskokoelma, KyM"] = "Q137017666"
 d_labeltoqcode["Heikki Havaksen negatiivikokoelma"] = "Q126201599"
+d_labeltoqcode["Emil Suhosen kokoelma"] = "Q137016656"
 d_labeltoqcode["Timo Kirveen kokoelma"] = "Q126210138"
+d_labeltoqcode["Mauritz Antinin kokoelma"] = "Q135918999"
+d_labeltoqcode["Aarre Ekholmin kokoelma"] = "Q135976460"
+d_labeltoqcode["Magnus Löfvingin kokoelma"] = "Q135976535"
+d_labeltoqcode["Pasi ja Tiina Haaviston kokoelma"] = "Q135976522"
 d_labeltoqcode["Rauman museon kuvakokoelmat"] = "Q126487566"
 d_labeltoqcode["TKA Kosonen"] = "Q126487669"
 d_labeltoqcode["FÅA - SILJA LINE"] = "Q127135795"
 #d_labeltoqcode[" FÅA - SILJA LINE"] = "Q127135795" # preceding space
 d_labeltoqcode["Matti Poutvaaran kokoelma"] = "Q127164738"
+d_labeltoqcode["Seppo Saveksen kokoelma"] = "Q133605012"
+d_labeltoqcode["Nasakuva"] = "Q133618568"
 d_labeltoqcode["Kokemäen ulkomuseo"] = "Q127324662"
 d_labeltoqcode["Kansatieteelliset kokoelmat"] = "Q127324690"
 d_labeltoqcode["Ilomantsin Sotahistoriallisen Työryhmän kokoelma"] = "Q127599543"
 d_labeltoqcode["Oy Stockmann Ab:n kokoelma"] = "Q127699652"
+d_labeltoqcode["Fotografier (SmF)"] = "Q137370594"
+d_labeltoqcode["Arkivsamlingar (SmArk)"] = "Q137370589"
+
+d_labeltoqcode["Koulumuseoyhdistyksen kokoelma SCOLA"] = "Q136333509"
+
+d_labeltoqcode["Kulttuurihistoriallinen kokoelma"] = "Q135983778"
+d_labeltoqcode["Kulttuurihistoriallinen kokoelma esineet"] = "Q135983778"
+
+d_labeltoqcode["Mika Launiksen lehtikuvituskokoelma"] = "Q136546136"
+d_labeltoqcode["Virpi Talvitien lehtikuvituskokoelma"] = "Q136546151"
+
+d_labeltoqcode["Helvi Ahonen"] = "Q137465449"
+
 
 # collection qcode (after parsing) to commons-category
 #
@@ -4921,6 +5524,9 @@ d_institutionqtocategory["Q1418116"] = "Files from Museum of Finnish Architectur
 # Suomen kansallismuseo
 d_institutionqtocategory["Q1418136"] = "Collections of the National Museum of Finland" # 
 
+# sibelius-museon arkisto, ei lisätä suoraan luokkaan?
+#d_institutionqtocategory["Q4306382"] = "Files from the Sibelius Museum" # 
+
 
 # institution qcode (after parsing) to commons-template
 # three institutions have the template currently..
@@ -4936,6 +5542,8 @@ d_institutionqtotemplate["Q769544"] = "Society of Swedish Literature in Finland"
 d_institutionqtotemplate["Q18346681"] = "South Karelia Museum" 
 d_institutionqtotemplate["Q1418116"] = "Museum of Finnish Architecture" # MFA
 d_institutionqtotemplate["Q11879901"] = "Lusto" # metsämuseo
+d_institutionqtotemplate["Q4306382"] = "Sibelius Museum" 
+d_institutionqtotemplate["Q18346788"] = "Theatre Museum (Helsinki)" 
 
 
 # Accessing wikidata properties and items
@@ -4956,15 +5564,27 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Kuvasiskot", 2)
 #pages = getcatpages(pywikibot, commonssite, "Files from the Antellin kokoelma")
 
+#pages = getcatpages(pywikibot, commonssite, "Files from the Finnish Heritage Agency")
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Heritage Agency")
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical images of Finland", 3)
 #pages = getcatpages(pywikibot, commonssite, "Category:History of Finland", True)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:History of Karelia", 2)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files from the Finnish Aviation Museum")
 
+#pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot")
+
+#pages = getcatpages(pywikibot, commonssite, "Files from the Helsinki City Museum")
+#pages = getcatpages(pywikibot, commonssite, "Helsinki City Museum")
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Tampere")
+
+
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Kuvasiskot", True)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kuvasiskot", 2)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Photographs by Kuvasiskot", 10)
+
 #pages = getcatpages(pywikibot, commonssite, "Category:Lotta Svärd", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva", True)
-#pages = getcatpages(pywikibot, commonssite, "Category:SA-kuva")
+#pages = getcatpages(pywikibot, commonssite, "SA-kuva")
+#pages = getcatpages(pywikibot, commonssite, "SA-kuva images with watermarks")
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finland in World War II", 3)
 
 #pages = getcatpages(pywikibot, commonssite, "Category:Swedish Theatre Helsinki Archive", True)
@@ -5006,39 +5626,42 @@ commonssite.login()
 # many are from valokuvataiteenmuseo via flickr
 # many from fng via flickr
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Historical photographs of Helsinki by I. K. Inha", 1)
+#pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Finnish Museum of Photography", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Files from the Finnish Museum of Photography", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Photographs by Hugo Simberg", 2)
 
-#pages = getcatpages(pywikibot, commonssite, "Category:Finnish Agriculture (1899) by I. K. Inha")
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kuvasiskot", 0)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by I. K. Inha", 1)
-
-#pages = getpagesrecurse(pywikibot, commonssite, "J. E. Rosberg", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by J. E. Rosberg", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Armas Otto Väisänen", 1)
+pages = getpagesrecurse(pywikibot, commonssite, "Photographs by I. K. Inha", 2)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Carl Gustaf Emil Mannerheim", 1)
 
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Historical Picture Collection of The Finnish Heritage Agency", 0)
+#pages = getcatpages(pywikibot, commonssite, "Historical Picture Collection of The Finnish Heritage Agency")
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Picture Collection of The Finnish Heritage Agency", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Collection of The Finnish Heritage Agency", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Media by The Maritime Museum of Finland", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Collections of the Finnish Railway Museum", 0)
 
+#pages = getcatpages(pywikibot, commonssite, "Collections of the National Museum of Finland")
+#pages = getpagesrecurse(pywikibot, commonssite, "Collections of the National Museum of Finland", 0)
+#pages = getcatpages(pywikibot, commonssite, "Collections of the Finnish Railway Museum")
+#pages = getcatpages(pywikibot, commonssite, "Files from the Finnish Aviation Museum")
+#pages = getcatpages(pywikibot, commonssite, "Media by The Maritime Museum of Finland")
+#pages = getcatpages(pywikibot, commonssite, "Theatre Museum (Helsinki)")
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Vapriikin kuva-arkisto", 0)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "JOKA Press Photo Archive", 0)
+
 #pages = getpagesrecurse(pywikibot, commonssite, "Cartes de visite in Swedish Theatre Helsinki Archive", 0)
 
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Photographs by Kuvasiskot", 50)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Tapio Kautovaara", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by C.P. Dyrendahl", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Th. Nyblin", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Atelier Central", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Oscaria Sarén", 0)
@@ -5046,12 +5669,29 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Karl Emil Ståhlberg", 0)
 
 
-pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 10)
+#pages = getpagesrecurse(pywikibot, commonssite, "Musicians from Finland", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Male photographers from Finland", 0)
 
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Collections of the National Museum of Finland", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Historical Picture Collection of The Finnish Heritage Agency", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Category:Politicians of Finland by name", 2)
+
+
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files uploaded by FinnaUploadBot", False)
+
+pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
+
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Sawmills in Finland", 1)
+
+
+#pages = getcatpages(pywikibot, commonssite, "PD Finland (simple photos)")
+
+
+#pages = getcatpages(pywikibot, commonssite, "Theatre Museum (Helsinki)")
+
+#pages = getcatpages(pywikibot, commonssite, "Karl Olof Lindeqvist")
 
 
 
@@ -5110,7 +5750,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            continue
+            #continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -5382,14 +6022,14 @@ for page in pages:
 
             print("DEBUG: commons image bands", commons_image.getbands())
             
-            commonshash = getimagehash(commons_image)
-            if (commonshash == None):
+            commonshashres = getimagehash(commons_image)
+            if (commonshashres == None):
                 print("WARN: Failed to hash commons-image: " + page.title() )
                 continue
             
             # same lengths for p and d hash, keep change time from commons
             cachedb.addorupdate(commons_image_url, 
-                                commonshash.hashlen, commonshash.phash, commonshash.hashlen, commonshash.dhash, 
+                                commonshashres.phashlen, commonshashres.phash, commonshashres.dhashlen, commonshashres.dhash, 
                                 filepage.latest_file_info.timestamp)
 
 
@@ -5432,6 +6072,7 @@ for page in pages:
         continue
     
     # check for potentially unexpected characters after parsing (unusual description or something else)
+    # TODO: check if we have same id from finna metadata?
     finnaid = checkcleanupfinnaid(finnaid, page)
 
     print("finna ID found: " + finnaid)
@@ -5462,13 +6103,16 @@ for page in pages:
             print("WARN: unexpected finna id in " + page.title() + ", id from finna: " + finnaid)
             #continue
 
-    finna_record = get_finna_record(finnaid)
+    # for finna request
+    frsession = requests.Session()
+    frsession.headers.update({'User-Agent': 'FinnaUploader 0.2 (https://commons.wikimedia.org/wiki/User:FinnaUploadBot)'}) # noqa
+    #response = frsession.get(url)
+
+    # get and check finna data
+    finna_record = get_finna_record(frsession, finnaid)
     if (isFinnaRecordOk(finna_record, finnaid) == False):
         continue
-    
-    ## TESTING
-    #parseFullRecord(finna_record)
-    
+
     # check what finna reports as identifier
     finna_accession_id = getFinnaAccessionIdentifier(finna_record)
     print("finna record ok: ", finnaid, " accession id: ", finna_accession_id)
@@ -5492,8 +6136,8 @@ for page in pages:
             continue
         print("DEBUG: commons image bands", commons_image.getbands())
         
-        commonshash = getimagehash(commons_image)
-        if (commonshash == None):
+        commonshashres = getimagehash(commons_image)
+        if (commonshashres == None):
             print("WARN: Failed to hash commons-image: " + page.title() )
 
             cachedb.addtocachewithpillowbug(commons_image_url, 
@@ -5503,7 +6147,7 @@ for page in pages:
         
         # same lengths for p and d hash, keep change time from commons
         cachedb.addorupdate(commons_image_url, 
-                            commonshash.hashlen, commonshash.phash, commonshash.hashlen, commonshash.dhash, 
+                            commonshashres.phashlen, commonshashres.phash, commonshashres.dhashlen, commonshashres.dhash, 
                             filepage.latest_file_info.timestamp)
 
         print("Commons-image data added to cache for: " + page.title() )
@@ -5532,8 +6176,8 @@ for page in pages:
                 continue
             print("DEBUG: commons image bands", commons_image.getbands())
             
-            commonshash = getimagehash(commons_image)
-            if (commonshash == None):
+            commonshashres = getimagehash(commons_image)
+            if (commonshashres == None):
                 print("WARN: Failed to hash commons-image: " + page.title() )
                 # might be transient bug?
                 cachedb.setpillowbug(commons_image_url, 
@@ -5541,7 +6185,7 @@ for page in pages:
                                     filepage.latest_file_info.timestamp)
                 continue
             cachedb.addorupdate(commons_image_url, 
-                                commonshash.hashlen, commonshash.phash, commonshash.hashlen, commonshash.dhash, 
+                                commonshashres.phashlen, commonshashres.phash, commonshashres.dhashlen, commonshashres.dhash, 
                                 filepage.latest_file_info.timestamp)
             tpcom = cachedb.findfromcache(commons_image_url)
 
@@ -5598,7 +6242,13 @@ for page in pages:
         print("testing dhash qualifiers for: ", finnaid)
         checkDifferenceHashInSdcData(pywikibot, wikidata_site, claims, tpcom['dhashval'], tpcom['timestamp'])
 
+    # reuse with helper now
+    commonshashres = HashedImageResults()
+    commonshashres.fromtuple(tpcom)
+
     # use helper to check that it is correctly formed
+    # TODO: can we continue with just imagelist if we don't have this part?
+    # we do need this to check license..
     imagesExtended = getImagesExtended(finna_record)
     if (imagesExtended == None):
         print("WARN: 'imagesExtended' not found in finna record, skipping: " + finnaid)
@@ -5616,6 +6266,7 @@ for page in pages:
     
         finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
 
+        #tpfinna = None
         tpfinna = cachedb.findfromcache(finna_image_url)
         if (tpfinna == None):
             # get image from finnafor comparison:
@@ -5627,8 +6278,8 @@ for page in pages:
             finna_image = openimagebuffer(finna_image_buffer)
             print("DEBUG: finna image bands", finna_image.getbands(), finna_image_url)
             
-            finnahash = getimagehash(finna_image)
-            if (finnahash == None):
+            finnahashres = getimagehash(finna_image)
+            if (finnahashres == None):
                 print("WARN: Failed to hash finna-image: " + page.title() )
                 cachedb.addtocachewithpillowbug(finna_image_url, 
                                     datetime.now(timezone.utc),
@@ -5636,7 +6287,7 @@ for page in pages:
                 continue
             
             # same lengths for p and d hash
-            cachedb.addorupdate(finna_image_url, finnahash.hashlen, finnahash.phash, finnahash.hashlen, finnahash.dhash, datetime.now(timezone.utc))
+            cachedb.addorupdate(finna_image_url, finnahashres.phashlen, finnahashres.phash, finnahashres.dhashlen, finnahashres.dhash, datetime.now(timezone.utc))
             tpfinna = cachedb.findfromcache(finna_image_url)
         #else:
             # compare timestamp: if too old recheck the hash
@@ -5647,7 +6298,9 @@ for page in pages:
         
         # Test if image is same using similarity hashing
         print("DEBUG: comparing finna " + tpfinna['phashval'] + ", " + tpfinna['dhashval'] + " to commons ")
-        if (is_same_image(tpfinna, tpcom) == True):
+        finnahashres = HashedImageResults()
+        finnahashres.fromtuple(tpfinna)
+        if (is_same_image(finnahashres, commonshashres) == True):
             match_found = True
 
     if (len(imageList) > 1):
@@ -5659,6 +6312,7 @@ for page in pages:
         for img in imageList:
             finna_image_url = "https://finna.fi" + img
 
+            #tpfinna = None
             tpfinna = cachedb.findfromcache(finna_image_url)
             if (tpfinna == None):
                 # get image from finnafor comparison:
@@ -5670,15 +6324,15 @@ for page in pages:
                 finna_image = openimagebuffer(finna_image_buffer)
                 print("DEBUG: finna image bands", finna_image.getbands(), finna_image_url)
                     
-                finnahash = getimagehash(finna_image)
-                if (finnahash == None):
+                finnahashres = getimagehash(finna_image)
+                if (finnahashres == None):
                     print("WARN: Failed to hash finna-image: " + page.title() )
                     cachedb.addtocachewithpillowbug(finna_image_url, 
                                         datetime.now(timezone.utc),
                                         'y')
                     continue
                 # same lengths for p and d hash
-                cachedb.addorupdate(finna_image_url, finnahash.hashlen, finnahash.phash, finnahash.hashlen, finnahash.dhash, datetime.now(timezone.utc))
+                cachedb.addorupdate(finna_image_url, finnahashres.phashlen, finnahashres.phash, finnahashres.dhashlen, finnahashres.dhash, datetime.now(timezone.utc))
                 tpfinna = cachedb.findfromcache(finna_image_url)
             #else:
                 # compare timestamp: if too old recheck the hash
@@ -5688,8 +6342,10 @@ for page in pages:
                 exit(1)
 
             # Test if image is same using similarity hashing
-            print("DEBUG: comparing finna " + tpfinna['phashval'] + ", " + tpfinna['dhashval'] + " to commons ")
-            if (is_same_image(tpfinna, tpcom) == True):
+            #print("DEBUG: comparing finna " + tpfinna['phashval'] + ", " + tpfinna['dhashval'] + " to commons ")
+            finnahashres = HashedImageResults()
+            finnahashres.fromtuple(tpfinna)
+            if (is_same_image(finnahashres, commonshashres) == True):
                 match_found = True
                 need_index = True
                 print("Matching image index: " + str(f_imgindex))
@@ -5701,13 +6357,17 @@ for page in pages:
         print("No matching image found, skipping: " + finnaid)
         continue
 
-    if (needReupload(file_info, finna_record, imagesExtended) == True):
-        print("Note: image should be uploaded with higher resolution for: " + finnaid)
-        #if (reuploadImage(finnaid, file_info, imagesExtended, need_index, filepage, finna_image_url) == True):
-            #print("image reuploaded with higher resolution for: ", page.title())
-            # after uploading, recalculate and update hashed
-        #else:
-            #print("WARN: Could not reupload with higher resolution for: ", page.title())
+    # compare file information if there is larger size available
+    enablereuploading = False # TESTING set false to turn it off for now
+    if (needReupload(file_info, finna_record) == True and enablereuploading == True):
+        print("Trying to re-upload image in higher resolution for: " + finnaid)
+        if (reuploadImage(finnaid, file_info, finna_record, need_index, filepage, sourceurl, finna_image_url) == True):
+            print("image reuploaded with higher resolution for: ", page.title())
+            # after uploading, recalculate and update hashed:
+            # get values from uploading method in some way 
+            # -> fetch from commons, recalculate and save
+        else:
+            print("WARN: Could not reupload with higher resolution for: ", page.title())
 
     # TODO: can we simplify lookup?
     # does this work? if 'fi' in filepage.labels,  filepage.labels['fi'] = finna_title
@@ -5842,6 +6502,7 @@ for page in pages:
     else:
         print("no collections to add")
 
+
     # if the stored ID is not same (new ID) -> add new
     if (isFinnaIdInStatements(claims, finnaid) == False):
         print("adding finna id to statements: ", finnaid)
@@ -5850,7 +6511,46 @@ for page in pages:
     else:
         print("id found, not adding again", finnaid)
 
-    photographers = getFinnaNonPresenterAuthors(finna_record)
+    # check what was returned by API (instead of what was parsed from Commons)
+    # -> might need to save this to SDC ?
+    # -> update to template in some cases
+    finnaidfromfinnarecord = getFinnaIdFromRecord(finna_record)
+
+    # try cleanup/re-encoding?
+    #finnaidfromfinnarecord = checkcleanupfinnaid(finnaidfromfinnarecord, page)
+
+    #if (finnaidfromfinnarecord != finnaid):
+        # if the stored ID is not same (new ID) -> add new
+    #    if (isFinnaIdInStatements(claims, finnaidfromfinnarecord) == False):
+    #        print("adding finna id to statements: ", finnaidfromfinnarecord)
+    #        finna_claim = addfinnaidtostatements(pywikibot, wikidata_site, finnaidfromfinnarecord)
+    #        commonssite.addClaim(wditem, finna_claim)
+
+
+    # new id might need to saved into page if there is "hkm.HKMS<number>" format identifier
+    # since those can have newer "hkm.UUID" format now
+    # old format id : finnaid
+    if (finnaid.find("hkm.HKMS") >= 0):
+        print("DEBUG: old format hkm id: ", finnaid, " new format id:", finnaidfromfinnarecord)
+        
+    # TODO: when comparing, check correct encoding of id for url
+    newrecordurl = ""
+    isfinnarecordidinsourceurls = False
+    for srcurl in srcurls:
+        # if only direct image link and no record url in template urls?
+        # Also, not /Cover/Show or /Record/DownloadFile formats: only normal record url
+        if (srcurl.find("finna.fi") > 0 and srcurl.find(finnaidfromfinnarecord) > 0 and isNormalFinnaRecordUrl(srcurl) == True):
+            isfinnarecordidinsourceurls = True
+    if (isfinnarecordidinsourceurls == False and finnaidfromfinnarecord.find("/") < 0 and finnaid.find("sls.") < 0):
+        # should not have slash in ID: that would need encoding (we may already have encoded id)
+        # avoid changing sls identifiers since they need url encoding to work
+        # TODO: url encoding needed here
+        newrecordurl = "https://www.finna.fi/Record/" + finnaidfromfinnarecord
+
+    # stuff for template and/or categories below
+
+    # TODO: also other creator types?
+    photographers = getFinnaPhotographers(finna_record)
     if (len(photographers) > 0):
         print("DEBUG: photographers in finna: ", str(photographers))
         
@@ -5861,11 +6561,50 @@ for page in pages:
             #if (creatorclaim != None):
                 #wditem.addClaim(creatorclaim)
 
+    # other creators according to roles
+    #finnacreators = getFinnaCreators(finna_record)
 
+    # for template and/or categories
     placeslist = getFinnaPlaces(finna_record)
     actorslist = getFinnaActors(finna_record)
-    
     finnasummaries = getSummariesFromFinna(finna_record)
+    finnapermissions = getImagerightsFromFinnaRecord(finna_record)
+    finnameasurements = getFinnaMeasurements(finna_record)
+    #finnamaterials = getFinnaMaterials(finna_record)
+
+    # parse more stuff from the embedded xml
+    # note: most of the stuff is optional
+    display_from_finna = []
+    inscriptions_from_finna = []
+    #measurements_from_finna = []
+    #classifications_from_finna = []
+    
+    try:
+        finna_xml_root = parseFullRecord_get_root(finna_record)
+        if (finna_xml_root == None):
+            print("root not found")
+        else:
+
+            ## parse some stuff from the embedded xml record
+            display_from_finna = parseFullRecord_get_displays(finna_record, finna_xml_root)
+            if (display_from_finna != None):
+                print("DEBUG: parsed xml record, found publication ", display_from_finna ," for finna id: ", finnaid)
+            inscriptions_from_finna = parseFullRecord_get_inscriptions(finna_record, finna_xml_root)
+            if (inscriptions_from_finna != None):
+                print("DEBUG: parsed xml record, found inscriptions ", inscriptions_from_finna ," for finna id: ", finnaid)
+            #measurements_from_finna = parseFullRecord_get_measurements(finna_record, finna_xml_root)
+            #if (measurements_from_finna != None):
+            #    print("DEBUG: parsed xml record, found measurements ", measurements_from_finna ," for finna id: ", finnaid)
+                
+            # note: classifications might need additional parsing to make sense,
+            # if text is "sepia" or "mustavalkoinen negatiivi" -> additional cases?
+            #classifications_from_finna = parseFullRecord_get_classifications(finna_record, finna_xml_root)
+            #if (classifications_from_finna != None):
+            #    print("DEBUG: parsed xml record, found classifications ", classifications_from_finna ," for finna id: ", finnaid)
+    except:
+        print('Failed parsing full record XML')
+        print(xml_data)
+        pass
 
     tmptext = oldtext
     oldcategories = listExistingCommonsCategories(oldtext)
@@ -5910,9 +6649,41 @@ for page in pages:
 
                 if (ct.setDescriptionSummary(template, finnasummaries) == True):
                     print("Added description summaries for: " + page.title())
+                    
+                # if source has old style link or not linking to finna (how did we get here?)
+                # check finna record for new id to use
+                if (isfinnarecordidinsourceurls == False):
+                    if (ct.addOrSetSources(template, newrecordurl, finnaidfromfinnarecord) == True):
+                        print("Added new source url for: " + page.title())
+                # or add sourceurl if there only direct image link or obsolete url
+
+                # license check: if old (over 70 years) and has cc while finna has PDM
+                # -> change license to auto-expired {{PD-old-auto-expired}}
+                # permission         = CC BY 4.0
+                # -> {{PD-old-70}} ?
+                if (ct.addOrSetPermissions(template, finnapermissions) == True):
+                    print("Added permissions for: " + page.title())
+
+                if (ct.addOrSetExhibitionHistory(template, display_from_finna) == True):
+                    print("Added exihibition publications for: " + page.title())
+
+                if (ct.addOrSetInscriptions(template, inscriptions_from_finna) == True):
+                    print("Added inscriptions for: " + page.title())
+                    
+                if (ct.addOrSetDimensions(template, finnameasurements) == True):
+                    print("Added dimensions for: " + page.title())
+                    
 
         if (ct.isChanged() == True):
             tmptext = str(ct.wikicode)
+
+    # elsewhere in page under == Licensing ==
+    # license check: if old (over 70 years) and has cc while finna has PDM
+    # -> change license to auto-expired {{PD-old-auto-expired}}
+    # (page might have {{cc-by-4.0}} template)
+    #finna_copyrighttype = getCopyrightTypeFromFinnaRecord(finna_record)
+    #if (finna_copyrighttype == "PDM"):
+
 
     categoriesadded = False
     # add commons-categoeris for collections
