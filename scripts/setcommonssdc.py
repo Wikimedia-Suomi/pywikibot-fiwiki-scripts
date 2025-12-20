@@ -1011,7 +1011,8 @@ def isNormalFinnaRecordUrl(srcvalue):
     return True
 
 
-# commons source information
+# commons source information: 
+# may have whatever plaintext or multiple links as well before or after
 def findurlbeginfromsource(source, begin):
     # just skip it
     if (len(source) == 0):
@@ -2917,8 +2918,10 @@ def getImagerightsFromFinnaRecord(finnarecord, lang='fi'):
     for desc in f_description:
         descriptions += "{{" + lang + "|" + desc + "}}"
 
+    # note: also needed in inscriptions, where else?
     descriptions = descriptions.replace("\n                ", "\n")
     #descriptions = descriptions.replace("\n     ", "\n")
+    #descriptions = descriptions.replace("\n                ", "\n")
 
     return descriptions
 
@@ -3109,6 +3112,7 @@ def getFinnaMaterials(finnarecord):
 # 
 def getFinnaPhotographers(finnarecord):
     # also: pht for swedish language archive
+    # also: valokuvaamo
     photographer_roles = ['kuvaaja', 'Kuvaaja', 'valokuvaaja', 'Valokuvaaja', 'pht']
 
     datalist = list()
@@ -3137,9 +3141,20 @@ def getFinnaPhotographers(finnarecord):
             datalist.append(name)
     return datalist
 
-# creators like illustrators, book authors
-def getFinnaCreators(finnarecord):
+# creators like illustrators
+#def getFinnaArtistsByRole(finnarecord):
+    # "piirtäjä" might mean we need to use artwork-template or "artist" field?
+    # 
+    #creator_roles = ['piirtäjä', 'Piirtäjä']
+
+# other creators like book authors
+def getFinnaCreatorsByRole(finnarecord):
     # also: pht for swedish language archive
+    # arkkitehti, piirtäjä
+    # "valmistaja" tai "valmistuttaja"
+    # "piirtäjä" might mean we need to use artwork-template or "artist" field?
+    # 
+    #creator_roles = ['tekijä', 'Tekijä', 'piirtäjä', 'Piirtäjä']
     creator_roles = ['tekijä', 'Tekijä']
 
     datalist = list()
@@ -3215,7 +3230,7 @@ def needReupload(file_info, finnarecord):
     
     if file_info.width >= finnawidth or file_info.height >= finnaheight:
         print("Commons page ", page.title() ," has resolution equal or higher than finna: " + str(finnawidth) + "x" + str(finnaheight))
-        return False
+        return False # no need to upload again
     
     # resolution in commons is smaller, could re-upload (assuming hashes already match)
     print("NOTE: Page ", page.title() ," has larger image available in finna: " + str(finnawidth) + "x" + str(finnaheight))
@@ -3756,6 +3771,7 @@ class CommonsTemplate:
             return template.get("id")
         return None
 
+    # should use either "author" or "artist", not both
     def getAuthorFromCommonsTemplate(self, template):
         if template.has("Author"):
             return template.get("Author")
@@ -3763,6 +3779,15 @@ class CommonsTemplate:
             return template.get("author")
         return None
 
+    # should use either "author" or "artist", not both
+    def getArtistFromCommonsTemplate(self, template):
+        if template.has("Artist"):
+            return template.get("Artist")
+        if template.has("artist"):
+            return template.get("artist")
+        return None
+
+    # explicit photographer
     def getPhotographerFromCommonsTemplate(self, template):
         if template.has("Photographer"):
             return template.get("Photographer")
@@ -3849,8 +3874,38 @@ class CommonsTemplate:
             return template.get("dimensions")
         if template.has("Dimensions"):
             return template.get("Dimensions")
+        if template.has("size"):
+            return template.get("size")
+        if template.has("Size"):
+            return template.get("Size")
         return None
 
+    # medium type or technique, or material
+    def getMediumCommonsTemplate(self, template):
+        if template.has("medium"):
+            return template.get("medium")
+        if template.has("Medium"):
+            return template.get("Medium")
+        if template.has("technique"):
+            return template.get("technique")
+        if template.has("Technique"):
+            return template.get("Technique")
+        if template.has("material"):
+            return template.get("material")
+        if template.has("Material"):
+            return template.get("Material")
+        return None
+
+    def getDateCommonsTemplate(self, template):
+        if template.has("date"):
+            return template.get("date")
+        if template.has("Date"):
+            return template.get("Date")
+        if template.has("year"):
+            return template.get("year")
+        if template.has("Year"):
+            return template.get("Year")
+        return None
 
     # note: page may have multiple templates
     # The template artwork has field "references"
@@ -3886,18 +3941,11 @@ class CommonsTemplate:
         parval = str(par.value)
         return trimlr(parval)
 
-    # add institution text to the template field
-    # should have institution-template
-    #def addInstitution(self, institution):
-
     # add department (collection) text to the template field
     #def addDepartment(self, department):
 
-    # add author text to the template field:
-    # should have creator-template
-    #def addAuthor(self, author):
-
     # add institution to the template field
+    # should have institution-template from mapping
     def addOrSetInstitution(self, template, instVal):
         if (len(instVal) == 0):
             return False
@@ -3951,7 +3999,7 @@ class CommonsTemplate:
                 print("Already has authors: ", authors)
                 return False
 
-        people = photographers
+        #people = photographers
         people = ""
         for p in photographers:
             if (len(people) > 0):
@@ -3982,6 +4030,41 @@ class CommonsTemplate:
             #    return True
         return False
 
+    #def addOrSetArtists(self, template, artistlist):
+
+    # add author text to the template field:
+    # should have creator-template,
+    # for non-photographer authors (by role)
+    def addOrSetAuthors(self, template, authorlist):
+        if (authorlist == None):
+            return False
+        if (len(authorlist) == 0):
+            return False
+
+        # concatenate list
+        authors = ""
+        for p in authorlist:
+            if (len(authors) > 0):
+                authors += ";"
+            authors += p
+
+        print("Adding authors: ", authors)
+
+        # note: use author-field where not explicitly a photgraper
+        par = self.getAuthorFromCommonsTemplate(template)
+        if (par == None):
+            template.add("author", authors)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = authors + "\n"
+                self.changed = True
+                return True
+            # if it is not empty, don't do anything
+            # could append but might add duplicates by mistake
+        return False
+
 
     def addOrSetDepictedPeople(self, template, peoplelist):
         if (peoplelist == None):
@@ -3989,7 +4072,6 @@ class CommonsTemplate:
         if (len(peoplelist) == 0):
             return False
         
-        people = peoplelist
         people = ""
         for p in peoplelist:
             if (len(people) > 0):
@@ -4349,6 +4431,9 @@ def parseFullRecord_get_inscriptions(finnarecord, root):
         if (note.text != None):
             kuvaus = html.unescape(note.text)
             print("DBEUG: inscription note found: ", kuvaus)
+
+            # note: also needed in permissions, where else?
+            #kuvaus = kuvaus.replace("\n                ", "\n").strip()
 
             if (len(lang) > 0):
                 print("DEBUG: using lang", lang, " for inscription ", kuvaus )
@@ -5117,7 +5202,7 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fixedname = 'Irma Nissinen 1950 (SmF1625).jpg'
     #fixedname = 'Arvo Airaksinen 1930 (SmF71).jpg'
     
-    fixedname = 'Eero Rautiola 1942 in Kiestinki, Eatern Karelia.jpg'
+    #fixedname = 'Eero Rautiola 1942 in Kiestinki, Eatern Karelia.jpg'
     
     pages = list()
     #fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
@@ -5634,7 +5719,8 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Armas Otto Väisänen", 1)
-pages = getpagesrecurse(pywikibot, commonssite, "Photographs by I. K. Inha", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by I. K. Inha", 2)
+
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Carl Gustaf Emil Mannerheim", 1)
 
@@ -5667,23 +5753,16 @@ pages = getpagesrecurse(pywikibot, commonssite, "Photographs by I. K. Inha", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Oscaria Sarén", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Swedish Theatre Helsinki Archive", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Karl Emil Ståhlberg", 0)
-
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by C. A. Hårdh", 0)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Musicians from Finland", 1)
-#pages = getpagesrecurse(pywikibot, commonssite, "Male photographers from Finland", 0)
-
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Category:Politicians of Finland by name", 2)
 
 
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files uploaded by FinnaUploadBot", False)
-
-pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
-
-
-#pages = getpagesrecurse(pywikibot, commonssite, "Sawmills in Finland", 1)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 20)
 
 
 #pages = getcatpages(pywikibot, commonssite, "PD Finland (simple photos)")
@@ -5691,7 +5770,6 @@ pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by Fi
 
 #pages = getcatpages(pywikibot, commonssite, "Theatre Museum (Helsinki)")
 
-#pages = getcatpages(pywikibot, commonssite, "Karl Olof Lindeqvist")
 
 
 
@@ -5750,7 +5828,7 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            #continue
+            continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -6266,7 +6344,6 @@ for page in pages:
     
         finna_image_url = "https://finna.fi" + imagesExtended['urls']['large']
 
-        #tpfinna = None
         tpfinna = cachedb.findfromcache(finna_image_url)
         if (tpfinna == None):
             # get image from finnafor comparison:
@@ -6561,8 +6638,11 @@ for page in pages:
             #if (creatorclaim != None):
                 #wditem.addClaim(creatorclaim)
 
+    # should have either artists or authors
+    #finnaartists = getFinnaArtistsByRole(finna_record)
+
     # other creators according to roles
-    #finnacreators = getFinnaCreators(finna_record)
+    finnacreators = getFinnaCreatorsByRole(finna_record)
 
     # for template and/or categories
     placeslist = getFinnaPlaces(finna_record)
@@ -6610,12 +6690,14 @@ for page in pages:
     oldcategories = listExistingCommonsCategories(oldtext)
     
     #  try to check if item type in Finna is "photograph" (not "artwork")
+    # how do we handle artworks? separate from this?
     if (isFinnaFormatImage(finna_record) == True):
 
         for template in ct.templatelist:
-            # if there is "information" template change it to "photograph"
-            # since we want additional fields there
+            # "photograph" or "artwork" have similar fields so either should be fine
             if (ct.isSupportedCommonsTemplate(template) == True):
+                # if there is "information" template change it to "photograph"
+                # since we want additional fields there
                 if (ct.fixTemplateType(template) == True):
                     print("Fixed template type for: " + page.title())
                 if (ct.addOrSetAccNumber(template, finna_accession_id) == True):
@@ -6637,9 +6719,18 @@ for page in pages:
                     if (ct.addOrSetInstitution(template, institutiontemplate) == True):
                         print("Fixed institution for: " + page.title())
 
-
+                # where role is explicity for a photographer or photostudio
                 if (ct.addOrSetPhotographers(template, photographers) == True):
                     print("Added photographers for: " + page.title())
+
+                # note: might need to separate into "artist" field in case of artowrks
+                # (instead of photographs)
+                #if (ct.addOrSetArtists(template, finnaartists) == True):
+                #    print("Added artists for: " + page.title())
+
+                # non-photograper authors (by role)
+                if (ct.addOrSetAuthors(template, finnacreators) == True):
+                    print("Added authors for: " + page.title())
 
                 if (ct.addOrSetDepictedPeople(template, actorslist) == True):
                     print("Added depicted people for: " + page.title())
