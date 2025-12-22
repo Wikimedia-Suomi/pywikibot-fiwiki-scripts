@@ -3,10 +3,7 @@
 # Running script: python <scriptname>
 
 import pywikibot
-import json
-from urllib.request import urlopen
 
-#import requests
 
 # todo: force integers as inputs
 class SimpleTimestamp:
@@ -229,6 +226,54 @@ def parse_en_datelabel(label):
     return ts
 
 # day, month, year
+# parse back finnish label (where set) to catch errors
+def parse_fin_datelabel(label):
+    ts = SimpleTimestamp()
+
+    ione = label.find(" ")
+    if (ione < 0):
+        return ts
+
+    itwo = label.find(" ", ione+1)
+    if (itwo < 0):
+        return ts
+    
+    spp = label.split(" ")
+    print("DEBUG: split", spp)
+    
+    day = leftstr(label, ione).strip()
+    mon = getsubstr(label, ione, itwo).strip()
+    yr = rightstr(label, itwo).strip()
+
+    print("DEBUG: day", day, "mon", mon, "yr", yr)
+
+    # month string to number
+    monnum = 0
+    if (mon in fimonthcase):
+        monnum = fimonthcase.index(mon)+1
+
+    imon = int(monnum)
+    if (imon < 1 or imon > 12):
+        # not a valid month (should not be possible)
+        print("ERROR: invalid month ?", str(imon))
+        return ts
+
+    # strip dot from day (if any)
+    day = leftfrom(day, ".")
+    
+    iday = int(day)
+    if (iday < 1 or iday > 31):
+        # not a valid day
+        print("ERROR: invalid day ?", str(iday))
+        return ts
+    
+    iyr = int(yr)
+    
+    ts.setDate(iyr, imon, iday)
+    print("DEBUG: to iso: ", ts.makeIsodateStr())
+    return ts
+
+# day, month, year
 # note: french date has more differences that needs to be parsed
 def parse_fr_datelabel(label):
     ts = SimpleTimestamp()
@@ -383,6 +428,8 @@ def comparedatelabels(itemfound):
     svlabel = ""
     frlabel = ""
     enlabel = ""
+    finlabel = ""
+    tsfin = SimpleTimestamp()
     tsen = SimpleTimestamp()
     tsfr = SimpleTimestamp()
     tssv = SimpleTimestamp()
@@ -393,7 +440,8 @@ def comparedatelabels(itemfound):
         if (li == 'fi'):
             print("DEBUG: found label in finnish: ", label)
             # already in finnish -> skip
-            return True
+            finlabel = label
+            tsfin = parse_fin_datelabel(finlabel)
 
         if (li == 'sv'):
             print("DEBUG: found sv label: ", label)
@@ -428,6 +476,27 @@ def comparedatelabels(itemfound):
     # at least one instance is known to be valid:
     # detect case where none are defined
     atleastonematch = False
+    
+    # use this comparison to detect mislabelled date items
+    if (tsfin.isValid() == True and tsiso.isValid() == True):
+        if (tsfin.isMatchingDate(tsiso.year, tsiso.month, tsiso.day) == False):
+            print("WARN: finnish and iso don't match: ", finlabel, "mul:", mullabel)
+            #return False
+
+    if (tsfin.isValid() == True and tsen.isValid() == True):
+        if (tsfin.isMatchingDate(tsen.year, tsen.month, tsen.day) == False):
+            print("WARN: finnish and english don't match: ", finlabel, "en:", enlabel)
+            #return False
+
+    if (tsfin.isValid() == True and tsfr.isValid() == True):
+        if (tsfin.isMatchingDate(tsfr.year, tsfr.month, tsfr.day) == False):
+            print("WARN: finnish and french don't match: ", finlabel, "fr:", frlabel)
+            #return False
+
+    if (tsfin.isValid() == True and tssv.isValid() == True):
+        if (tsfin.isMatchingDate(tssv.year, tssv.month, tssv.day) == False):
+            print("WARN: finnish and swedish don't match: ", finlabel, "sv:", svlabel)
+            #return False
 
     # compare parsed timestamps:
     # only compare with timestamps that were found and were parsed (some might be missing)
@@ -473,6 +542,10 @@ def comparedatelabels(itemfound):
 
     if (atleastonematch == True):
         print("DEBUG: Found at least one match for timestamps")
+
+    if (tsfin.isValid() == True):
+        print("DEBUG: already found finnish label")
+        return tsfin
 
     # iso-date should be most reliable if is found
     if (atleastonematch == True and tsiso.isValid() == True):
@@ -573,7 +646,7 @@ def addItemLabelInFinnish(item, newlabel):
     for li in item.labels:
         label = item.labels[li]
         if (li == 'fi'):
-            print("DEBUG: found label in finnish: ", label)
+            print("DEBUG: found label ", label ," in finnish, not adding new label: ", newlabel)
             return True
 
     isDescriptionMissing = True
@@ -838,6 +911,9 @@ for decadeqcode in decadelist:
     #decadeqcode = "Q35024" # 2000-vuosikymmen
     #decadeqcode = "Q19022" # 2010-luku
     #decadeqcode = "Q534495" # 2020-luku
+
+    #decadeqcode = "Q34644" # 1980-luku
+    #decadeqcode = "Q34653" # 1990-luku 
 
     print("checking decade by code", decadeqcode)
     yearlist = itemlistYearsindecade(wdsite, repo, decadeqcode, centuryqcode)
