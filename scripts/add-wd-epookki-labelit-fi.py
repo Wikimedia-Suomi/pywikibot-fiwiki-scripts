@@ -661,7 +661,7 @@ def addDatewikidatalabel(wdsite, repo, itemqcode, parentqcode):
         return False
 
     if (addItemLabelInFinnish(dateitem, filabel) == False): 
-        print("could not make add label in finnish.")
+        print("could not add label in finnish.")
         return False
     
     return True
@@ -823,49 +823,62 @@ wdsite = pywikibot.Site('wikidata', 'wikidata')
 wdsite.login()
 repo = wdsite.data_repository()
 
-#centuryqcode = "Q6927" # 1900-luku
-centuryqcode = "Q6939" # 2000-luku 
-#print("checking century by code", centuryqcode)
-#decadelist = itemlistDecadesincentury(wdsite, repo, centuryqcode)
-#for decadeqcode in decadelist:
+# ensimmäinen vuosituhat (Q25868)
+# toinen vuosituhat (Q25860)
+# kolmas vuosituhat (Q26224)
 
-#decadeqcode = "Q35024" # 2000-vuosikymmen
-decadeqcode = "Q19022" # 2010-luku
-#decadeqcode = "Q534495" # 2020-luku 
-print("checking decade by code", decadeqcode)
-yearlist = itemlistYearsindecade(wdsite, repo, decadeqcode, centuryqcode)
-for yearqcode in yearlist:
+#centuryqcode = "Q6955" # 1800-luku
+centuryqcode = "Q6927" # 1900-luku
+#centuryqcode = "Q6939" # 2000-luku 
 
-    # huom, 2026 vuodelle puuttuu labeleitä myös muilla kielillä
-    #yearqcode = "Q49616" # 2025
-    #yearqcode = "Q49619" # 2024 
-    #yearqcode = "Q49622" # 2023 
-    #yearqcode = "Q49625" # 2022
-    #yearqcode = "Q49628" # 2021
-    #yearqcode = "Q25337" # 2020
+print("checking century by code", centuryqcode)
+decadelist = itemlistDecadesincentury(wdsite, repo, centuryqcode)
+for decadeqcode in decadelist:
 
-    print("checking year by code", yearqcode)
+    #decadeqcode = "Q35024" # 2000-vuosikymmen
+    #decadeqcode = "Q19022" # 2010-luku
+    #decadeqcode = "Q534495" # 2020-luku
 
-    monthlist = itemlistMonthsinyear(wdsite, repo, yearqcode, decadeqcode)
-    for monthqcode in monthlist:
+    print("checking decade by code", decadeqcode)
+    yearlist = itemlistYearsindecade(wdsite, repo, decadeqcode, centuryqcode)
+    for yearqcode in yearlist:
 
-        #monthqcode = "Q61312921" # marraskuu 2025
-        #monthqcode = "Q61313037" # elokuu 2025
+        # huom, 2026 vuodelle puuttuu labeleitä myös muilla kielillä
+        #yearqcode = "Q49616" # 2025
 
-        print("checking month by code", monthqcode)
+        #yearqcode = "Q25245" # 2016 # check, some oddities
+        #yearqcode = "Q25291" # 2018 # check, some oddities
 
-        daylist = itemlistDaysinmonth(wdsite, repo, monthqcode, yearqcode)
-        for dayqcode in daylist:
+        print("checking year by code", yearqcode)
 
-            # dayqcode = "Q69307710" # 1. marraskuuta 2025
-            print("checking day by code", dayqcode)
+        monthlist = itemlistMonthsinyear(wdsite, repo, yearqcode, decadeqcode)
+        for monthqcode in monthlist:
 
-            if (addDatewikidatalabel(wdsite, repo, dayqcode, monthqcode) == False):
-                print("Failed to add label, exiting.")
-                exit()
-            else:
-                print("Add missing label to item", dayqcode)
+            #monthqcode = "Q61312921" # marraskuu 2025
+            #monthqcode = "Q19249071" # toukokuu 2016 # check, some oddities
+            #monthqcode = "Q29110086" # heinäkuu 2018 # check, some oddities
 
+            print("checking month by code", monthqcode)
+
+            daylist = itemlistDaysinmonth(wdsite, repo, monthqcode, yearqcode)
+            for dayqcode in daylist:
+
+                # dayqcode = "Q69307710" # 1. marraskuuta 2025
+                print("checking day by code", dayqcode)
+
+                if (addDatewikidatalabel(wdsite, repo, dayqcode, monthqcode) == False):
+                    print("Failed to add label, exiting.")
+                    exit()
+
+                print("day done by code", dayqcode)
+
+            print("month done by code", monthqcode)
+
+        print("year done by code", yearqcode)
+
+    print("decade done by code", decadeqcode)
+
+print("century done by code", centuryqcode)
 
 #pywikibot.info('----')
 #pywikibot.showDiff(oldtext, temptext,2)
