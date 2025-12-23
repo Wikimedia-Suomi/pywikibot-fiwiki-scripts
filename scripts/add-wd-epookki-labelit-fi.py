@@ -323,6 +323,19 @@ def parse_fin_datelabel(label):
     print("DEBUG: to iso: ", ts.makeIsodateStr())
     return ts
 
+def labeltohex(label):
+    h = ""
+    i = 0
+    end = len(label)
+    while (i < end):
+        ch = label[i]
+        ich = int(ch, 16)
+        h += str(ich)
+
+        i += 1
+    return h
+
+
 # day, month, year
 # note: french date has more differences that needs to be parsed
 def parse_fr_datelabel(label):
@@ -523,7 +536,7 @@ def comparedatelabels(itemfound):
             print("DEBUG: found fr label: ", label)
             # check it matches what we want: parse french date
             frlabel = label
-            tsfr = parse_fr_datelabel(svlabel)
+            tsfr = parse_fr_datelabel(frlabel)
             #print("DEBUG: fr to iso: ", tsfr.makeIsodateStr())
             
         if (li == 'mul'):
@@ -586,19 +599,19 @@ def comparedatelabels(itemfound):
     if (tsiso.isValid() == True and tsfr.isValid() == True):
         if (tsiso.isMatchingDate(tsfr.year, tsfr.month, tsfr.day) == False):
             print("WARN: iso and french don't match: ", mullabel, "fr:", frlabel)
-            #return None
+            return None
         else:
             atleastonematch = True
     if (tsen.isValid() == True and tsfr.isValid() == True):
         if (tsen.isMatchingDate(tsfr.year, tsfr.month, tsfr.day) == False):
             print("WARN: english and french don't match: ", enlabel, "fr:", frlabel)
-            #return None
+            return None
         else:
             atleastonematch = True
     if (tsfr.isValid() == True and tssv.isValid() == True):
         if (tsfr.isMatchingDate(tssv.year, tssv.month, tssv.day) == False):
             print("WARN: french and swedish don't match: ", frlabel, "sv:", svlabel)
-            #return None
+            return None
         else:
             atleastonematch = True
 
@@ -621,29 +634,37 @@ def comparedatelabels(itemfound):
     # if others are missing there should still be english label..
     if (tsen.isValid() == True):
         return tsen
+    if (tsfr.isValid() == True):
+        return tsfr
     return None
 
+def getitembyqcode(repo, itemqcode):
+
+    itemfound = pywikibot.ItemPage(repo, itemqcode)
+    if (itemfound.isRedirectPage() == True):
+        return None
+    return itemfound
 
 def hasfinnishlabel(itemfound):
-    print("item id, ", itemfound.getID())
+    #print("item id, ", itemfound.getID())
 
     for li in itemfound.labels:
         label = itemfound.labels[li]
         if (li == 'fi'):
-            #print("DEBUG: found label for ", li.getTarget().id ," in finnish: ", label)
-            print("DEBUG: found label in finnish: ", label)
+            print("DEBUG: found label for ", itemfound.getID() ," in finnish: ", label)
+            #print("DEBUG: found label in finnish: ", label)
             return True
     return False
 
 def getfinnishlabelfromitem(itemfound):
 
-    print("item id, ", itemfound.getID())
+    #print("item id, ", itemfound.getID())
 
     for li in itemfound.labels:
         label = itemfound.labels[li]
         if (li == 'fi'):
-            #print("DEBUG: found label for ", li.getTarget().id ," in finnish: ", label)
-            print("DEBUG: found label in finnish: ", label)
+            print("DEBUG: found label for ", itemfound.getID() ," in finnish: ", label)
+            #print("DEBUG: found label in finnish: ", label)
             return label
     return ''
 
@@ -706,6 +727,8 @@ def isDisambiguation(item):
 
 def addItemLabelInFinnish(item, newlabel):
     
+    # re-check, might have been changed while parsing things
+    #
     for li in item.labels:
         label = item.labels[li]
         if (li == 'fi'):
@@ -772,19 +795,27 @@ def addDatewikidatalabel(wdsite, repo, itemqcode, parentqcode):
     partoflist = getPartOfList(dateitem)
     if parentqcode not in partoflist:
         print("not part of parent?", parentqcode)
-        return None
-   
+        return False
+
+    # for testing, move this check later,
+    # normally we can skip things
     # already has finnish label -> no need to do anything
-    if (hasfinnishlabel(dateitem) == True):
-        return True
+    #if (hasfinnishlabel(dateitem) == True):
+    #    return True
 
     # TODO: compare name of month "1. tammikuuta 2001"
     # to name of parent: parent should have "tammikuu 2001"
-    parentlabel = getfinnishlabelfromitem(parentqcode)
-    tsyrmon = parse_fin_monthlabel(parentlabel)
-    if (tsyrmon.year == 0 or tsyrmon.month == 0):
-        print("WARN: parent has no valid label ?", parentqcode)
-    
+    parentitem = getitembyqcode(repo, parentqcode)
+    if (parentitem != None):
+        # parent might be a redirect, just skip for now otherwise
+        parentlabel = getfinnishlabelfromitem(parentitem)
+        tsyrmon = parse_fin_monthlabel(parentlabel)
+        if (tsyrmon.year == 0 or tsyrmon.month == 0):
+            print("WARN: parent has no valid label ?", parentqcode)
+            return False
+        else:
+            print("DEBUG: parent has label ", parentlabel)
+        
     # check entity type (instance of)
     #instance_of = itemfound.claims.get('P31', [])
     #for claim in instance_of:
@@ -800,6 +831,9 @@ def addDatewikidatalabel(wdsite, repo, itemqcode, parentqcode):
 
     if (tsyrmon.year != timestamp.year or tsyrmon.month != timestamp.month):
         print("WARN: mismatch in parent, wrong parent link or malformed label ?", parentqcode)
+        return False
+    else:
+        print("DEBUG: matching with parent ", parentlabel)
     
     filabel = make_fi_datelabel(timestamp)
     if (filabel == ""):
