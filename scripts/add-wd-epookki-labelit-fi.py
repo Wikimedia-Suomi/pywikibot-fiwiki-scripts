@@ -184,10 +184,12 @@ def parse_en_datelabel(label):
 
     ione = label.find(" ")
     if (ione < 0):
+        print("ERROR: missing first space ?", label)
         return ts
 
     itwo = label.find(" ", ione+1)
     if (itwo < 0):
+        print("ERROR: missing second space ?", label)
         return ts
 
     spp = label.split(" ")
@@ -203,6 +205,9 @@ def parse_en_datelabel(label):
     monnum = 0
     if (mon in enmonth):
         monnum = enmonth.index(mon)+1
+    else:
+        print("ERROR: unknown month ?", mon)
+        return ts
 
     imon = int(monnum)
     if (imon < 1 or imon > 12):
@@ -225,6 +230,46 @@ def parse_en_datelabel(label):
     print("DEBUG: to iso: ", ts.makeIsodateStr())
     return ts
 
+# month, year
+# parse back finnish label (where set) to catch errors
+def parse_fin_monthlabel(label):
+    ts = SimpleTimestamp()
+
+    ione = label.find(" ")
+    if (ione < 0):
+        print("ERROR: missing first space ?", label)
+        return ts
+
+    spp = label.split(" ")
+    print("DEBUG: split", spp)
+    
+    mon = leftstr(label, ione).strip()
+    yr = rightstr(label, ione).strip()
+
+    print("DEBUG: mon", mon, "yr", yr)
+
+    # month string to number
+    monnum = 0
+    if (mon in fimonth):
+        # non-inflected case
+        monnum = fimonth.index(mon)+1
+    else:
+        print("ERROR: unknown month ?", mon)
+        return ts
+
+    imon = int(monnum)
+    if (imon < 1 or imon > 12):
+        # not a valid month (should not be possible)
+        print("ERROR: invalid month ?", str(imon))
+        return ts
+
+    iyr = int(yr)
+
+    # no day here
+    ts.setDate(iyr, imon, 0)
+    return ts
+
+
 # day, month, year
 # parse back finnish label (where set) to catch errors
 def parse_fin_datelabel(label):
@@ -232,12 +277,14 @@ def parse_fin_datelabel(label):
 
     ione = label.find(" ")
     if (ione < 0):
+        print("ERROR: missing first space ?", label)
         return ts
 
     itwo = label.find(" ", ione+1)
     if (itwo < 0):
+        print("ERROR: missing second space ?", label)
         return ts
-    
+
     spp = label.split(" ")
     print("DEBUG: split", spp)
     
@@ -251,6 +298,9 @@ def parse_fin_datelabel(label):
     monnum = 0
     if (mon in fimonthcase):
         monnum = fimonthcase.index(mon)+1
+    else:
+        print("ERROR: unknown month ?", mon)
+        return ts
 
     imon = int(monnum)
     if (imon < 1 or imon > 12):
@@ -280,10 +330,12 @@ def parse_fr_datelabel(label):
 
     ione = label.find(" ")
     if (ione < 0):
+        print("ERROR: missing first space ?", label)
         return ts
 
     itwo = label.find(" ", ione+1)
     if (itwo < 0):
+        print("ERROR: missing second space ?", label)
         return ts
     
     spp = label.split(" ")
@@ -299,6 +351,9 @@ def parse_fr_datelabel(label):
     monnum = 0
     if (mon in frmonth):
         monnum = frmonth.index(mon)+1
+    else:
+        print("ERROR: unknown month ?", mon)
+        return ts
 
     imon = int(monnum)
     if (imon < 1 or imon > 12):
@@ -332,10 +387,12 @@ def parse_sv_datelabel(label):
 
     ione = label.find(" ")
     if (ione < 0):
+        print("ERROR: missing first space ?", label)
         return ts
 
     itwo = label.find(" ", ione+1)
     if (itwo < 0):
+        print("ERROR: missing second space ?", label)
         return ts
     
     spp = label.split(" ")
@@ -351,6 +408,9 @@ def parse_sv_datelabel(label):
     monnum = 0
     if (mon in svmonth):
         monnum = svmonth.index(mon)+1
+    else:
+        print("ERROR: unknown month ?", mon)
+        return ts
 
     imon = int(monnum)
     if (imon < 1 or imon > 12):
@@ -378,9 +438,11 @@ def fromIsodate(label):
 
     ione = label.find("-")
     if (ione < 0):
+        print("ERROR: missing first dash ?", label)
         return ts
     itwo = label.find("-", ione+1)
     if (itwo < 0):
+        print("ERROR: missing second dash ?", label)
         return ts
 
     spp = label.split("-")
@@ -481,62 +543,62 @@ def comparedatelabels(itemfound):
     if (tsfin.isValid() == True and tsiso.isValid() == True):
         if (tsfin.isMatchingDate(tsiso.year, tsiso.month, tsiso.day) == False):
             print("WARN: finnish and iso don't match: ", finlabel, "mul:", mullabel)
-            #return False
+            #return None
 
     if (tsfin.isValid() == True and tsen.isValid() == True):
         if (tsfin.isMatchingDate(tsen.year, tsen.month, tsen.day) == False):
             print("WARN: finnish and english don't match: ", finlabel, "en:", enlabel)
-            #return False
+            #return None
 
     if (tsfin.isValid() == True and tsfr.isValid() == True):
         if (tsfin.isMatchingDate(tsfr.year, tsfr.month, tsfr.day) == False):
             print("WARN: finnish and french don't match: ", finlabel, "fr:", frlabel)
-            #return False
+            #return None
 
     if (tsfin.isValid() == True and tssv.isValid() == True):
         if (tsfin.isMatchingDate(tssv.year, tssv.month, tssv.day) == False):
             print("WARN: finnish and swedish don't match: ", finlabel, "sv:", svlabel)
-            #return False
+            #return None
 
     # compare parsed timestamps:
     # only compare with timestamps that were found and were parsed (some might be missing)
     if (tsiso.isValid() == True and tsen.isValid() == True):
         if (tsiso.isMatchingDate(tsen.year, tsen.month, tsen.day) == False):
             print("WARN: iso and english don't match: ", mullabel, "en:", enlabel)
-            return False
+            return None
         else:
             atleastonematch = True
 
     if (tsiso.isValid() == True and tssv.isValid() == True):
         if (tsiso.isMatchingDate(tssv.year, tssv.month, tssv.day) == False):
             print("WARN: iso and swedish don't match: ", mullabel, "sv:", svlabel)
-            return False
+            return None
         else:
             atleastonematch = True
 
     if (tsen.isValid() == True and tssv.isValid() == True):
         if (tsen.isMatchingDate(tssv.year, tssv.month, tssv.day) == False):
             print("WARN: english and swedish don't match: ", enlabel, "sv:", svlabel)
-            return False
+            return None
         else:
             atleastonematch = True
 
     if (tsiso.isValid() == True and tsfr.isValid() == True):
         if (tsiso.isMatchingDate(tsfr.year, tsfr.month, tsfr.day) == False):
             print("WARN: iso and french don't match: ", mullabel, "fr:", frlabel)
-            #return False
+            #return None
         else:
             atleastonematch = True
     if (tsen.isValid() == True and tsfr.isValid() == True):
         if (tsen.isMatchingDate(tsfr.year, tsfr.month, tsfr.day) == False):
             print("WARN: english and french don't match: ", enlabel, "fr:", frlabel)
-            #return False
+            #return None
         else:
             atleastonematch = True
     if (tsfr.isValid() == True and tssv.isValid() == True):
         if (tsfr.isMatchingDate(tssv.year, tssv.month, tssv.day) == False):
             print("WARN: french and swedish don't match: ", frlabel, "sv:", svlabel)
-            #return False
+            #return None
         else:
             atleastonematch = True
 
@@ -568,8 +630,8 @@ def hasfinnishlabel(itemfound):
     for li in itemfound.labels:
         label = itemfound.labels[li]
         if (li == 'fi'):
+            #print("DEBUG: found label for ", li.getTarget().id ," in finnish: ", label)
             print("DEBUG: found label in finnish: ", label)
-            # already in finnish 
             return True
     return False
 
@@ -580,6 +642,7 @@ def getfinnishlabelfromitem(itemfound):
     for li in itemfound.labels:
         label = itemfound.labels[li]
         if (li == 'fi'):
+            #print("DEBUG: found label for ", li.getTarget().id ," in finnish: ", label)
             print("DEBUG: found label in finnish: ", label)
             return label
     return ''
@@ -714,6 +777,13 @@ def addDatewikidatalabel(wdsite, repo, itemqcode, parentqcode):
     # already has finnish label -> no need to do anything
     if (hasfinnishlabel(dateitem) == True):
         return True
+
+    # TODO: compare name of month "1. tammikuuta 2001"
+    # to name of parent: parent should have "tammikuu 2001"
+    parentlabel = getfinnishlabelfromitem(parentqcode)
+    tsyrmon = parse_fin_monthlabel(parentlabel)
+    if (tsyrmon.year == 0 or tsyrmon.month == 0):
+        print("WARN: parent has no valid label ?", parentqcode)
     
     # check entity type (instance of)
     #instance_of = itemfound.claims.get('P31', [])
@@ -722,11 +792,14 @@ def addDatewikidatalabel(wdsite, repo, itemqcode, parentqcode):
     
     timestamp = comparedatelabels(dateitem)
     if (timestamp == None):
-        print("missing date from labels.")
+        print("WARN: missing date from labels or mismatch.")
         return False
     if (timestamp.isValid() == False):
-        print("mismatching or missing dates in labels.")
+        print("WARN: mismatching or missing dates in labels.")
         return False
+
+    if (tsyrmon.year != timestamp.year or tsyrmon.month != timestamp.month):
+        print("WARN: mismatch in parent, wrong parent link or malformed label ?", parentqcode)
     
     filabel = make_fi_datelabel(timestamp)
     if (filabel == ""):
@@ -865,6 +938,9 @@ def itemlistDaysinmonth(wdsite, repo, itemqcode, parentqcode):
         print("disambiguation page, skipping.")
         return None
 
+    # TODO: compare name of month such as "tammikuu 2001"
+    # to name of parent: parent should have "2001"
+
     # check parent is marked in "part of"
     partoflist = getPartOfList(monthitem)
     if parentqcode not in partoflist:
@@ -912,6 +988,7 @@ for decadeqcode in decadelist:
     #decadeqcode = "Q19022" # 2010-luku
     #decadeqcode = "Q534495" # 2020-luku
 
+    #decadeqcode = "Q35014" # 1970-luku
     #decadeqcode = "Q34644" # 1980-luku
     #decadeqcode = "Q34653" # 1990-luku 
 
@@ -924,6 +1001,7 @@ for decadeqcode in decadelist:
 
         #yearqcode = "Q25245" # 2016 # check, some oddities
         #yearqcode = "Q25291" # 2018 # check, some oddities
+        #yearqcode = "Q2484"
 
         print("checking year by code", yearqcode)
 
