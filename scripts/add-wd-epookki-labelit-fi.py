@@ -122,7 +122,7 @@ frmonth = [
     "avril",
     "mai",
     "juin",
-    "juin",
+    "juillet",
     "août",
     "septembre",
     "octobre",
@@ -182,6 +182,11 @@ def leftfrom(text, char):
 def parse_en_datelabel(label):
     ts = SimpleTimestamp()
 
+    if (label == None or label == ""):
+        # all labels are not defined but if there is entry there should be something?
+        print("WARN: empty label ?")
+        return ts
+
     ione = label.find(" ")
     if (ione < 0):
         print("ERROR: missing first space ?", label)
@@ -235,6 +240,11 @@ def parse_en_datelabel(label):
 def parse_fin_monthlabel(label):
     ts = SimpleTimestamp()
 
+    if (label == None or label == ""):
+        # all labels are not defined but if there is entry there should be something?
+        print("WARN: empty label ?")
+        return ts
+
     ione = label.find(" ")
     if (ione < 0):
         print("ERROR: missing first space ?", label)
@@ -274,6 +284,11 @@ def parse_fin_monthlabel(label):
 # parse back finnish label (where set) to catch errors
 def parse_fin_datelabel(label):
     ts = SimpleTimestamp()
+
+    if (label == None or label == ""):
+        # all labels are not defined but if there is entry there should be something?
+        print("WARN: empty label ?")
+        return ts
 
     ione = label.find(" ")
     if (ione < 0):
@@ -341,6 +356,11 @@ def labeltohex(label):
 def parse_fr_datelabel(label):
     ts = SimpleTimestamp()
 
+    if (label == None or label == ""):
+        # all labels are not defined but if there is entry there should be something?
+        print("WARN: empty label ?")
+        return ts
+
     ione = label.find(" ")
     if (ione < 0):
         print("ERROR: missing first space ?", label)
@@ -398,6 +418,11 @@ def parse_fr_datelabel(label):
 def parse_sv_datelabel(label):
     ts = SimpleTimestamp()
 
+    if (label == None or label == ""):
+        # all labels are not defined but if there is entry there should be something?
+        print("WARN: empty label ?")
+        return ts
+
     ione = label.find(" ")
     if (ione < 0):
         print("ERROR: missing first space ?", label)
@@ -448,6 +473,11 @@ def parse_sv_datelabel(label):
     
 def fromIsodate(label):
     ts = SimpleTimestamp()
+
+    if (label == None or label == ""):
+        # all labels are not defined but if there is entry there should be something?
+        print("WARN: empty label ?")
+        return ts
 
     ione = label.find("-")
     if (ione < 0):
@@ -1022,6 +1052,7 @@ for decadeqcode in decadelist:
     #decadeqcode = "Q19022" # 2010-luku
     #decadeqcode = "Q534495" # 2020-luku
 
+    #decadeqcode = "Q35724" # 1960-luku
     #decadeqcode = "Q35014" # 1970-luku
     #decadeqcode = "Q34644" # 1980-luku
     #decadeqcode = "Q34653" # 1990-luku 
@@ -1036,6 +1067,7 @@ for decadeqcode in decadelist:
         #yearqcode = "Q25245" # 2016 # check, some oddities
         #yearqcode = "Q25291" # 2018 # check, some oddities
         #yearqcode = "Q2484"
+        #yearqcode = "Q2062"
 
         print("checking year by code", yearqcode)
 
@@ -1045,6 +1077,7 @@ for decadeqcode in decadelist:
             #monthqcode = "Q61312921" # marraskuu 2025
             #monthqcode = "Q19249071" # toukokuu 2016 # check, some oddities
             #monthqcode = "Q29110086" # heinäkuu 2018 # check, some oddities
+            #monthqcode ="Q3277976"
 
             print("checking month by code", monthqcode)
 
