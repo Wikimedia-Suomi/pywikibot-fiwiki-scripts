@@ -2531,6 +2531,42 @@ def getSubjectsFromFinnarecord(finnarecord):
     subjects = finnarecord['records'][0]['subjects']
     return subjects
 
+def getEventsFromFinnarecord(finnarecord):
+    records = finnarecord['records'][0]
+    if "events" not in records:
+        return None
+    events = finnarecord['records'][0]['events']
+    return events
+
+# some records may have "events" with manufacturing date?
+def getDatesfromeventsInRecord(finnarecord):
+    datelist = list()
+    events = getEventsFromFinnarecord(finnarecord)
+    if (events == None):
+        print("no events in finna record")
+        return None
+
+    if "valmistus" in events:
+        for v in events["valmistus"]:
+            #if "type" in v:
+            if "date" in v:
+                date = v["date"] 
+                datelist.append(date)
+    return datelist
+
+# some records have dates mixed in with various other subject tags?    
+def getDatesfromsubjectsInRecord(finnarecord):
+    datelist = list()
+    subjects = getSubjectsFromFinnarecord(finnarecord)
+    if (subjects == None):
+        print("no subjects in finna record")
+        return None
+
+    for subject in subjects:
+        for sbstr in subject:
+            datelist.append(sbstr)
+
+    return datelist
 
 # remove pointless characters if any:
 #  sometimes there are newlines and tabs in the string -> strip them out
@@ -2540,80 +2576,63 @@ def fixwhitespaces(s):
     s = s.replace("\r", " ")
     return trimlr(s)
 
-# parse timestamp of picture from finna data
-# TODO: sometimes there is a range of approximate dates given
-# -> we could parse them but how do we mark them in SDC?
-def parseinceptionfromfinna(finnarecord):
-    if "records" not in finnarecord:
-        print("ERROR: no records in finna record")
-        return None
+# parse potential usable date from string:
+# may have ambigious decade or precise date, try to find best match
+def parsesubjecteventdateFromFinna(sbedstr):
 
-    subjects = getSubjectsFromFinnarecord(finnarecord)
-    if (subjects == None):
-        print("no subjects in finna record")
-        return None
-    try:
-        for subject in subjects:
-            for sbstr in subject:
-                #  sometimes there is newlines and tabs in the string -> strip them out
-                sbstr = fixwhitespaces(sbstr)
-                
-                index = sbstr.find("kuvausaika")
-                if (index >= 0):
-                    index = index+len("kuvausaika")
-                    timestamp = sbstr[index:]
+    #  sometimes there is newlines and tabs in the string -> strip them out
+    sbedstr = fixwhitespaces(sbedstr)
+    
+    index = sbedstr.find("kuvausaika")
+    if (index >= 0):
+        index = index+len("kuvausaika")
+        timestamp = sbedstr[index:]
 
-                    # something human-readable after a timestamp?
-                    if (timestamp.find(",") > 0):
-                        timestamp = leftfrom(timestamp, ",")
-                    
-                    indexend = timestamp.rfind(" ")
-                    if (indexend >= 0):
-                        timestamp = timestamp[indexend:]
-                    print("DEBUG: kuvausaika in subjects: " + timestamp)
-                    return timestringtodatetime(timestamp)
+        # something human-readable after a timestamp?
+        if (timestamp.find(",") > 0):
+            timestamp = leftfrom(timestamp, ",")
+        
+        indexend = timestamp.rfind(" ")
+        if (indexend >= 0):
+            timestamp = timestamp[indexend:]
+        print("DEBUG: kuvausaika in subjects: " + timestamp)
+        return timestringtodatetime(timestamp)
 
-                index = sbstr.find("ajankohta:")
-                if (index >= 0):
-                    index = index+len("ajankohta:")
-                    timestamp = sbstr[index:]
+    index = sbedstr.find("ajankohta:")
+    if (index >= 0):
+        index = index+len("ajankohta:")
+        timestamp = sbedstr[index:]
 
-                    # something human-readable after a timestamp?
-                    if (timestamp.find(",") > 0):
-                        timestamp = leftfrom(timestamp, ",")
-                    
-                    indexend = timestamp.rfind(" ")
-                    if (indexend >= 0):
-                        timestamp = timestamp[indexend:]
-                    print("DEBUG: ajankohta in subjects: " + timestamp)
-                    return timestringtodatetime(timestamp)
-                
-                # "valmistus" may have time, place, materials..
-                index = sbstr.find("valmistusaika ")
-                if (index >= 0):
-                    index = index+len("valmistusaika ")
-                    timestamp = sbstr[index:]
+        # something human-readable after a timestamp?
+        if (timestamp.find(",") > 0):
+            timestamp = leftfrom(timestamp, ",")
+        
+        indexend = timestamp.rfind(" ")
+        if (indexend >= 0):
+            timestamp = timestamp[indexend:]
+        print("DEBUG: ajankohta in subjects: " + timestamp)
+        return timestringtodatetime(timestamp)
+    
+    # "valmistus" may have time, place, materials..
+    index = sbedstr.find("valmistusaika ")
+    if (index >= 0):
+        index = index+len("valmistusaika ")
+        timestamp = sbedstr[index:]
 
-                    # something human-readable after a timestamp?
-                    if (timestamp.find(",") > 0):
-                        timestamp = leftfrom(timestamp, ",")
-                    
-                    indexend = timestamp.rfind(" ")
-                    if (indexend >= 0):
-                        timestamp = timestamp[indexend:]
-                    print("DEBUG: valmistusaika in subjects: " + timestamp)
-                    return timestringtodatetime(timestamp)
-                
-                # note: in some cases there is just timestamp without a string before it
-                fdt = timestringtodatetime(sbstr)
-                if (fdt != None):
-                    return fdt
-                    
-        # try to find plain year if there is no other date format
-        return parseinceptionyearfromfinna(finnarecord)
-    except:
-        print("failed to parse timestamp")
-        return None
+        # something human-readable after a timestamp?
+        if (timestamp.find(",") > 0):
+            timestamp = leftfrom(timestamp, ",")
+        
+        indexend = timestamp.rfind(" ")
+        if (indexend >= 0):
+            timestamp = timestamp[indexend:]
+        print("DEBUG: valmistusaika in subjects: " + timestamp)
+        return timestringtodatetime(timestamp)
+    
+    # note: in some cases there is just timestamp without a string before it
+    fdt = timestringtodatetime(sbedstr)
+    if (fdt != None):
+        return fdt
     return None
 
 # some records have only a year in them?
@@ -2645,6 +2664,52 @@ def parseinceptionyearfromfinna(finnarecord):
         print("failed to parse timestamp")
         return None
     return None
+
+# parse timestamp of picture from finna data
+# TODO: sometimes there is a range of approximate dates given
+# -> we could parse them but how do we mark them in SDC?
+def parseinceptionfromfinna(finnarecord):
+    if "records" not in finnarecord:
+        print("ERROR: no records in finna record")
+        return None
+
+    try:
+        # alternative path: events / valmistus / date ?
+        # is it reliable/common enough to use?
+        eventdates = getDatesfromeventsInRecord(finnarecord)
+
+        for edstr in eventdates:
+            fdt = parsesubjecteventdateFromFinna(edstr)
+            if (fdt != None):
+                # found something usable?
+                return fdt
+    except:
+        print("failed to parse timestamp")
+        return None
+
+    try:
+        # may be mixed in with other subject tags?
+        subjects = getDatesfromsubjectsInRecord(finnarecord)
+
+        for sbstr in subjects:
+            fdt = parsesubjecteventdateFromFinna(sbstr)
+            if (fdt != None):
+                # found something usable?
+                return fdt
+    except:
+        print("failed to parse timestamp")
+        return None
+
+    try:
+        # try to find plain year if there is no other date format
+        return parseinceptionyearfromfinna(finnarecord)
+    except:
+        print("failed to parse timestamp")
+        return None
+
+    # nothing usable or parseable
+    return None
+
 
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
@@ -5762,7 +5827,14 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files uploaded by FinnaUploadBot", False)
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 20)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
+
+#pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot")
+pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without tracking categories")
+
+#pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without street category")
+#pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without year category")
+#pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without coordinates")
 
 
 #pages = getcatpages(pywikibot, commonssite, "PD Finland (simple photos)")
@@ -5770,6 +5842,10 @@ commonssite.login()
 
 #pages = getcatpages(pywikibot, commonssite, "Theatre Museum (Helsinki)")
 
+#pages = getcatpages(pywikibot, commonssite, "Karl Olof Lindeqvist")
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Kalevalatalo", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Lauri Kivekäs", 0)
 
 
 
@@ -6551,6 +6627,7 @@ for page in pages:
                     #print("status code", statusqcode ," added to statements for license", copyrightlicense)
 
     # subjects / "kuvausaika 08.01.2016" -> inception
+    # also: events / valmistus / date ?
     inceptiondt = parseinceptionfromfinna(finna_record)
     if (inceptiondt != None):
         #print("DEBUG: found inception date for: " + finnaid + " " + inceptiondt.isoformat())
