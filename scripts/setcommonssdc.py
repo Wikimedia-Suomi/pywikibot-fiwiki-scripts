@@ -2455,6 +2455,14 @@ def parsesourcefromeuropeana(commonssource):
     print("europeana page source: " + eusource)
     return eusource
 
+# remove pointless characters if any:
+#  sometimes there are newlines and tabs in the string -> strip them out
+def fixwhitespaces(s):
+    s = s.replace("\n", " ")
+    s = s.replace("\t", " ")
+    s = s.replace("\r", " ")
+    return trimlr(s)
+
 # note alternate: might have timestamp like "1943-06-24" or "01.06.1930"
 # also: might be "yyyymm" or plain year or "mmyyyy".
 # other cases: "1920-luku" or "1920 - 1929", there may be other text there as well
@@ -2472,14 +2480,19 @@ def timestringtodatetime(timestring):
     if (timestring.endswith(".")):
         timestring = timestring[:len(timestring)-1]
 
+    # after one round of cleanups, check again
+    timestring = trimlr(timestring)
+
     try:
         # two digits for day and month, four digits for year
         if (len(timestring) == 10):
+            # fi-style
             if (timestring.find('.') > 0): 
                 dt = datetime.strptime(timestring, '%d.%m.%Y')
                 fdt = FinnaTimestamp()
                 fdt.setDate(dt.year, dt.month, dt.day)
                 return fdt
+            # ISO-standard
             if (timestring.find('-') > 0): 
                 dt = datetime.strptime(timestring, '%Y-%m-%d')
                 fdt = FinnaTimestamp()
@@ -2517,6 +2530,25 @@ def timestringtodatetime(timestring):
                 fdt = FinnaTimestamp()
                 fdt.setYear(num)
                 return fdt
+
+        # might be range of plain years (1929 - 1930) ?
+
+        # could be decade (1930-luku) or century (1900-luku) -> might try to parse as well
+        if (timestring.find("-luku") > 0):
+            ixdec = timestring.find("-luku")
+            if (ixdec > 4):
+                # at least four numbers
+                decade = timestring[:ixdec]
+                # somehing else preceding the decade?
+                if (len(decade) > 4):
+                    decade = decade[len(decade)-4:]
+                print("DEBUG: decade or century found", decade)
+                # we don't really know if it is decade or century..
+                #idecade = int(decade)
+                #fdt = FinnaTimestamp()
+                #fdt.setYear(idecade)
+                #fdt.setPrecision(10)
+            
     except:
         print("failed to parse timestamp")
         return None
@@ -2548,10 +2580,17 @@ def getDatesfromeventsInRecord(finnarecord):
 
     if "valmistus" in events:
         for v in events["valmistus"]:
-            #if "type" in v:
+            # are there other types?
+            valtype = ""
+            if "type" in v:
+                valtype = v["type"]
             if "date" in v:
                 date = v["date"] 
-                datelist.append(date)
+                # at least this type should be ok to use?
+                if (valtype == "valmistus"):
+                    datelist.append(date)
+                    print("DEBUG: found events value type", valtype)
+                    
     return datelist
 
 # some records have dates mixed in with various other subject tags?    
@@ -2568,17 +2607,11 @@ def getDatesfromsubjectsInRecord(finnarecord):
 
     return datelist
 
-# remove pointless characters if any:
-#  sometimes there are newlines and tabs in the string -> strip them out
-def fixwhitespaces(s):
-    s = s.replace("\n", " ")
-    s = s.replace("\t", " ")
-    s = s.replace("\r", " ")
-    return trimlr(s)
-
 # parse potential usable date from string:
 # may have ambigious decade or precise date, try to find best match
 def parsesubjecteventdateFromFinna(sbedstr):
+
+    # TODO: if there are multiple potential dates sort them by precision (year, month day precision)
 
     #  sometimes there is newlines and tabs in the string -> strip them out
     sbedstr = fixwhitespaces(sbedstr)
@@ -2595,7 +2628,7 @@ def parsesubjecteventdateFromFinna(sbedstr):
         indexend = timestamp.rfind(" ")
         if (indexend >= 0):
             timestamp = timestamp[indexend:]
-        print("DEBUG: kuvausaika in subjects: " + timestamp)
+        print("DEBUG: kuvausaika found: ", timestamp)
         return timestringtodatetime(timestamp)
 
     index = sbedstr.find("ajankohta:")
@@ -2610,7 +2643,7 @@ def parsesubjecteventdateFromFinna(sbedstr):
         indexend = timestamp.rfind(" ")
         if (indexend >= 0):
             timestamp = timestamp[indexend:]
-        print("DEBUG: ajankohta in subjects: " + timestamp)
+        print("DEBUG: ajankohta found: ", timestamp)
         return timestringtodatetime(timestamp)
     
     # "valmistus" may have time, place, materials..
@@ -2626,7 +2659,7 @@ def parsesubjecteventdateFromFinna(sbedstr):
         indexend = timestamp.rfind(" ")
         if (indexend >= 0):
             timestamp = timestamp[indexend:]
-        print("DEBUG: valmistusaika in subjects: " + timestamp)
+        print("DEBUG: valmistusaika found: ", timestamp)
         return timestringtodatetime(timestamp)
     
     # note: in some cases there is just timestamp without a string before it
@@ -2656,9 +2689,11 @@ def parseinceptionyearfromfinna(finnarecord):
 
         # TODO: if last digit is zero, we have only per-decade precision?
         # if two last digits are zero, we only have per-century precision?
+        #fdt.setPrecision(10) or fdt.setPrecision(100)
 
         fdt = FinnaTimestamp()
         fdt.setYear(yearnum, True)
+
         return fdt
     except:
         print("failed to parse timestamp")
@@ -2678,10 +2713,12 @@ def parseinceptionfromfinna(finnarecord):
         # is it reliable/common enough to use?
         eventdates = getDatesfromeventsInRecord(finnarecord)
 
+        # TODO: if there are multiple potential dates sort them by precision
         for edstr in eventdates:
             fdt = parsesubjecteventdateFromFinna(edstr)
             if (fdt != None):
                 # found something usable?
+                print("DEBUG: found date from events ")
                 return fdt
     except:
         print("failed to parse timestamp")
@@ -2691,10 +2728,12 @@ def parseinceptionfromfinna(finnarecord):
         # may be mixed in with other subject tags?
         subjects = getDatesfromsubjectsInRecord(finnarecord)
 
+        # TODO: if there are multiple potential dates sort them by precision
         for sbstr in subjects:
             fdt = parsesubjecteventdateFromFinna(sbstr)
             if (fdt != None):
                 # found something usable?
+                print("DEBUG: found date from subjects ")
                 return fdt
     except:
         print("failed to parse timestamp")
@@ -2702,7 +2741,11 @@ def parseinceptionfromfinna(finnarecord):
 
     try:
         # try to find plain year if there is no other date format
-        return parseinceptionyearfromfinna(finnarecord)
+        fdt = parseinceptionyearfromfinna(finnarecord)
+        if (fdt != None):
+            # found something usable?
+            print("DEBUG: found plain year ")
+            return fdt
     except:
         print("failed to parse timestamp")
         return None
@@ -5260,7 +5303,7 @@ def getpagesfixedlist(pywikibot, commonssite):
     
     #fixedname = 'Bergan huvila-alue, Villa Jonasberg - N744 (hkm.HKMS000005-000000pq).jpg'
     
-    #fixedname = '75th Anniversary Jubilee and Jubilee regatta of Nyländska Jaktklubben NJK 1936 (9171A; JOKAHBL3B G09-4).tif'
+    fixedname = '75th Anniversary Jubilee and Jubilee regatta of Nyländska Jaktklubben NJK 1936 (9171A; JOKAHBL3B G09-4).tif'
     #fixedname = 'Alexandra Dock Hull 1954-08 Maritime Museum of Finland SMK200627-3056.jpg'
     
     #fixedname = 'AJärnefelt sig.jpg'
@@ -5827,11 +5870,11 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files uploaded by FinnaUploadBot", False)
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 200)
+
+pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 20)
 
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot")
-pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without tracking categories")
-
+#pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without tracking categories")
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without street category")
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without year category")
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without coordinates")
