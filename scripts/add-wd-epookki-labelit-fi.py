@@ -1,6 +1,10 @@
 # Purpose: add finnish labels to epochs in wikidata
 #
 # Running script: python <scriptname>
+#
+# Q: why is this so complicated?
+# A: because there are strange errors in data, try to catch those so they can be fixed.
+#
 
 import pywikibot
 #import time
@@ -563,7 +567,6 @@ def fromIsodate(label):
     ts.setDate(iyr, imon, iday)
     print("DEBUG: to iso: ", ts.makeIsodateStr())
     return ts
-
 
 def make_fi_monthlabel(ts : SimpleTimestamp):
     if (ts == None):
@@ -1160,6 +1163,14 @@ def itemlistDaysinmonth(wdsite, repo, itemqcode, parentqcode):
     if (hasfinnishlabel(monthitem) == False):
         if (addFinnishLabelForMonth(monthitem) == False):
             return None
+    else: 
+        # if uppercase -> change to lower and save 
+        fimon = getfinnishlabelfromitem(monthitem)
+        fimonlower = fimon.lower()
+        if (fimonlower != fimon):
+            print("wikidata does not use lower case where it should", fimon)
+            # change label, write lower-case text to it
+        
 
     # get list of day items in the month
     dayqlist = getConsistsOfList(monthitem)
