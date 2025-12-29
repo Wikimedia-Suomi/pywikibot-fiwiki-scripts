@@ -3,6 +3,7 @@
 # Running script: python <scriptname>
 
 import pywikibot
+#import time
 
 
 # todo: force integers as inputs
@@ -83,7 +84,19 @@ class SimpleTimestamp:
             and self.day == day):
             return True
         return False
-    
+
+#daycount = [1 : 31,
+#            2 : 29,
+#            3 : 31,
+#            4 : 30,
+#            5 : 31,
+#            6 : 30,
+#            7 : 31,
+#            8 : 31,
+#            9 : 30,
+#            10 : 31,
+#            11 : 30,
+#            12 : 31]    
 
 svmonth = [
     "januari",
@@ -234,6 +247,52 @@ def parse_en_datelabel(label):
     ts.setDate(iyr, imon, iday)
     print("DEBUG: to iso: ", ts.makeIsodateStr())
     return ts
+
+# month, year
+# parse back english or french label (where set) to catch errors:
+# use only on labels of month of year ("december 1831")
+def parse_enfr_monthlabel(label, monthlist):
+    ts = SimpleTimestamp()
+
+    if (label == None or label == ""):
+        # all labels are not defined but if there is entry there should be something?
+        print("WARN: empty label ?")
+        return ts
+
+    ione = label.find(" ")
+    if (ione < 0):
+        print("ERROR: missing first space ?", label)
+        return ts
+
+    spp = label.split(" ")
+    print("DEBUG: split", spp)
+    
+    mon = leftstr(label, ione).strip()
+    yr = rightstr(label, ione).strip()
+
+    print("DEBUG: mon", mon, "yr", yr)
+
+    # month string to number
+    monnum = 0
+    if (mon in monthlist):
+        # non-inflected case
+        monnum = monthlist.index(mon)+1
+    else:
+        print("ERROR: unknown month ?", mon)
+        return ts
+
+    imon = int(monnum)
+    if (imon < 1 or imon > 12):
+        # not a valid month (should not be possible)
+        print("ERROR: invalid month ?", str(imon))
+        return ts
+
+    iyr = int(yr)
+
+    # no day here
+    ts.setDate(iyr, imon, 0)
+    return ts
+
 
 # month, year
 # parse back finnish label (where set) to catch errors
@@ -505,6 +564,25 @@ def fromIsodate(label):
     print("DEBUG: to iso: ", ts.makeIsodateStr())
     return ts
 
+
+def make_fi_monthlabel(ts : SimpleTimestamp):
+    if (ts == None):
+        return ""
+    
+    # must have two parts, mon, yr
+    if (ts.year == 0 or ts.month == 0):
+        return ""
+    #if (ts.isValid() == False):
+    #    return ""
+    
+    filabel = ""
+    filabel += fimonth[ts.month-1]
+    filabel += " "
+    filabel += str(ts.year)
+
+    print("DEBUG: made month string: ", filabel)
+    return filabel
+
 def make_fi_datelabel(ts : SimpleTimestamp):
     if (ts == None):
         return ""
@@ -668,6 +746,18 @@ def comparedatelabels(itemfound):
         return tsfr
     return None
 
+def isDisambiguation(item):
+    isdis = False
+    instance_of = item.claims.get('P31', [])
+    for claim in instance_of:
+        
+        if (claim.getTarget().id == 'Q4167410'):
+            #print("target is disambiguation page")
+            isdis = True
+            break
+        
+    return isdis
+
 def getitembyqcode(repo, itemqcode):
 
     itemfound = pywikibot.ItemPage(repo, itemqcode)
@@ -697,6 +787,16 @@ def getfinnishlabelfromitem(itemfound):
             #print("DEBUG: found label in finnish: ", label)
             return label
     return ''
+
+def getlabelbylangfromitem(itemfound, lang):
+
+    for li in itemfound.labels:
+        label = itemfound.labels[li]
+        if (li == lang):
+            print("DEBUG: found label for ", itemfound.getID() ," in lang ", lang ,": ", label)
+            return label
+    return None
+
 
 def getfinnishdatelabel(repo, itemqcode):
 
@@ -738,24 +838,17 @@ def isDateItem(item):
         # tietyn vuoden kalenteripäivämäärä
         
         if (claim.getTarget().id == 'Q47150325'):
-            print("instance ok", claim.getTarget().id)
+            #print("instance ok", claim.getTarget().id)
             isperyeardate = True
         
     return isperyeardate
 
-def isDisambiguation(item):
-    isdis = False
-    instance_of = item.claims.get('P31', [])
-    for claim in instance_of:
-        
-        if (claim.getTarget().id == 'Q4167410'):
-            print("disambiguation page, skipping")
-            isdis = True
-            break
-        
-    return isdis
 
-def addItemLabelInFinnish(item, newlabel):
+# add label to item
+def addLabelInFinnish(item, newlabel):
+    if (len(newlabel) < 1):
+        print("ERROR: new lable is empty string")
+        return False
     
     # re-check, might have been changed while parsing things
     #
@@ -779,6 +872,7 @@ def addItemLabelInFinnish(item, newlabel):
     # kuvausta ei ole myöskään ranskaksi merkitty
     #if (isDescriptionMissing == True):
     #    new_descr = {"fi": "päiväys"}
+    #    new_descr = {"fi": "kuukausi"}
     #    item.editDescriptions(new_descr, summary="Adding missing description in Finnish.")
 
     # read back
@@ -870,7 +964,8 @@ def addDatewikidatalabel(wdsite, repo, itemqcode, parentqcode):
         print("could not make date label in finnish.")
         return False
 
-    if (addItemLabelInFinnish(dateitem, filabel) == False): 
+    # add label for date item
+    if (addLabelInFinnish(dateitem, filabel) == False): 
         print("could not add label in finnish.")
         return False
     
@@ -899,7 +994,7 @@ def itemlistDecadesincentury(wdsite, repo, itemqcode):
     for claim in instance_of:
         
         if (claim.getTarget().id == 'Q578'):
-            print("ok, instance of calendar century")
+            #print("ok, instance of calendar century")
             iscentury = True
             break
     if (iscentury == False):
@@ -933,7 +1028,7 @@ def itemlistYearsindecade(wdsite, repo, itemqcode, parentqcode):
     for claim in instance_of:
         
         if (claim.getTarget().id == 'Q39911'):
-            print("ok, instance of calendar decade")
+            #print("ok, instance of calendar decade")
             isdecade = True
             break
     if (isdecade == False):
@@ -974,7 +1069,7 @@ def itemlistMonthsinyear(wdsite, repo, itemqcode, parentqcode):
     for claim in instance_of:
         
         if (claim.getTarget().id == 'Q3186692'):
-            print("ok, instance of calendar year")
+            #print("ok, instance of calendar year")
             isyear = True
             break
     if (isyear == False):
@@ -984,6 +1079,39 @@ def itemlistMonthsinyear(wdsite, repo, itemqcode, parentqcode):
     monthqlist = getConsistsOfList(yearitem)
     return monthqlist
 
+def addFinnishLabelForMonth(monthitem):
+    enlabel = getlabelbylangfromitem(monthitem, 'en')
+    if (enlabel == None):
+        print("WARN: could not fetch label in english")
+        return False
+    frlabel = getlabelbylangfromitem(monthitem, 'fr')
+    if (frlabel == None):
+        print("WARN: could not fetch label in french")
+        return False
+        
+    enmonts = parse_enfr_monthlabel(enlabel, enmonth)
+    frmonts = parse_enfr_monthlabel(frlabel, frmonth)
+        
+    if (enmonts.year == 0 or enmonts.month == 0 or frmonts.year == 0 or frmonts.month == 0):
+        print("could not parse either english or french label for month")
+        return False
+    if (enmonts.year != frmonts.year or enmonts.month != frmonts.month):
+        print("english and french labels for month don't match")
+        return False
+
+    # ok, we have both and they match:
+    # generate month label in finnish and set to month item
+    mon_fin_label = make_fi_monthlabel(enmonts)
+    #mon_fin_label2 = make_fi_monthlabel(frmonts)
+    if (mon_fin_label == ""):
+        print("could not make month label in finnish.")
+        return False
+    if (addLabelInFinnish(monthitem, mon_fin_label) == False): 
+        print("could not add label in finnish.")
+        return False
+    
+    return True
+    
 
 def itemlistDaysinmonth(wdsite, repo, itemqcode, parentqcode):
     
@@ -1001,15 +1129,10 @@ def itemlistDaysinmonth(wdsite, repo, itemqcode, parentqcode):
     if (isDisambiguation(monthitem) == True):
         print("disambiguation page, skipping.")
         return None
-
+    
     # TODO: compare name of month such as "tammikuu 2001"
     # to name of parent: parent should have "2001"
 
-    # check parent is marked in "part of"
-    partoflist = getPartOfList(monthitem)
-    if parentqcode not in partoflist:
-        print("not part of parent?", parentqcode)
-        return None
 
     # instance of tietyn vuoden kalenterikuukausi (Q47018478)
 
@@ -1018,13 +1141,27 @@ def itemlistDaysinmonth(wdsite, repo, itemqcode, parentqcode):
     for claim in instance_of:
         
         if (claim.getTarget().id == 'Q47018478'):
-            print("ok, instance of calendar month")
+            #print("ok, instance of calendar month")
             ismonth = True
             break
     if (ismonth == False):
         print("not calendar month")
         return None
 
+    # check given parent is marked in "part of" of this item:
+    # month of year should be part of specific year
+    partoflist = getPartOfList(monthitem)
+    if parentqcode not in partoflist:
+        print("not part of parent?", parentqcode)
+        return None
+
+    # check that month has label in finnish, if not add it
+    # 
+    if (hasfinnishlabel(monthitem) == False):
+        if (addFinnishLabelForMonth(monthitem) == False):
+            return None
+
+    # get list of day items in the month
     dayqlist = getConsistsOfList(monthitem)
     return dayqlist
 
@@ -1040,25 +1177,49 @@ repo = wdsite.data_repository()
 # toinen vuosituhat (Q25860)
 # kolmas vuosituhat (Q26224)
 
-#centuryqcode = "Q6955" # 1800-luku
-centuryqcode = "Q6927" # 1900-luku
+
+#centuryqcode = "Q7015" # 1700-luku
+
+centuryqcode = "Q6955" # 1800-luku
+#centuryqcode = "Q6927" # 1900-luku
 #centuryqcode = "Q6939" # 2000-luku 
 
 print("checking century by code", centuryqcode)
 decadelist = itemlistDecadesincentury(wdsite, repo, centuryqcode)
+if (len(decadelist) != 10):
+    print("decade missing or extra in century?", centuryqcode)
+    exit()
 for decadeqcode in decadelist:
 
     #decadeqcode = "Q35024" # 2000-vuosikymmen
     #decadeqcode = "Q19022" # 2010-luku
     #decadeqcode = "Q534495" # 2020-luku
 
+    #decadeqcode = "Q36574"  # 1900-vuosikymmen ()
+    #decadeqcode ="Q36585" # 1910-luku ()
+    #decadeqcode = "Q35736" # 1920-luku 
+    #decadeqcode = "Q35702" # 1930-luku
+    #decadeqcode = "Q36561" # 1940-luku 
+    #decadeqcode = "Q36297" # 1950-luku
     #decadeqcode = "Q35724" # 1960-luku
     #decadeqcode = "Q35014" # 1970-luku
     #decadeqcode = "Q34644" # 1980-luku
     #decadeqcode = "Q34653" # 1990-luku 
 
+    #decadeqcode = "Q38674" #1880-luku ()
+    #decadeqcode = "Q39844" # 
+    #decadeqcode = "Q39847" # 1870-luku
+    #decadeqcode = "Q38674" # 1880-luku ()
+
+    #decadeqcode = "Q38971" #1890-luku ()
+    #decadeqcode ="Q199912" # 1790-luku ()
+    #decadeqcode = "Q38324"
+
     print("checking decade by code", decadeqcode)
     yearlist = itemlistYearsindecade(wdsite, repo, decadeqcode, centuryqcode)
+    if (len(yearlist) != 10):
+        print("year missing or extra in decade?", decadeqcode)
+        exit()
     for yearqcode in yearlist:
 
         # huom, 2026 vuodelle puuttuu labeleitä myös muilla kielillä
@@ -1066,30 +1227,38 @@ for decadeqcode in decadelist:
 
         #yearqcode = "Q25245" # 2016 # check, some oddities
         #yearqcode = "Q25291" # 2018 # check, some oddities
-        #yearqcode = "Q2484"
-        #yearqcode = "Q2062"
+        #yearqcode = "Q7829"
+        #yearqcode = "Q7851"
+        #yearqcode = "Q7823"
 
         print("checking year by code", yearqcode)
-
         monthlist = itemlistMonthsinyear(wdsite, repo, yearqcode, decadeqcode)
+        if (len(monthlist) != 12):
+            print("month missing or extra?", yearqcode)
+            exit()
         for monthqcode in monthlist:
 
             #monthqcode = "Q61312921" # marraskuu 2025
             #monthqcode = "Q19249071" # toukokuu 2016 # check, some oddities
             #monthqcode = "Q29110086" # heinäkuu 2018 # check, some oddities
-            #monthqcode ="Q3277976"
+            #monthqcode = "Q15639519"
 
             print("checking month by code", monthqcode)
-
             daylist = itemlistDaysinmonth(wdsite, repo, monthqcode, yearqcode)
+            if (len(daylist) < 28 or len(daylist) > 31):
+                print("day missing or extra?", monthqcode)
+                exit()
             for dayqcode in daylist:
 
                 # dayqcode = "Q69307710" # 1. marraskuuta 2025
                 print("checking day by code", dayqcode)
 
                 if (addDatewikidatalabel(wdsite, repo, dayqcode, monthqcode) == False):
-                    print("Failed to add label, exiting.")
+                    print("WARN: Failed to add label, exiting.")
                     exit()
+
+                # give servers time to catch up since they seem to be slow
+                #time.sleep(1)
 
                 print("day done by code", dayqcode)
 
