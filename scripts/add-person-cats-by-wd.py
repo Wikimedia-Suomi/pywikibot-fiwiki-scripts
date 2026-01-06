@@ -375,10 +375,10 @@ def checkmissingcategories(page, item, text):
     hasdday = False
     for cat in existingcats:
         # vuonna xxx syntyneet
-        if (cat.find("syntyneet") > 0 and cat.find("Vuonna") >= 0):
+        if (cat.find("syntyneet") > 0 and (cat.find("Vuonna") >= 0 or cat.find("luvulla") >= 0)):
             hasbday = True
         # vuonna xxx kuolleet, there are categories with "kuolleet" too
-        if (cat.find("kuolleet") > 0 and cat.find("Vuonna") >= 0):
+        if (cat.find("kuolleet") > 0 and (cat.find("Vuonna") >= 0 or cat.find("luvulla") >= 0)):
             hasdday = True
         if (cat.find("Syntymävuosi puuttuu") > 0):
             hasbday = True
@@ -609,7 +609,9 @@ wdsite.login()
 #pages = getpagesrecurse(pywikibot, site, "Kiinalaiset kirjailijat", 0)
 
 #pages = getpagesrecurse(pywikibot, site, "Turkmenistanilaiset henkilöt", 2)
-pages = getpagesrecurse(pywikibot, site, "Uzbekistanilaiset henkilöt", 2)
+#pages = getpagesrecurse(pywikibot, site, "Uzbekistanilaiset henkilöt", 2)
+
+pages = getpagesrecurse(pywikibot, site, "Stalinin vainoissa kuolleet", 0)
 
 
 # for testing
