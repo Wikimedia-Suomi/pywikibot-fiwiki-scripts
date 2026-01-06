@@ -375,10 +375,10 @@ def checkmissingcategories(page, item, text):
     hasdday = False
     for cat in existingcats:
         # vuonna xxx syntyneet
-        if (cat.find("syntyneet") > 0):
+        if (cat.find("syntyneet") > 0 and cat.find("Vuonna") >= 0):
             hasbday = True
-        # vuonna xxx kuolleet
-        if (cat.find("kuolleet") > 0):
+        # vuonna xxx kuolleet, there are categories with "kuolleet" too
+        if (cat.find("kuolleet") > 0 and cat.find("Vuonna") >= 0):
             hasdday = True
         if (cat.find("Syntymävuosi puuttuu") > 0):
             hasbday = True
@@ -474,7 +474,7 @@ def getnamedpages(pywikibot, site):
     pages = list()
     
     
-    fp = getpagebyname(pywikibot, site, "Michael Gold")
+    #fp = getpagebyname(pywikibot, site, "Michael Gold")
 
 
     pages.append(fp)
