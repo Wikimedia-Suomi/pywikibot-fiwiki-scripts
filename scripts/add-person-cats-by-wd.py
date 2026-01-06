@@ -235,35 +235,86 @@ def parsewikibasetime(wikibasestr):
 #def getWbdate():
 #    return pywikibot.WbTime(dt.year, dt.month, dt.day)
 
+
+def getRankValue(rankname):
+    rank_order = {'preferred': 3, 'normal': 2, 'deprecated': 1}
+    if rankname in rank_order:
+        return rank_order[rankname]
+    return 0
+
+#def getBestRankedClaim(item):
+
 def getBirthdates(item):
-    qlist = list()
-    
-    # TODO: sort by preferred rank
-    part_of = item.claims.get('P569', [])
-    for claim in part_of:
+    ldates = list()
+
+    # try to use best rank available
+    rank = 0
+    dt = None
+
+    days = item.claims.get('P569', [])
+    for claim in days:
+        
+        # sort by rank
+        ranktmp = claim.getRank()
+        print("DEBUG: found rank ", ranktmp," for item")
+        ranknro = getRankValue(ranktmp)
+        if (ranknro < 2):
+            # ignore lowest ranks
+            print("DEBUG: skipping low rank")
+            continue
+        if (ranknro < rank):
+            #print("DEBUG: skipping lower rank")
+            continue
+        if (ranknro > rank):
+            ldates.clear()
+
+        rank = ranknro
+        
         target = claim.getTarget()
         print("DEBUG: found birth date", target," for item")
+        
+        #sources = claim.getSources()
 
         dt = parsewikibasetime(target)
-        if (dt != None):
-            qlist.append(dt)
-        
-    return qlist
+        ldates.append(dt)
+
+    return dt
 
 def getDeathdates(item):
-    qlist = list()
+    ldates = list()
+    
+    # try to use best rank available
+    rank = 0
+    dt = None
 
-    # TODO: sort by preferred rank
-    part_of = item.claims.get('P570', [])
-    for claim in part_of:
+    days = item.claims.get('P570', [])
+    for claim in days:
+        
+        # sort by rank
+        ranktmp = claim.getRank()
+        print("DEBUG: found rank ", ranktmp," for item")
+        ranknro = getRankValue(ranktmp)
+        if (ranknro < 2):
+            # ignore lowest ranks
+            print("DEBUG: skipping low rank")
+            continue
+        if (ranknro < rank):
+            #print("DEBUG: skipping lower rank")
+            continue
+        if (ranknro > rank):
+            ldates.clear()
+
+        rank = ranknro
+        
         target = claim.getTarget()
         print("DEBUG: found death date", target," for item")
+
+        #sources = claim.getSources()
         
         dt = parsewikibasetime(target)
-        if (dt != None):
-            qlist.append(dt)
+        ldates.append(dt)
 
-    return qlist
+    return dt
 
 
 # get existing categories from page
@@ -314,8 +365,8 @@ def checkmissingcategories(page, item, text):
         return None
     
     # note: if there are more than one year, check if they are the same
-    blist = getBirthdates(item)
-    dlist = getDeathdates(item)
+    bdt = getBirthdates(item)
+    ddt = getDeathdates(item)
     
     existingcats = getpagecategories(text)
     print("DEBUG: found categories", existingcats)
@@ -335,34 +386,32 @@ def checkmissingcategories(page, item, text):
             hasdday = True
 
     catstoadd = list()
-    if (hasbday == False and len(blist) > 0):
+    if (hasbday == False and bdt != None):
         # we should add birthday category:
         # get date from list, parse to year
-        bpar = blist[0]
-        syear = str(bpar.year)
+        syear = str(bdt.year)
         newcat = "Vuonna "+syear+" syntyneet"
 
         # don't add if there is no source: has mark as missing
-        if ("Syntymävuosi puuttuu" not in existingcats):
+        if ("Syntymävuosi puuttuu" not in existingcats and "Syntymävuosi tuntematon" not in existingcats):
             catstoadd.append(newcat)
 
-    if (hasbday == False and len(blist) == 0):
-        if ("Syntymävuosi puuttuu" not in existingcats):
+    if (hasbday == False and bdt == None):
+        if ("Syntymävuosi puuttuu" not in existingcats and "Syntymävuosi tuntematon" not in existingcats):
             catstoadd.append("Syntymävuosi puuttuu")
 
-    if (hasdday == False and len(dlist) > 0):
+    if (hasdday == False and ddt != None):
         # we should add birthday category
         # get date from list, parse to year
-        dpar = dlist[0]
-        syear = str(dpar.year)
+        syear = str(ddt.year)
         newcat = "Vuonna "+syear+" kuolleet"
         
         # don't add if there is no source: has mark as missing
-        if ("Kuolinvuosi puuttuu" not in existingcats): 
+        if ("Kuolinvuosi puuttuu" not in existingcats and "Kuolinvuosi tuntematon" not in existingcats): 
             catstoadd.append(newcat)
 
-    if (hasdday == False and len(dlist) == 0):
-        if ("Elävät henkilöt" not in existingcats):
+    if (hasdday == False and ddt == None):
+        if ("Elävät henkilöt" not in existingcats and "Kuolinvuosi tuntematon" not in existingcats):
             catstoadd.append("Elävät henkilöt") 
 
     return catstoadd
@@ -395,7 +444,10 @@ def getpagebyname(pywikibot, site, name):
 def getnamedpages(pywikibot, site):
     pages = list()
     
-    fp = getpagebyname(pywikibot, site, "Muhammad Rahim I")
+    #fp = getpagebyname(pywikibot, site, "Muhammad Rahim I")
+    
+    fp = getpagebyname(pywikibot, site, "Michael Gold")
+    
 
     pages.append(fp)
     return pages
@@ -519,11 +571,15 @@ wdsite.login()
 
 #pages = getpagesfrompetscan(pywikibot, site, 26153859, 30000)
 
+#pages = getnewestpagesfromcategory(pywikibot, site, "", 20)
+#pages = getpagesrecurse(pywikibot, site, "Yhdysvaltalaiset toimittajat", 0)
+
+#pages = getpagesrecurse(pywikibot, site, "Uzbekistanilaiset henkilöt", 0)
+pages = getpagesrecurse(pywikibot, site, "Turkmenistanilaiset henkilöt", 0)
+
+
+# for testing
 #pages = getnamedpages(pywikibot, site)
-
-#pages = getnewestpagesfromcategory(pywikibot, site, "Uzbekistanilaiset henkilöt", 20)
-pages = getpagesrecurse(pywikibot, site, "Yhdysvaltalaiset toimittajat", 0)
-
 
 rivinro = 1
 commitall = False
