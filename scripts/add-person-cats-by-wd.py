@@ -335,7 +335,7 @@ def getpagecategories(text):
                 ipipe = cat.find("|")
                 if (ipipe > 0):
                     cat = cat[:ipipe]
-                categories.append(cat)
+                categories.append(cat.strip())
                 i = iend
         else:
             noupper = True
@@ -349,7 +349,7 @@ def getpagecategories(text):
                 ipipe = cat.find("|")
                 if (ipipe > 0):
                     cat = cat[:ipipe]
-                categories.append(cat)
+                categories.append(cat.strip())
                 i = iend
         else:
             nolower = True
@@ -375,10 +375,10 @@ def checkmissingcategories(page, item, text):
     hasdday = False
     for cat in existingcats:
         # vuonna xxx syntyneet
-        if (cat.find(" syntyneet") > 0):
+        if (cat.find("syntyneet") > 0):
             hasbday = True
         # vuonna xxx kuolleet
-        if (cat.find(" kuolleet") > 0):
+        if (cat.find("kuolleet") > 0):
             hasdday = True
         if (cat.find("Syntymävuosi puuttuu") > 0):
             hasbday = True
@@ -421,19 +421,44 @@ def endswithnewline(text):
     if (text[len(text)-1] == "\n"):
         return True
     return False
+
+# double-check before adding: might have missed earlier
+#
+def iscategoryalreadyinpagetext(oldtext, catname):
+    variations = list()
     
+    # might have sort key after class name?
+    # also upper or lower case, with or without space
+    variations.append("[[Luokka:" + catname + "]]")
+    variations.append("[[luokka:" + catname + "]]")
+    variations.append("[[Luokka: " + catname + "]]")
+    variations.append("[[luokka: " + catname + "]]")
+    variations.append("[[Luokka:" + catname + "|")
+    variations.append("[[luokka:" + catname + "|")
+    variations.append("[[Luokka: " + catname + "|")
+    variations.append("[[luokka: " + catname + "|")
+    
+    for var in variations:
+        #print("DBEUG: searching category: ", var)
+        ix = oldtext.find(var)
+        if (ix > 0):
+            #print("DBEUG: found category: ", var)
+            return True
+    return False
+
 
 def addlistedcatstopage(oldtext, cats):
 
-    for c in cats:
-        catname = "[[Luokka:" + c + "]]"
+    for cn in cats:
         
-        # must not have class yet
-        if (oldtext.find(catname) < 0):
+        # must not have class yet, try lower-case search as well
+        if (iscategoryalreadyinpagetext(oldtext, cn) == False):
             if (endswithnewline(oldtext) == False):
-                oldtext = oldtext + "\n" + catname + "\n"
+                oldtext = oldtext + "\n[[Luokka:" + cn + "]]\n"
             else:
-                oldtext = oldtext + catname + "\n"
+                oldtext = oldtext + "[[Luokka:" + cn + "]]\n"
+        else:
+            print("already has category ", cn, " - skipping")
 
     return oldtext
 
@@ -447,7 +472,8 @@ def getnamedpages(pywikibot, site):
     #fp = getpagebyname(pywikibot, site, "Muhammad Rahim I")
     
     fp = getpagebyname(pywikibot, site, "Michael Gold")
-    
+
+    fp = getpagebyname(pywikibot, site, "Giovanni Germanetto")
 
     pages.append(fp)
     return pages
@@ -575,7 +601,12 @@ wdsite.login()
 #pages = getpagesrecurse(pywikibot, site, "Yhdysvaltalaiset toimittajat", 0)
 
 #pages = getpagesrecurse(pywikibot, site, "Uzbekistanilaiset henkilöt", 0)
-pages = getpagesrecurse(pywikibot, site, "Turkmenistanilaiset henkilöt", 0)
+#pages = getpagesrecurse(pywikibot, site, "Turkmenistanilaiset henkilöt", 0)
+
+
+#pages = getpagesrecurse(pywikibot, site, "Kiinalaiset kirjailijat", 0)
+
+pages = getpagesrecurse(pywikibot, site, "Italialaiset toimittajat", 0)
 
 
 # for testing
