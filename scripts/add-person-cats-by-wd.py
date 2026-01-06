@@ -407,11 +407,15 @@ def checkmissingcategories(page, item, text):
         newcat = "Vuonna "+syear+" kuolleet"
         
         # don't add if there is no source: has mark as missing
-        if ("Kuolinvuosi puuttuu" not in existingcats and "Kuolinvuosi tuntematon" not in existingcats): 
+        if ("Kuolinvuosi puuttuu" not in existingcats 
+            and "Kuolinvuosi tuntematon" not in existingcats
+            and "Elävät henkilöt" not in existingcats): 
             catstoadd.append(newcat)
 
     if (hasdday == False and ddt == None):
-        if ("Elävät henkilöt" not in existingcats and "Kuolinvuosi tuntematon" not in existingcats):
+        if ("Elävät henkilöt" not in existingcats 
+            and "Kuolinvuosi tuntematon" not in existingcats 
+            and "Kuolinvuosi puuttuu" not in existingcats):
             catstoadd.append("Elävät henkilöt") 
 
     return catstoadd
@@ -469,11 +473,9 @@ def getpagebyname(pywikibot, site, name):
 def getnamedpages(pywikibot, site):
     pages = list()
     
-    #fp = getpagebyname(pywikibot, site, "Muhammad Rahim I")
     
     fp = getpagebyname(pywikibot, site, "Michael Gold")
 
-    fp = getpagebyname(pywikibot, site, "Giovanni Germanetto")
 
     pages.append(fp)
     return pages
@@ -606,7 +608,8 @@ wdsite.login()
 
 #pages = getpagesrecurse(pywikibot, site, "Kiinalaiset kirjailijat", 0)
 
-pages = getpagesrecurse(pywikibot, site, "Italialaiset toimittajat", 0)
+#pages = getpagesrecurse(pywikibot, site, "Turkmenistanilaiset henkilöt", 2)
+pages = getpagesrecurse(pywikibot, site, "Uzbekistanilaiset henkilöt", 2)
 
 
 # for testing
