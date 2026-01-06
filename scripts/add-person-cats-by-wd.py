@@ -22,6 +22,7 @@ class SimpleTimestamp:
         self.year = 0
         self.month = 0
         self.day = 0
+        self.precision = 0
 
     def isValidDay(self, iday):
         if (iday < 1 or iday > 31):
@@ -170,7 +171,8 @@ def parsewikibasetime(wikibasestr):
     #d_time = json.loads(wikibasestr)
     
     iprec = getprecision(jsonstr)
-    if (iprec <= 7):
+    #if (iprec <= 7):
+    if (iprec < 7): # at least decade should be needed?
         print("WARN: not enough precision for timestamp")
         return None
     
@@ -222,6 +224,8 @@ def parsewikibasetime(wikibasestr):
     tss.year = tsl[0]
     tss.month = tsl[1]
     tss.day = tsl[2]
+    
+    tss.precision = iprec
     
     # this throws exception when day and month are zero
     #dt = datetime.strptime(tstr, '%Y-%m-%d')
@@ -390,7 +394,11 @@ def checkmissingcategories(page, item, text):
         # we should add birthday category:
         # get date from list, parse to year
         syear = str(bdt.year)
-        newcat = "Vuonna "+syear+" syntyneet"
+        
+        if (bdt.precision == 7):
+            newcat = ""+syear+"-luvulla syntyneet"
+        if (bdt.precision > 7):
+            newcat = "Vuonna "+syear+" syntyneet"
 
         # don't add if there is no source: has mark as missing
         if ("Syntymävuosi puuttuu" not in existingcats and "Syntymävuosi tuntematon" not in existingcats):
@@ -404,7 +412,10 @@ def checkmissingcategories(page, item, text):
         # we should add birthday category
         # get date from list, parse to year
         syear = str(ddt.year)
-        newcat = "Vuonna "+syear+" kuolleet"
+        if (ddt.precision == 7):
+            newcat = ""+syear+"-luvulla kuolleet"
+        if (ddt.precision > 7):
+            newcat = "Vuonna "+syear+" kuolleet"
         
         # don't add if there is no source: has mark as missing
         if ("Kuolinvuosi puuttuu" not in existingcats 
