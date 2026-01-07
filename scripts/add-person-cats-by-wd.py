@@ -130,27 +130,50 @@ def findnonzeroch(text, begin, end):
         i += 1
     return -1
 
-def getprecision(jsonstr):
-    ix = jsonstr.find("precision")
+def getwbtimepar(jsonstr, par):
+    ix = jsonstr.find(par)
     if (ix < 0):
-        return 0
+        return None
     ixcol = jsonstr.find(":", ix)
     if (ixcol < 0):
-        return 0
+        return None
     ixend = jsonstr.find(",", ixcol)
     if (ixend < 0):
-        return 0
+        return None
     if ((ixend-ixcol) < 1):
-        print("DEBUG: not enough characters for precision")
+        print("DEBUG: not enough characters for par")
+        return None
+    return getsubstr(jsonstr, ixcol+1, ixend)
+
+def getprecision(jsonstr):
+
+    tstr = getwbtimepar(jsonstr, "precision")
+    if (tstr == None):
         return 0
 
-    tstr = getsubstr(jsonstr, ixcol+1, ixend)
     #tstr = tstr.replace('"', "")
     tstr = tstr.strip()
 
     print("DEBUG: found precision", tstr)
-    
     return int(tstr)
+
+def getcalendarmodel(jsonstr):
+
+    tstr = getwbtimepar(jsonstr, "calendarmodel")
+    if (tstr == None):
+        return False
+
+    #tstr = tstr.replace('"', "")
+    #tstr = tstr.strip()
+
+    print("DEBUG: found calendarmodel", tstr)
+    if (tstr.find("Q1985727") > 0):
+        # should be gregorian calendar?
+        return True
+    
+    # julian calendar? (Q1985786)
+    print("WARN: calendarmodel might be unsupported", tstr)
+    return False
 
 #
 #DEBUG: found birth date {
@@ -162,37 +185,39 @@ def getprecision(jsonstr):
 #    "timezone": 0
 #}  for item
 def parsewikibasetime(wikibasestr):
-    print("DEBUG: parsing", wikibasestr, "")
+    #print("DEBUG: parsing", wikibasestr, "")
     
     jsonstr = str(wikibasestr)
     #d_time = json.loads(wikibasestr)
     
     # wikibase has character count including dashes as precision?
+    # note: centuries are handled weirdly, sometimes 
+    # there is date and month with century precision -> should skip in that case
     iprec = getprecision(jsonstr)
     #if (iprec <= 7):
-    if (iprec < 7): # at least decade should be needed?
+    #if (iprec < 7): # at least decade should be needed?
+    if (iprec < 8): # at least decade should be needed?
         print("WARN: not enough precision for timestamp")
         return None
+    if (getcalendarmodel(jsonstr) == False):
+        #print("WARN: not enough precision for timestamp")
+        return None
     
-    ix = jsonstr.find("time")
-    if (ix < 0):
+    tstr = getwbtimepar(jsonstr, "time")
+    if (tstr == None):
         return None
-    ixcol = jsonstr.find(":", ix)
-    if (ixcol < 0):
-        return None
-    ixend = jsonstr.find(",", ixcol)
-    if (ixend < 0):
-        return None
-    if ((ixend-ixcol) < 5):
+    if (len(tstr) < 5):
         print("DEBUG: not enough characters for timestamp")
         return None
     
-    tstr = getsubstr(jsonstr, ixcol+1, ixend)
     tstr = tstr.replace('"', "") # check there is no quotes
     tstr = tstr.strip()
 
     print("DEBUG: found", tstr, "")
-    
+
+    if (tstr[0] == "-"):
+        print("WARN: time before epoch")
+        return None
     if (tstr[0] != "+"):
         # if is not positive, eaa.?
         print("WARN: unexpected beginning")
@@ -216,6 +241,14 @@ def parsewikibasetime(wikibasestr):
 
     tss = fromIsoDate(isodate)
     tss.precision = iprec
+
+    # note: centuries are handled weirdly, sometimes 
+    # there is date and month with century precision -> should skip in that case
+    if (iprec < 7): 
+        # clear them in this case
+        # should clear lower digits of century as well?
+        tss.month = 0
+        tss.day = 0
     
     # this throws exception when day and month are zero
     #dt = datetime.strptime(tstr, '%Y-%m-%d')
@@ -409,6 +442,8 @@ def checkmissingcategories(page, item, text):
     hasbdaycat = False
     hasddaycat = False
     for cat in existingcats:
+        # TODO: ennen ajanlaskun alkua, syntyneet ja kuolleet?
+        
         # vuonna xxx syntyneet 
         if (cat.find("syntyneet") > 0 and (cat.find("Vuonna") >= 0 or cat.find("luvulla") >= 0 or cat.find("vuosikymmenellä") >= 0)):
             hasbdaycat = True
@@ -427,6 +462,9 @@ def checkmissingcategories(page, item, text):
         iage = 2025 - bdt.year
         if (iage > 200):
             maybeLiving = False
+
+    # if time is missing but possible to find out: "puuttuu"
+    # if time is missing but unlikely to be found out: "tuntematon" 
 
     catstoadd = list()
     if (hasbdaycat == False and bdt != None):
@@ -529,8 +567,10 @@ def getnamedpages(pywikibot, site):
     pages = list()
     
     
-    fp = getpagebyname(pywikibot, site, "Michael Gold")
+    #fp = getpagebyname(pywikibot, site, "Michael Gold")
 
+    fp = getpagebyname(pywikibot, site, "Akka Mahadevi")
+    
 
     pages.append(fp)
     return pages
@@ -668,6 +708,8 @@ wdsite.login()
 #pages = getpagesrecurse(pywikibot, site, "Uzbekistanilaiset henkilöt", 2)
 
 #pages = getpagesrecurse(pywikibot, site, "Georgialaiset henkilöt", 2)
+
+pages = getpagesrecurse(pywikibot, site, "Intialaiset kirjailijat", 1)
 
 
 #pages = getpagesrecurse(pywikibot, site, "Stalinin vainoissa kuolleet", 0)
