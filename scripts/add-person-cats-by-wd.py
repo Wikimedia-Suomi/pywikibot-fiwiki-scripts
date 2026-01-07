@@ -405,22 +405,31 @@ def checkmissingcategories(page, item, text):
     existingcats = getpagecategories(text)
     print("DEBUG: found categories", existingcats)
     
-    hasbday = False
-    hasdday = False
+    # check page if there are birth/death related category
+    hasbdaycat = False
+    hasddaycat = False
     for cat in existingcats:
         # vuonna xxx syntyneet 
         if (cat.find("syntyneet") > 0 and (cat.find("Vuonna") >= 0 or cat.find("luvulla") >= 0 or cat.find("vuosikymmenellä") >= 0)):
-            hasbday = True
+            hasbdaycat = True
         # vuonna xxx kuolleet, there are categories with "kuolleet" too
         if (cat.find("kuolleet") > 0 and (cat.find("Vuonna") >= 0 or cat.find("luvulla") >= 0 or cat.find("vuosikymmenellä") >= 0)):
-            hasdday = True
+            hasddaycat = True
         if (cat.find("Syntymävuosi puuttuu") > 0):
-            hasbday = True
+            hasbdaycat = True
         if (cat.find("Kuolinvuosi puuttuu") > 0):
-            hasdday = True
+            hasddaycat = True
+
+    # if birth is marked by death is not:
+    # check how long it is since birth
+    maybeLiving = True
+    if (bdt != None and ddt == None):
+        iage = 2025 - bdt.year
+        if (iage > 200):
+            maybeLiving = False
 
     catstoadd = list()
-    if (hasbday == False and bdt != None):
+    if (hasbdaycat == False and bdt != None):
         # we should add birthday category:
         # get date from list, parse to year
         syear = str(bdt.year)
@@ -434,11 +443,11 @@ def checkmissingcategories(page, item, text):
         if ("Syntymävuosi puuttuu" not in existingcats and "Syntymävuosi tuntematon" not in existingcats):
             catstoadd.append(newcat)
 
-    if (hasbday == False and bdt == None):
+    if (hasbdaycat == False and bdt == None):
         if ("Syntymävuosi puuttuu" not in existingcats and "Syntymävuosi tuntematon" not in existingcats):
             catstoadd.append("Syntymävuosi puuttuu")
 
-    if (hasdday == False and ddt != None):
+    if (hasddaycat == False and ddt != None):
         # we should add birthday category
         # get date from list, parse to year
         syear = str(ddt.year)
@@ -453,11 +462,16 @@ def checkmissingcategories(page, item, text):
             and "Elävät henkilöt" not in existingcats): 
             catstoadd.append(newcat)
 
-    if (hasdday == False and ddt == None):
+    if (hasddaycat == False and ddt == None and bdt != None):
         if ("Elävät henkilöt" not in existingcats 
             and "Kuolinvuosi tuntematon" not in existingcats 
             and "Kuolinvuosi puuttuu" not in existingcats):
-            catstoadd.append("Elävät henkilöt") 
+
+            if (maybeLiving == True):
+                catstoadd.append("Elävät henkilöt")
+            #else:
+                # is the birth day valid? if so, likely dead
+            #    catstoadd.append("Kuolinvuosi tuntematon")
 
     return catstoadd
 
@@ -647,13 +661,13 @@ wdsite.login()
 #pages = getpagesrecurse(pywikibot, site, "Turkmenistanilaiset henkilöt", 0)
 
 
-#pages = getpagesrecurse(pywikibot, site, "Kiinalaiset kirjailijat", 0)
+#pages = getpagesrecurse(pywikibot, site, "Kiinalaiset kirjailijat", 1)
 
 #pages = getpagesrecurse(pywikibot, site, "Kazakstanilaiset henkilöt", 2)
 #pages = getpagesrecurse(pywikibot, site, "Turkmenistanilaiset henkilöt", 2)
 #pages = getpagesrecurse(pywikibot, site, "Uzbekistanilaiset henkilöt", 2)
 
-pages = getpagesrecurse(pywikibot, site, "Georgialaiset henkilöt", 2)
+#pages = getpagesrecurse(pywikibot, site, "Georgialaiset henkilöt", 2)
 
 
 #pages = getpagesrecurse(pywikibot, site, "Stalinin vainoissa kuolleet", 0)
