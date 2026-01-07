@@ -79,9 +79,6 @@ def replacebetween(oldtext, newstring, begin, end):
     newtext = oldtext[:begin] + newstring + oldtext[end:]
     return newtext
 
-def getsubstr(text, begin, end):
-    return text[begin:end]
-
 
 # just debug
 def checkqcode(itemfound, lang='fi'):
@@ -170,6 +167,7 @@ def parsewikibasetime(wikibasestr):
     jsonstr = str(wikibasestr)
     #d_time = json.loads(wikibasestr)
     
+    # wikibase has character count including dashes as precision?
     iprec = getprecision(jsonstr)
     #if (iprec <= 7):
     if (iprec < 7): # at least decade should be needed?
@@ -190,41 +188,33 @@ def parsewikibasetime(wikibasestr):
         return None
     
     tstr = getsubstr(jsonstr, ixcol+1, ixend)
-    tstr = tstr.replace('"', "")
+    tstr = tstr.replace('"', "") # check there is no quotes
     tstr = tstr.strip()
 
     print("DEBUG: found", tstr, "")
     
     if (tstr[0] != "+"):
+        # if is not positive, eaa.?
         print("WARN: unexpected beginning")
-        #return None
+        return None
 
+    # T should be there as ISO standard mark
     ixt = tstr.find("T")
-    if (ixt > 0):
-        tstr = tstr[:ixt]
+    if (ixt < 0):
+        print("WARN: no timeseparator?")
+        return None
         
-    tstr = tstr.replace("+", "")
-    ixnz = findnonzeroch(tstr, 0, len(tstr)-1)
-    if (ixnz > 0):
-        tstr = tstr[ixnz:]
-        print("DEBUG: stripped to", tstr, "")
-    #else:
-        #print("DEBUG: no leading zeroes?")
+    # skip plus and find first meaningful number after padding zeroes
+    ixnz = findnonzeroch(tstr, 1, len(tstr)-1)
+    if (ixnz < 0):
+        ixnz = 0
+        print("DEBUG: no leading zeroes?")
 
-    # TODO: 
-    # also check for precision?
-    # precision=7 and 1950-00-00T00:00:00 -> 20. century 
 
-    tstr = tstr.strip()
-    print("DEBUG: converting", tstr, "")
-    
-    
-    tsl = tstr.split("-")
-    tss = SimpleTimestamp()
-    tss.year = tsl[0]
-    tss.month = tsl[1]
-    tss.day = tsl[2]
-    
+    isodate = getsubstr(tstr, ixnz, ixt)
+    print("DEBUG: stripped to", isodate, "")
+
+    tss = fromIsoDate(isodate)
     tss.precision = iprec
     
     # this throws exception when day and month are zero
@@ -234,6 +224,46 @@ def parsewikibasetime(wikibasestr):
         # python throws exception..
         #dt = date.fromisoformat(tstr)
     return tss
+
+# just plain date in iso-format
+def fromIsoDate(isostr):
+
+    if (isostr == None or isostr == ""):
+        print("DEBUG: no date string?")
+        return None
+
+    ione = isostr.find("-")
+    if (ione < 0):
+        print("DEBUG: no dashes in string?")
+        return None
+    itwo = isostr.find("-", ione+1)
+    if (itwo < 0):
+        print("DEBUG: second dash missing?")
+        return None
+
+    yr = isostr[:ione]
+    mon = getsubstr(isostr, ione+1, itwo)
+    day = isostr[itwo+1:]
+
+    iyr = int(yr)
+    imon = int(mon)
+    iday = int(day)
+
+    its = SimpleTimestamp()
+    
+    # check what kind of precision we might have
+    if (its.isValidDay(iday) == False):
+        print("day is not valid")
+        #tss.precision = 1
+    if (its.isValidMonth(imon) == False):
+        print("month is not valid")
+        #tss.precision = 10
+    if (its.isValidYear(iyr) == False):
+        print("year is not valid")
+        #tss.precision = 100
+    
+    its.setDate(iyr, imon, iday)
+    return its
 
 
 #def getWbdate():
@@ -378,11 +408,11 @@ def checkmissingcategories(page, item, text):
     hasbday = False
     hasdday = False
     for cat in existingcats:
-        # vuonna xxx syntyneet
-        if (cat.find("syntyneet") > 0 and (cat.find("Vuonna") >= 0 or cat.find("luvulla") >= 0)):
+        # vuonna xxx syntyneet 
+        if (cat.find("syntyneet") > 0 and (cat.find("Vuonna") >= 0 or cat.find("luvulla") >= 0 or cat.find("vuosikymmenellä") >= 0)):
             hasbday = True
         # vuonna xxx kuolleet, there are categories with "kuolleet" too
-        if (cat.find("kuolleet") > 0 and (cat.find("Vuonna") >= 0 or cat.find("luvulla") >= 0)):
+        if (cat.find("kuolleet") > 0 and (cat.find("Vuonna") >= 0 or cat.find("luvulla") >= 0 or cat.find("vuosikymmenellä") >= 0)):
             hasdday = True
         if (cat.find("Syntymävuosi puuttuu") > 0):
             hasbday = True
@@ -485,7 +515,7 @@ def getnamedpages(pywikibot, site):
     pages = list()
     
     
-    #fp = getpagebyname(pywikibot, site, "Michael Gold")
+    fp = getpagebyname(pywikibot, site, "Michael Gold")
 
 
     pages.append(fp)
@@ -619,10 +649,14 @@ wdsite.login()
 
 #pages = getpagesrecurse(pywikibot, site, "Kiinalaiset kirjailijat", 0)
 
+#pages = getpagesrecurse(pywikibot, site, "Kazakstanilaiset henkilöt", 2)
 #pages = getpagesrecurse(pywikibot, site, "Turkmenistanilaiset henkilöt", 2)
 #pages = getpagesrecurse(pywikibot, site, "Uzbekistanilaiset henkilöt", 2)
 
-pages = getpagesrecurse(pywikibot, site, "Stalinin vainoissa kuolleet", 0)
+pages = getpagesrecurse(pywikibot, site, "Georgialaiset henkilöt", 2)
+
+
+#pages = getpagesrecurse(pywikibot, site, "Stalinin vainoissa kuolleet", 0)
 
 
 # for testing
