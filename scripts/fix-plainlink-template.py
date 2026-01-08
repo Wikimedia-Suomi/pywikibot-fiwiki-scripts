@@ -524,16 +524,12 @@ def parseafterlink(text, begin, end):
             if (len(tmp) > 0):
                 tmplist.append(tmp)
             index = end
-   
+
+    if (openingtoken > 0):
+        print("WARN: opening detected but not closing? something is wrong?")
+        return None
 
     print("DEBUG: tokenized list", tmplist)
-
-    #lang = ""
-    #vanhentunut = ""
-    #fileformat = ""
-    #accessdate = ""
-    #date = ""
-    #selite = ""
 
     # process semi-tokenized list
     #for tmp in tmplist:
@@ -547,6 +543,7 @@ def parseafterlink(text, begin, end):
 
         # TODO: also might have to remove separator characeters (, or .)
 
+        # most common ones for now..
         if (issupportedlangtemplate(tmp) == True):
             print("DEBUG: found lang", tmp)
             parselist["lang"] = tmp
@@ -561,6 +558,7 @@ def parseafterlink(text, begin, end):
             i = i+1
             continue
 
+        # specific cases only for now
         if (issupportedfileformat(tmp) == True):
             print("DEBUG: found fileformat", tmp)
             parselist["fileformat"] = cleanupfileformat(tmp)
@@ -568,14 +566,15 @@ def parseafterlink(text, begin, end):
             i = i+1
             continue
         
-        # begins with cursize markup? might have website or such?
+        # begins with cursive markup? might have website or such?
         if (tmp[0:1] == "''"):
             print("DEBUG: using publication", tmp)
             parselist["publication"] = tmp
             knownc = knownc +1
             i = i+1
             continue
-            
+
+        # starts with a known keyword..
         if (isaccesskeyword(tmp) == True):
 
             knownc = knownc +1
