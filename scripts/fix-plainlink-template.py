@@ -396,6 +396,9 @@ def isdeadlinktemplate(temp):
     #if (temp == "{{Vanhentunut linkki|bot=InternetArchiveBot }}" or temp == "{{Vanhentunut linkki|bot=InternetArchiveBot}}"):
     #    return True
 
+    if (endswithcommaordot(temp) == True):
+        temp = removelastchar(temp)
+
     temp = temp.lower()
     
     if (temp == "{{404}}" or temp == "{{vanhentunut linkki}}"  or temp == "{{kuollut linkki}}" 
@@ -407,6 +410,46 @@ def iswaybacktemplate(temp):
     if (temp.find("{{Wayback") == 0):
         return True
     return False
+
+
+def ispagelist(temp):
+    # only if it starts with this and has space after?
+    if (temp == "s." or temp == "S."):
+        return True
+    return False
+
+# scan for end of page list,
+# stop if there is something that should not be there
+def scanpagelistend(text, begin, end):
+    if (end < begin):
+        return -1
+
+    i = begin
+    while (i < end):
+        ch = text[i]
+        
+        #print("DEBUG: page ch", ch)
+
+        # ok, this might be end of list?
+        if (ch == "."):
+            return i
+        if (ch == "," or ch == "-"):
+            # comma and dash are allowed as separators
+            i += 1
+            continue
+        if (ch.isnumeric() == True):
+            # numbers are allowed of course
+            i += 1
+            continue
+        
+        # stop before this:
+        # textual character?
+        # but some parts of books may have roman numerals as page numbers..
+        #if (ch.isalpha() == True):
+        #    return i-1
+        
+        i += 1
+    return -1
 
 
 def issupportedfileformat(temp):
@@ -507,13 +550,13 @@ def stripopenclose(temp):
 def parseafterlink(text, begin, end):
 
     # is there dor or comma immediately at the beginning?
-    if (beginswithcommaordot(text) == True):
-        begin = begin +1
+    #if (beginswithcommaordot(text) == True):
+    #    begin = begin +1
     #    text = removefirstchar(text)
 
     # is there dot or comma at end? remove it
-    if (endswithcommaordot(text) == True):
-        end = end -1
+    #if (endswithcommaordot(text) == True):
+    #    end = end -1
     #    text = removelastchar(text)
 
     if (end < begin):
@@ -538,6 +581,9 @@ def parseafterlink(text, begin, end):
     # cursive tags? -> publisher/site
     # dot or comma as separator? or just plain space?
 
+    # TODO: remove recognized parts even if we have 
+    # to leave unrecognized things in between?
+
     # make a semi-tokenized list for special cases
     tmplist = list()
     indexsrc = begin
@@ -558,7 +604,7 @@ def parseafterlink(text, begin, end):
         if (indexsrc > 0 and indexsrc < end):
             ixtmpend = indexsrc
             ixnext = indexsrc +1 # skip space and continue
-            
+
         tmp = getsubstr(text, previndex, ixtmpend)
         tmp = tmp.strip()
         
@@ -582,6 +628,31 @@ def parseafterlink(text, begin, end):
             parselist["fileformat"] = cleanupfileformat(tmp)
             indexsrc = ixnext
             parsingstoppedat = indexsrc
+            continue
+        
+        # might be a list of pages, maybe comma-separated, maybe dashed
+        # detect somehow where it ends, expected a dot?
+        # starts with S. or s. and ends with a dot?
+        # unless there is something else before then?
+        if (ispagelist(tmp) == True):
+            print("DEBUG: scanning for page list")
+            # try to find dot in the reference:
+            # scan past the "token"
+            # must detect other characters not part of this
+            # in case it does not end with dot: dot may have been stripped long before
+            dotpos = scanpagelistend(text, ixtmpend+1, end)
+            if (dotpos > 0):
+                tmp = getsubstr(text, ixtmpend+1, dotpos)
+                tmp = tmp.strip()
+                parselist["pages"] = tmp
+
+                print("DEBUG: using page list:", tmp)
+                
+                # note that we skip ahead of normal parsing here
+                indexsrc = dotpos
+                parsingstoppedat = dotpos
+            else:
+                print("DEBUG: no end for page list?")
             continue
 
         # starts with a known keyword..
@@ -646,9 +717,11 @@ def parseafterlink(text, begin, end):
             continue
 
         # if only whitespaces -> skip
+        # plain dot -> skip
         # otherwise, collect these parts for later
         if (len(tmp) > 0):
-            tmplist.append(tmp)
+            if (tmp != "."):
+                tmplist.append(tmp)
         indexsrc = ixnext
 
     if (openingtoken >= 0):
@@ -664,6 +737,8 @@ def parseafterlink(text, begin, end):
     while (i < tlistc):
         tmp = tmplist[i]
         print("DEBUG: token ", tmp)
+
+        #if (ispagelist(tmp) == True):
 
         # otherwise: push to freeform "explanation" or pubhlisher field?
         # note: should maybe push all those that unknown into this field
@@ -885,7 +960,8 @@ def fixreferencelinks(oldtext):
                 shiftb = shiftb+1 # shift ending
 
             # semi-tokenize:
-            tparsed = parseafterlink(oldtext, ilinkend+shifta, indexclosingtag-shiftb)
+            #tparsed = parseafterlink(oldtext, ilinkend+shifta, indexclosingtag-shiftb)
+            tparsed = parseafterlink(oldtext, ilinkend+shifta, indexclosingtag)
             if (tparsed != None ):
                 # all consumed
                 
@@ -894,7 +970,8 @@ def fixreferencelinks(oldtext):
                 parsedlist = tparsed[0]
                 skipped = tparsed[1]
                 iend = tparsed[2]
-                if (skipped == 0 and iend == (indexclosingtag-shiftb)):
+                #if (skipped == 0 and iend == (indexclosingtag-shiftb)):
+                if (skipped == 0 and (iend == indexclosingtag or iend == (indexclosingtag-shiftb))):
                     isunknownafterlink = False
                     print("DEBUG: parsed list, all consumed, end: ", iend, "closing", indexclosingtag)
                 else:
@@ -967,11 +1044,11 @@ def fixreferencelinks(oldtext):
             print("DEBUG: appending date", parsedlist["date"])
             newtext.append(" | ajankohta = ")
             newtext.append(parsedlist["date"])
-        
-        if ("lang" in parsedlist):
-            print("DEBUG: appending language template ", parsedlist["lang"])
-            newtext.append(" | kieli = ")
-            newtext.append(parsedlist["lang"])
+
+        if ("pages" in parsedlist):
+            print("DEBUG: appending pages", parsedlist["pages"])
+            newtext.append(" | sivut = ")
+            newtext.append(parsedlist["pages"])
 
         if ("vanhentunut" in parsedlist):
             print("DEBUG: appending deadlink", parsedlist["vanhentunut"])
@@ -982,6 +1059,11 @@ def fixreferencelinks(oldtext):
             print("DEBUG: appending fileformat", parsedlist["fileformat"])
             newtext.append(" | tiedostomuoto = ")
             newtext.append(parsedlist["fileformat"])
+
+        if ("lang" in parsedlist):
+            print("DEBUG: appending language template ", parsedlist["lang"])
+            newtext.append(" | kieli = ")
+            newtext.append(parsedlist["lang"])
 
         if ("publication" in parsedlist):
             print("DEBUG: appending publication", parsedlist["publication"])
