@@ -282,8 +282,10 @@ def isvaliddate(timestring):
 # is it a known keyword for access date:
 # people have been using different strings in free-form
 def isaccesskeyword(text):
+    if (len(text) < 1):
+        return False
 
-    text = trimlr(text)
+    text = text.strip()
     if (text == "Haettu" or text == "haettu" 
         or text =="Luettu" or text =="luettu" 
         or text == "Viitattu" or text == "viitattu"):
@@ -341,14 +343,47 @@ def parseaccessdateafterlink(text):
 
 
 def issupportedlangtemplate(langtemp):
+    if (len(langtemp) < 1):
+        return False
+    
     if (beginswithcommaordot(langtemp) == True):
         langtemp = removefirstchar(langtemp)
     if (endswithcommaordot(langtemp) == True):
         langtemp = removelastchar(langtemp)
         
-    if (langtemp == "{{en}}" or langtemp == "{{sv}}" or langtemp == "{{de}}" or langtemp == "{{fr}}"):
+    if (langtemp == "{{en}}" 
+        or langtemp == "{{sv}}" 
+        or langtemp == "{{de}}" 
+        or langtemp == "{{fr}}"):
         return True
     return False
+
+def cleanuplangtemplate(temp):
+    if (len(langtemp) < 1):
+        return ""
+
+    if (beginswithcommaordot(temp) == True):
+        temp = removefirstchar(temp)
+    if (endswithcommaordot(temp) == True):
+        temp = removelastchar(temp)
+
+    # get symbol without braces
+    if (len(temp) > 4):
+        if (temp[:2] == "{{" and temp[len(temp)-2:] == "}}"):
+            temp = getsubstr(temp, 2, len(temp)-2)
+    return temp.lower()
+
+def issupportedlangsymbol(langtemp):
+
+    # simplify to just symbol without braces
+    lsymbol = cleanuplangtemplate()
+    if (langtemp == "en" 
+        or langtemp == "sv" 
+        or langtemp == "de" 
+        or langtemp == "fr"):
+        return True
+    return False
+
 
 def isdeadlinktemplate(temp):
     
@@ -364,6 +399,11 @@ def isdeadlinktemplate(temp):
     
     if (temp == "{{404}}" or temp == "{{vanhentunut linkki}}"  or temp == "{{kuollut linkki}}" 
         or temp == "{{dead link}}"  or temp == "{{deadlink}}" ):
+        return True
+    return False
+
+def iswaybacktemplate(temp):
+    if (temp.find("{{Wayback") == 0):
         return True
     return False
 
@@ -384,13 +424,14 @@ def cleanupfileformat(temp):
     if (endswithcommaordot(temp) == True):
         temp = removelastchar(temp)
 
-    if (temp[0] == "(" and temp[len(temp)-1] == ")"):
-        print("DEBUG: removing parentheses from", temp)
-        temp = getsubstr(temp, 1, len(temp)-1)
+    if (len(temp) > 2):
+        if (temp[0] == "(" and temp[len(temp)-1] == ")"):
+            print("DEBUG: removing parentheses from", temp)
+            temp = getsubstr(temp, 1, len(temp)-1)
         
     return temp
 
-def cleanupaccessdate(temp):
+def cleanupdatestr(temp):
     if (endswithcommaordot(temp) == True):
         return removelastchar(temp)
     return temp
@@ -401,15 +442,17 @@ def isopeningtoken(temp):
     if (len(temp) < 1):
         return False
     
-    if (temp[0] == '(' and temp[len(temp)-1] != ')'):
-        return True
-    if (temp[0] == '"' and temp[len(temp)-1] != '"'):
-        return True
+    if (len(temp) > 1):
+        if (temp[0] == '(' and temp[len(temp)-1] != ')'):
+            return True
+        if (temp[0] == '"' and temp[len(temp)-1] != '"'):
+            return True
 
-    if (temp[:2] == "''" and temp[len(temp)-2:] != "''"):
-        return True
-    if (temp[:2] == "{{" and temp[len(temp)-2:] != "}}"):
-        return True
+    if (len(temp) > 2):
+        if (temp[:2] == "''" and temp[len(temp)-2:] != "''"):
+            return True
+        if (temp[:2] == "{{" and temp[len(temp)-2:] != "}}"):
+            return True
     return False
 
 def isclosingtoken(temp):
@@ -419,16 +462,38 @@ def isclosingtoken(temp):
     if (endswithcommaordot(temp) == True):
         temp = removelastchar(temp)
     
-    if (temp[len(temp)-1] == ')'):
-        return True
-    if (temp[len(temp)-1] == '"'):
-        return True
+    if (len(temp) > 1):
+        if (temp[len(temp)-1] == ')'):
+            return True
+        if (temp[len(temp)-1] == '"'):
+            return True
 
-    if (temp[len(temp)-2:] == "''"):
-        return True
-    if (temp[len(temp)-2:] == "}}"):
-        return True
+    if (len(temp) > 2):
+        if (temp[len(temp)-2:] == "''"):
+            return True
+        if (temp[len(temp)-2:] == "}}"):
+            return True
     return False
+
+def stripopenclose(temp):
+    if (len(temp) < 1):
+        return temp
+    
+    if (endswithcommaordot(temp) == True):
+        temp = removelastchar(temp)
+
+    if (len(temp) > 1):
+        if (temp[0] == '(' and temp[len(temp)-1] == ')'):
+            return getsubstr(temp, 1, len(temp)-1)
+        if (temp[0] == '"' and temp[len(temp)-1] == '"'):
+            return getsubstr(temp, 1, len(temp)-1)
+
+    if (len(temp) > 2):
+        if (temp[:2] == "''" and temp[len(temp)-2:] == "''"):
+            return getsubstr(temp, 2, len(temp)-2)
+        if (temp[:2] == "{{" and temp[len(temp)-2:] == "}}"):
+            return getsubstr(temp, 2, len(temp)-2)
+    return temp
 
 
 # parse what is found after link
@@ -455,6 +520,9 @@ def parseafterlink(text, begin, end):
     if ((end-begin) < 1):
         return None
 
+    # final list to parse into
+    parselist = dict()
+
     # after link may commonly have:
     # - publisher, access date, language
     # - language, access date (this order)
@@ -469,134 +537,146 @@ def parseafterlink(text, begin, end):
     # cursive tags? -> publisher/site
     # dot or comma as separator? or just plain space?
 
-    # make a semi-tokenized list
+    # make a semi-tokenized list for special cases
     tmplist = list()
-    index = begin
-    openingtoken = 0
-    while (index < end and index > 0):
-        previndex = index
+    indexsrc = begin
+    openingtoken = -1
+    accessfound = -1
+    parsingstoppedat = indexsrc
+    while (indexsrc < end and indexsrc > 0):
+        previndex = indexsrc
+        
+        # if we are pointing at space just increment so python doesn't stall on it
+        if (text[previndex] == " "):
+            previndex = previndex+1
 
-        index = text.find(" ", previndex)
-        if (index > 0 and index < end):
-            tmp = getsubstr(text, previndex, index)
+        indexsrc = text.find(" ", previndex)
+        ixnext = end # stop at last by default
+        ixtmpend = end
+        if (indexsrc > 0 and indexsrc < end):
+            ixtmpend = indexsrc
+            ixnext = indexsrc +1 # skip space and continue
+            
+        tmp = getsubstr(text, previndex, ixtmpend)
+        tmp = tmp.strip()
+        
+        if (iswaybacktemplate(tmp) == True):
+            # not expecting useful stuff now (although there may be after)
+            parsingstoppedat = previndex
+            break
+
+        # skip rest if this is known
+        if (issupportedlangtemplate(tmp) == True):
+            parselist["lang"] = tmp
+            indexsrc = ixnext
+            parsingstoppedat = indexsrc
+            continue
+        if (isdeadlinktemplate(tmp) == True ):
+            parselist["vanhentunut"] = "kyllä"
+            indexsrc = ixnext
+            parsingstoppedat = indexsrc
+            continue
+        if (issupportedfileformat(tmp) == True):
+            parselist["fileformat"] = cleanupfileformat(tmp)
+            indexsrc = ixnext
+            parsingstoppedat = indexsrc
+            continue
+
+        # starts with a known keyword..
+        # note: check for when this is within parentheses
+        if (isaccesskeyword(tmp) == True and accessfound < 0):
+            accessfound = previndex+len(tmp)
+            continue
+        # might be separated by spaces..
+        if (accessfound >= 0):
+            tmp = getsubstr(text, accessfound, ixtmpend)
             tmp = tmp.strip()
+            if (isvaliddate(tmp) == True):
+                parselist["accessdate"] = cleanupdatestr(tmp)
+                accessfound = -1
+                parsingstoppedat = ixtmpend
+            continue
 
-            if (isopeningtoken(tmp) == True and openingtoken == 0):
-                openingtoken = previndex
-                print("DEBUG: opening token:", tmp)
-                continue
-            if (isclosingtoken(tmp) == False and openingtoken > 0):
-                index = index +1 # skip space
-                continue
-            if (isclosingtoken(tmp) == True and openingtoken > 0):
-                # get full string
-                print("DEBUG: closing token:", tmp)
-                tmp = getsubstr(text, openingtoken, index)
-                tmp = tmp.strip()
-                print("DEBUG: full token:", tmp)
-                openingtoken = 0
-                
-            # if only whitespaces -> skip
+        if (isopeningtoken(tmp) == True and openingtoken < 0):
+            openingtoken = previndex
+            print("DEBUG: opening token:", tmp)
+            continue
+        if (isclosingtoken(tmp) == False and openingtoken >= 0):
+            indexsrc = ixnext
+            continue
+        if (isclosingtoken(tmp) == True and openingtoken >= 0):
+            # get full string
+            print("DEBUG: closing token:", tmp)
+            tmp = getsubstr(text, openingtoken, ixtmpend)
+            tmp = tmp.strip()
+            print("DEBUG: full token:", tmp)
+            openingtoken = -1
             if (len(tmp) > 0):
                 tmplist.append(tmp)
-            index = index +1 # skip space
-        else:
-            # don't go past the body of reference
-            tmp = getsubstr(text, previndex, end)
-            tmp = tmp.strip()
+            indexsrc = ixnext
+            parsingstoppedat = indexsrc
+            continue
             
-            if (isopeningtoken(tmp) == True and openingtoken == 0):
-                openingtoken = previndex
-                print("DEBUG: opening token:", tmp)
-                continue
-            if (isclosingtoken(tmp) == False and openingtoken > 0):
-                index = index +1 # skip space
-                continue
-            if (isclosingtoken(tmp) == True and openingtoken > 0):
-                # get full string
-                print("DEBUG: closing token:", tmp)
-                tmp = getsubstr(text, openingtoken, end)
-                tmp = tmp.strip()
-                print("DEBUG: full token:", tmp)
-                openingtoken = 0
-            
-            # if only whitespaces -> skip
-            if (len(tmp) > 0):
-                tmplist.append(tmp)
-            index = end
+        # if only whitespaces -> skip
+        # otherwise, collect these parts for later
+        if (len(tmp) > 0):
+            tmplist.append(tmp)
+        indexsrc = ixnext
 
-    if (openingtoken > 0):
+    if (openingtoken >= 0):
         print("WARN: opening detected but not closing? something is wrong?")
         return None
 
     print("DEBUG: tokenized list", tmplist)
 
     # process semi-tokenized list
-    #for tmp in tmplist:
-    parselist = dict()
-    i = 0
-    knownc = 0
+    skipped = 0
     tlistc = len(tmplist)
+    i = 0
     while (i < tlistc):
         tmp = tmplist[i]
         print("DEBUG: token ", tmp)
 
         # TODO: also might have to remove separator characeters (, or .)
 
-        # most common ones for now..
-        if (issupportedlangtemplate(tmp) == True):
-            print("DEBUG: found lang", tmp)
-            parselist["lang"] = tmp
-            knownc = knownc +1
-            i = i+1
-            continue
-
-        # {{dead link}} or {{vanhentunut linkki}} or {{deadlink}} or {{kuollut linkki}}
-        if (isdeadlinktemplate(tmp) == True ):
-            parselist["vanhentunut"] = "kyllä"
-            knownc = knownc +1
-            i = i+1
-            continue
-
-        # specific cases only for now
-        if (issupportedfileformat(tmp) == True):
-            print("DEBUG: found fileformat", tmp)
-            parselist["fileformat"] = cleanupfileformat(tmp)
-            knownc = knownc +1
+        # begins with cursive markup? might have website or such?
+        if (len(tmp) > 2 and tmp[:2] == "''"):
+            print("DEBUG: using publication", tmp)
+            parselist["publication"] = tmp
             i = i+1
             continue
         
-        # begins with cursive markup? might have website or such?
-        if (tmp[0:1] == "''"):
-            print("DEBUG: using publication", tmp)
-            parselist["publication"] = tmp
-            knownc = knownc +1
+        if (isopeningtoken(tmp) == True):
+            # strip opening/closing and parse then again
+            tmp = stripopenclose(tmp)
+
+        # note: check for case where this is within parentheses
+        # with the initial parsing we should have access keyword and date in one
+        accessdate = parseaccessdateafterlink(tmp)
+        if (len(accessdate) > 0):
+            parselist["accessdate"] = cleanupdatestr(accessdate)
             i = i+1
             continue
-
+            
         # starts with a known keyword..
         if (isaccesskeyword(tmp) == True):
 
-            knownc = knownc +1
-            
             # use 1..3 next in list for parts of access date?
             # (if separated by spaces),
             # this is likely in case of textual date ("1. tammikuuta 2025")
             if (i+1 < tlistc):
                 tmp1 = tmplist[i+1]
                 if (isvaliddate(tmp1) == True):
-                    parselist["accessdate"] = cleanupaccessdate(tmp1)
-                    knownc = knownc +1
+                    parselist["accessdate"] = cleanupdatestr(tmp1)
                     i = i+1
                     continue
-                
+
             if (i+2 < tlistc):
                 tmp1 = tmplist[i+1]
                 tmp2 = tmplist[i+2]
                 combo = tmp1+tmp2
                 if (isvaliddate(combo) == True):
-                    parselist["accessdate"] = cleanupaccessdate(combo)
-                    knownc = knownc +2
+                    parselist["accessdate"] = cleanupdatestr(combo)
                     i = i+2
                     continue
 
@@ -606,18 +686,20 @@ def parseafterlink(text, begin, end):
                 tmp3 = tmplist[i+3]
                 combo = tmp1+tmp2+tmp3
                 if (isvaliddate(combo) == True):
-                    parselist["accessdate"] = cleanupaccessdate(combo)
-                    knownc = knownc +3
+                    parselist["accessdate"] = cleanupdatestr(combo)
                     i = i+3
                     continue
+            continue
+                
+        # might have publication and/or website without a keyword before:
+        # those might need to be combined
 
         # note: should not use date second time here if it was found to be accessdate
         # otherwise may have plain date?
-        #if (isvaliddate(tmp) == True):
-        #    parselist["date"] = cleanupaccessdate(tmp)
-        #    knownc = knownc +1
-        #    i = i+1
-        #    continue
+        if (isvaliddate(tmp) == True):
+            parselist["date"] = cleanupdatestr(tmp)
+            i = i+1
+            continue
         
         # otherwise: push to freeform "explanation" or pubhlisher field?
 
@@ -629,20 +711,25 @@ def parseafterlink(text, begin, end):
         #continue
 
         # no match? skip
+        skipped = skipped +1
         i = i+1
 
+    #if (skipped > 0):
+        # combine those that were skipped ?
 
     print("DEBUG: parsed list", parselist)
+
+    # return tuple: list, amount skipped, final character consumed -> where to replace
         
     # now check what could not be parsed: was it all or was something skipped?
-    #allconsumed = False
-    if (knownc == tlistc):
+    # if all were parsed into final list, or were put into tokenized list without skipping -> all consumbed
+    if (skipped == 0):
         # all tokens consumed
         print("DEBUG: all tokens matched:", parselist)
-        return parselist, True
+        #parsingstoppedat = end ?
     else:
-        print("DEBUG: known tokens:", knownc, "listed tokens", tlistc)
-        return parselist, False
+        print("DEBUG: skipped tokens:", skipped)
+    return tuple((parselist, skipped, parsingstoppedat))
     
 
 # add string in the middle of another at specified position
@@ -798,12 +885,12 @@ def fixreferencelinks(oldtext):
             index = indexclosingtag
             continue
 
-        if ((ilinkstart - index) > 1): # at least one character before link?
-            print("DEBUG: something before the link in reference")
+        if ((ilinkstart - ireftagend) > 1): # at least one character before link?
+            print("DEBUG: something before the link in reference", getsubstr(oldtext, ireftagend, ilinkstart))
             # try to parse what might be before the link? 
             # if it looks like magazine/book reference information -> skip
             # for now, just skip if there's plenty of other stuff
-            if ((ilinkstart - index) > 20): # 
+            if ((ilinkstart - ireftagend) > 20): # 
                 index = indexclosingtag
                 continue
 
@@ -816,18 +903,35 @@ def fixreferencelinks(oldtext):
         if ((indexclosingtag - ilinkend) > 1): # at least one character length available
             
             # check for comma after link (common problem) and skip it
-            shift = 1
-            ch = oldtext[ilinkend+shift]
+            shifta = 1
+            ch = oldtext[ilinkend+shifta]
             if (ch == "," or ch == "."):
-                shift = shift+1
+                shifta = shifta+1 # shift starting
+
+            shiftb = 0
+            ch = oldtext[indexclosingtag-(shiftb+1)]
+            if (ch == "," or ch == "."):
+                shiftb = shiftb+1 # shift ending
 
             # semi-tokenize:
-            parsedlist, tlc = parseafterlink(oldtext, ilinkend+shift, indexclosingtag)
-            if (parsedlist != None and tlc == True):
+            tparsed = parseafterlink(oldtext, ilinkend+shifta, indexclosingtag-shiftb)
+            if (tparsed != None ):
                 # all consumed
-                isunknownafterlink = False
-                #print("DEBUG: parsed list, all consumed")
+                
+                #  if parsing stopped at "wayback" we need to stop conversion there as well:
+                # don't overwrite those parts that are not converted
+                parsedlist = tparsed[0]
+                skipped = tparsed[1]
+                iend = tparsed[2]
+                if (skipped == 0 and iend == (indexclosingtag-shiftb)):
+                    isunknownafterlink = False
+                    print("DEBUG: parsed list, all consumed, end: ", iend, "closing", indexclosingtag)
+                else:
+                    print("DEBUG: parsed list, skipped ", skipped,", end: ", iend, "closing", indexclosingtag)
 
+        #if (parsedlist == None):
+        #    index = indexclosingtag
+        #    continue
 
         tmpurl = oldtext[ilinkstart+1:isplit] # just url without starting bracket
         tmpdesc = oldtext[isplit+1:ilinkend] # description without separating space or ending bracket
@@ -849,7 +953,7 @@ def fixreferencelinks(oldtext):
             #if (langtemp == "{{en}}" or langtemp == "{{sv}}" or langtemp == "{{de}}" or langtemp == "{{fr}}"):
             if (issupportedlangtemplate(langtemp) == True):
                 parsedlist["lang"] = langtemp
-                tmpdesc = tmpdesc[:len(tmpdesc)-6]
+                tmpdesc = tmpdesc[:len(tmpdesc)-len(langtemp)]
 
         # if description has fileformat
         if (tmpdesc.find("(PDF)") > 0 or tmpdesc.find("(pdf)") > 0):
@@ -857,9 +961,10 @@ def fixreferencelinks(oldtext):
             formtemp = getsubstr(tmpdesc, len(tmpdesc)-5, len(tmpdesc))
             
             # only specific cases for now
-            if (formtemp == "(PDF)" or formtemp == "(pdf)"):
-                parsedlist["fileformat"] = "PDF"
-                tmpdesc = tmpdesc[:len(tmpdesc)-5]
+            #if (formtemp == "(PDF)" or formtemp == "(pdf)"):
+            if (issupportedfileformat(formtemp) == True):
+                parsedlist["fileformat"] = cleanupfileformat(formtemp)
+                tmpdesc = tmpdesc[:len(tmpdesc)-len(formtemp)]
 
             
         # something unknown after link that should stay there
@@ -969,11 +1074,13 @@ def getnamedpages(pywikibot, site):
 
     #fp = getpagebyname(pywikibot, site, "Systematic Chaos")
     
-    fp = getpagebyname(pywikibot, site, "Sakkola-museo")
+    #fp = getpagebyname(pywikibot, site, "Sakkola-museo")
     
     #fp = getpagebyname(pywikibot, site, "Tapio Furuholm")
     
     #fp = getpagebyname(pywikibot, site, "BCG-rokote")
+    
+    #fp = getpagebyname(pywikibot, site, "Dimerkaproli")
     
     
 
@@ -1040,7 +1147,7 @@ site.login()
 
 #pages = getpagesrecurse(pywikibot, site, "Lempäälä", 0)
 
-#pages = getpagesrecurse(pywikibot, site, "Tartuntataudit", 1)
+pages = getpagesrecurse(pywikibot, site, "Tartuntataudit", 1)
 #pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
 
 #pages = getpagesrecurse(pywikibot, site, "Rallin MM-sarjan osakilpailut", 1)
@@ -1050,7 +1157,7 @@ site.login()
 
 
 # for testing
-pages = getnamedpages(pywikibot, site)
+#pages = getnamedpages(pywikibot, site)
 
 
 rivinro = 1
