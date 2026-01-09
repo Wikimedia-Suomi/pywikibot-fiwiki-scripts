@@ -6,8 +6,9 @@ taksopetscan.py - Adds template "Taksopalkki" for taxonomy identifiers.
 
 add-person-cats-by-wd.py - Detect and add missing categories for birth/death year.
 
-add-wd-epookki-labelit-fi.py - Detect and add localized datelabel.
+add-wd-epookki-labelit-fi.py - Detect and add localized datelabel (Wikidata).
 
-addisbntemplate.py - Add template-wrapper around ISBN that is using "magic link".
+addisbntemplate.py - Add template-wrapper around ISBN that is using "magic link" (not within another template).
 
+addpikkuplaneettaluokat.py - Add categories to articles of minor planets with some verifications.
 
