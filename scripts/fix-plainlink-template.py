@@ -598,6 +598,15 @@ def parseafterlink(text, begin, end):
                 parsingstoppedat = ixtmpend
             continue
 
+        # has both opening and closing in same (no spaces?)
+        # website/publication name?
+        if (isopeningtoken(tmp) == True and isclosingtoken(tmp) == True and openingtoken < 0):
+            if (len(tmp) > 0):
+                tmplist.append(tmp)
+            indexsrc = ixnext
+            parsingstoppedat = indexsrc
+            continue
+
         if (isopeningtoken(tmp) == True and openingtoken < 0):
             openingtoken = previndex
             print("DEBUG: opening token:", tmp)
@@ -1085,6 +1094,9 @@ def getnamedpages(pywikibot, site):
     
     #fp = getpagebyname(pywikibot, site, "Tapio Furuholm")
     
+    fp = getpagebyname(pywikibot, site, "Catch Thirtythree")
+    
+    
 
     pages.append(fp)
     return pages
@@ -1153,11 +1165,11 @@ site.login()
 #pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
 
 
-pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
+#pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
 
 
 # for testing
-#pages = getnamedpages(pywikibot, site)
+pages = getnamedpages(pywikibot, site)
 
 
 rivinro = 1
