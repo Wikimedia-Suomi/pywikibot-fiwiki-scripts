@@ -544,6 +544,7 @@ def parseafterlink(text, begin, end):
     openingtoken = -1
     accessfound = -1
     parsingstoppedat = indexsrc
+    #nokeyword = True # try to detect freeform "as-is" stuff
     while (indexsrc < end and indexsrc > 0):
         previndex = indexsrc
         
@@ -619,10 +620,20 @@ def parseafterlink(text, begin, end):
             print("DEBUG: closing token:", tmp)
             tmp = getsubstr(text, openingtoken, ixtmpend)
             tmp = tmp.strip()
-            print("DEBUG: full token:", tmp)
+
+            accessdate = parseaccessdateafterlink(tmp)
+            if (len(accessdate) > 0):
+                print("DEBUG: using access date", accessdate)
+                parselist["accessdate"] = cleanupdatestr(accessdate)
+            # begins with cursive markup? might have journal, website or such?
+            elif (len(tmp) > 2 and tmp[:2] == "''" and "publication" not in parselist):
+                print("DEBUG: using publication", tmp)
+                parselist["publication"] = tmp
+            else:
+                print("DEBUG: full token:", tmp)
+                if (len(tmp) > 0):
+                    tmplist.append(tmp)
             openingtoken = -1
-            if (len(tmp) > 0):
-                tmplist.append(tmp)
             indexsrc = ixnext
             parsingstoppedat = indexsrc
             continue
@@ -633,7 +644,7 @@ def parseafterlink(text, begin, end):
             indexsrc = ixnext
             parsingstoppedat = indexsrc
             continue
-            
+
         # if only whitespaces -> skip
         # otherwise, collect these parts for later
         if (len(tmp) > 0):
@@ -654,77 +665,21 @@ def parseafterlink(text, begin, end):
         tmp = tmplist[i]
         print("DEBUG: token ", tmp)
 
-        # TODO: also might have to remove separator characeters (, or .)
-
-        # begins with cursive markup? might have website or such?
-        if (len(tmp) > 2 and tmp[:2] == "''"):
-            print("DEBUG: using publication", tmp)
-            parselist["publication"] = tmp
-            i = i+1
-            continue
-        
-        #if (isopeningtoken(tmp) == True):
-            # strip opening/closing and parse then again
-        #    tmp = stripopenclose(tmp)
-
-        # note: check for case where this is within parentheses
-        # with the initial parsing we should have access keyword and date in one
-        accessdate = parseaccessdateafterlink(tmp)
-        if (len(accessdate) > 0):
-            parselist["accessdate"] = cleanupdatestr(accessdate)
-            i = i+1
-            continue
-            
-        # starts with a known keyword..
-        if (isaccesskeyword(tmp) == True):
-
-            # use 1..3 next in list for parts of access date?
-            # (if separated by spaces),
-            # this is likely in case of textual date ("1. tammikuuta 2025")
-            if (i+1 < tlistc):
-                tmp1 = tmplist[i+1]
-                if (isvaliddate(tmp1) == True):
-                    parselist["accessdate"] = cleanupdatestr(tmp1)
-                    i = i+1
-                    continue
-
-            if (i+2 < tlistc):
-                tmp1 = tmplist[i+1]
-                tmp2 = tmplist[i+2]
-                combo = tmp1+tmp2
-                if (isvaliddate(combo) == True):
-                    parselist["accessdate"] = cleanupdatestr(combo)
-                    i = i+2
-                    continue
-
-            if (i+3 < tlistc):
-                tmp1 = tmplist[i+1]
-                tmp2 = tmplist[i+2]
-                tmp3 = tmplist[i+3]
-                combo = tmp1+tmp2+tmp3
-                if (isvaliddate(combo) == True):
-                    parselist["accessdate"] = cleanupdatestr(combo)
-                    i = i+3
-                    continue
-            continue
-                
-        # might have publication and/or website without a keyword before:
-        # those might need to be combined
-
-        # note: should not use date second time here if it was found to be accessdate
-        # otherwise may have plain date?
-        #if (isvaliddate(tmp) == True):
-        #    parselist["date"] = cleanupdatestr(tmp)
-        #    i = i+1
-        #    continue
-        
         # otherwise: push to freeform "explanation" or pubhlisher field?
-
         # note: should maybe push all those that unknown into this field
         # since they they may be some kind of sentence
-        #parselist["selite"] = tmp
-        #i = i+1
-        #continue
+        if "selite" in parselist:
+            selite = parselist["selite"]
+            selite += " "
+            selite += tmp
+            parselist["selite"] = selite
+
+            i = i+1
+            continue
+        else:
+            parselist["selite"] = tmp
+            i = i+1
+            continue
 
         # no match? skip
         skipped = skipped +1
@@ -1090,13 +1045,6 @@ def getnamedpages(pywikibot, site):
 
     #fp = getpagebyname(pywikibot, site, "Systematic Chaos")
     
-    #fp = getpagebyname(pywikibot, site, "Sakkola-museo")
-    
-    #fp = getpagebyname(pywikibot, site, "Tapio Furuholm")
-    
-    fp = getpagebyname(pywikibot, site, "Catch Thirtythree")
-    
-    
 
     pages.append(fp)
     return pages
@@ -1151,7 +1099,7 @@ site.login()
 #pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 # taksopalkki
-#pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
+pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 
 #pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
 
@@ -1169,7 +1117,7 @@ site.login()
 
 
 # for testing
-pages = getnamedpages(pywikibot, site)
+#pages = getnamedpages(pywikibot, site)
 
 
 rivinro = 1
