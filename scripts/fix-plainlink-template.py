@@ -1021,7 +1021,7 @@ def fixreferencelinks(oldtext):
 
         if ("publication" in parsedlist):
             print("DEBUG: appending publication", parsedlist["publication"])
-            newtext.append(" | publication = ")
+            newtext.append(" | julkaisu = ")
             newtext.append(parsedlist["publication"])
 
         if ("publisher" in parsedlist):
