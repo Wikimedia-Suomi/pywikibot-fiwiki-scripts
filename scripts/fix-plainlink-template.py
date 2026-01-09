@@ -350,7 +350,8 @@ def issupportedlangtemplate(langtemp):
         langtemp = removefirstchar(langtemp)
     if (endswithcommaordot(langtemp) == True):
         langtemp = removelastchar(langtemp)
-        
+    
+    langtemp = langtemp.lower()
     if (langtemp == "{{en}}" 
         or langtemp == "{{sv}}" 
         or langtemp == "{{de}}" 
