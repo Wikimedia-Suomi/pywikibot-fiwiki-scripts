@@ -616,6 +616,13 @@ def parseafterlink(text, begin, end):
             indexsrc = ixnext
             parsingstoppedat = indexsrc
             continue
+
+        # a plain date that isn't within any other scope?
+        if (isvaliddate(tmp) == True and accessfound < 0 and openingtoken < 0):
+            parselist["date"] = cleanupdatestr(tmp)
+            indexsrc = ixnext
+            parsingstoppedat = indexsrc
+            continue
             
         # if only whitespaces -> skip
         # otherwise, collect these parts for later
@@ -646,9 +653,9 @@ def parseafterlink(text, begin, end):
             i = i+1
             continue
         
-        if (isopeningtoken(tmp) == True):
+        #if (isopeningtoken(tmp) == True):
             # strip opening/closing and parse then again
-            tmp = stripopenclose(tmp)
+        #    tmp = stripopenclose(tmp)
 
         # note: check for case where this is within parentheses
         # with the initial parsing we should have access keyword and date in one
@@ -696,17 +703,16 @@ def parseafterlink(text, begin, end):
 
         # note: should not use date second time here if it was found to be accessdate
         # otherwise may have plain date?
-        if (isvaliddate(tmp) == True):
-            parselist["date"] = cleanupdatestr(tmp)
-            i = i+1
-            continue
+        #if (isvaliddate(tmp) == True):
+        #    parselist["date"] = cleanupdatestr(tmp)
+        #    i = i+1
+        #    continue
         
         # otherwise: push to freeform "explanation" or pubhlisher field?
 
         # note: should maybe push all those that unknown into this field
         # since they they may be some kind of sentence
         #parselist["selite"] = tmp
-        #knownc = knownc +1
         #i = i+1
         #continue
 
@@ -1078,11 +1084,6 @@ def getnamedpages(pywikibot, site):
     
     #fp = getpagebyname(pywikibot, site, "Tapio Furuholm")
     
-    #fp = getpagebyname(pywikibot, site, "BCG-rokote")
-    
-    #fp = getpagebyname(pywikibot, site, "Dimerkaproli")
-    
-    
 
     pages.append(fp)
     return pages
@@ -1147,13 +1148,11 @@ site.login()
 
 #pages = getpagesrecurse(pywikibot, site, "Lempäälä", 0)
 
-pages = getpagesrecurse(pywikibot, site, "Tartuntataudit", 1)
+#pages = getpagesrecurse(pywikibot, site, "Tartuntataudit", 1)
 #pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
 
-#pages = getpagesrecurse(pywikibot, site, "Rallin MM-sarjan osakilpailut", 1)
 
-
-#pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
+pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
 
 
 # for testing
