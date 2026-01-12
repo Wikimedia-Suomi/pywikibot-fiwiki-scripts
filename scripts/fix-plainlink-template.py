@@ -163,6 +163,23 @@ def checkforurl(text, begin, end):
     print("DEBUG: no space to separate url from text in link?")
     return -1
 
+# get plain domain from url for further checks
+def getdomainfromurl(text, begin, end):
+    ixsep = text.find("://", begin)
+    if (ixsep < 0 or ixsep > end):
+        return ""
+    ixsep = ixsep + len("://")
+    idomend = findch(text, "/", ixsep, end)
+    if (idomend < 0 or idomend > end):
+        return ""
+    
+    domain = getsubstr(text, ixsep, idomend)
+    print("DEBUG: domain from url", domain)
+    if (domain[:4] == "www."):
+        domain = domain[:4]
+    return domain
+    
+
 # remove pre- and post-whitespaces when mwparser leaves them
 def trimlr(string):
     if (len(string) < 1):
@@ -547,7 +564,7 @@ def stripopenclose(temp):
 #
 # we can look for keyword for accessdate as that is pretty common and use that as a hint
 #
-def parseafterlink(text, begin, end):
+def parseafterlink(text, urldomain, begin, end):
 
     # is there dor or comma immediately at the beginning?
     #if (beginswithcommaordot(text) == True):
@@ -615,6 +632,8 @@ def parseafterlink(text, begin, end):
 
         # skip rest if this is known
         if (issupportedlangtemplate(tmp) == True):
+            if (endswithcommaordot(tmp) == True):
+                tmp = removelastchar(tmp)
             parselist["lang"] = tmp
             indexsrc = ixnext
             parsingstoppedat = indexsrc
@@ -699,6 +718,8 @@ def parseafterlink(text, begin, end):
             # begins with cursive markup? might have journal, website or such?
             elif (len(tmp) > 2 and tmp[:2] == "''" and "publication" not in parselist):
                 print("DEBUG: using publication", tmp)
+                if (endswithcommaordot(tmp) == True):
+                    tmp = removelastchar(tmp)
                 parselist["publication"] = tmp
             else:
                 print("DEBUG: full token:", tmp)
@@ -715,6 +736,24 @@ def parseafterlink(text, begin, end):
             indexsrc = ixnext
             parsingstoppedat = indexsrc
             continue
+
+        # if there is domain from url after the link,
+        # we can skip duplicating it: reference template can parse it again anyway
+        if (tmp.lower() == urldomain.lower() and accessfound < 0 and openingtoken < 0):
+            print("DEBUG: url domain found after link:", tmp)
+            indexsrc = ixnext
+            parsingstoppedat = indexsrc
+            continue
+            
+
+        # note: we can't use this, there is often some string like publication
+        # without anything at end, followed by year or something..
+        #
+        # not within some other section, try to look for dot as ending
+        # instead of just space: seek forward
+        #if (accessfound < 0 and openingtoken < 0):
+        #    dotpos = findch(text, ".", ixtmpend+1, end)
+        #    commapos = findch(text, ",", ixtmpend+1, end)
 
         # if only whitespaces -> skip
         # plain dot -> skip
@@ -738,7 +777,8 @@ def parseafterlink(text, begin, end):
         tmp = tmplist[i]
         print("DEBUG: token ", tmp)
 
-        #if (ispagelist(tmp) == True):
+        # todo: if there is domain from url after the link,
+        # we can skip duplicating it
 
         # otherwise: push to freeform "explanation" or pubhlisher field?
         # note: should maybe push all those that unknown into this field
@@ -877,8 +917,8 @@ def fixreferencelinks(oldtext):
         #    continue
 
         # there is a double bracket for wikilink? -> skip
-        #if (oldtext[ireftagend+1:ireftagend+2] == "[["):
         if (getsubstr(oldtext, index+lentag, index+lentag+1) == "[["):
+            # should not have wikilink in reference, is it used for something else?
             print("DEBUG: double starting bracket in reference, skipping")
             index += lentag
             continue
@@ -931,6 +971,10 @@ def fixreferencelinks(oldtext):
             index = indexclosingtag
             continue
 
+        urldomain = getdomainfromurl(oldtext, ilinkstart+1, ilinkend)
+        if (urldomain == ""):
+            print("DEBUG: could not parse domain from url")
+
         if ((ilinkstart - ireftagend) > 1): # at least one character before link?
             print("DEBUG: something before the link in reference", getsubstr(oldtext, ireftagend, ilinkstart))
             # try to parse what might be before the link? 
@@ -939,7 +983,6 @@ def fixreferencelinks(oldtext):
             if ((ilinkstart - ireftagend) > 20): # 
                 index = indexclosingtag
                 continue
-
 
         # is there known pattern after the link?
         # is it completely consumed with parsing (can be overwritten?)
@@ -959,9 +1002,11 @@ def fixreferencelinks(oldtext):
             if (ch == "," or ch == "."):
                 shiftb = shiftb+1 # shift ending
 
+            # todo: get domain from link url, use that to check some other cases after link
+
             # semi-tokenize:
             #tparsed = parseafterlink(oldtext, ilinkend+shifta, indexclosingtag-shiftb)
-            tparsed = parseafterlink(oldtext, ilinkend+shifta, indexclosingtag)
+            tparsed = parseafterlink(oldtext, urldomain, ilinkend+shifta, indexclosingtag)
             if (tparsed != None ):
                 # all consumed
                 
@@ -988,10 +1033,10 @@ def fixreferencelinks(oldtext):
         if (len(tmpdesc) > 1):
             # is there comma as last character in description?
             # remove it
-            if (tmpdesc[len(tmpdesc)-1] == ","):
-                tmpdesc = tmpdesc[:len(tmpdesc)-1]
-
-        # if description has language template and no other language template?
+            if (endswithcommaordot(tmpdesc) == True):
+                tmpdesc = removelastchar(tmpdesc)
+            
+         # if description has language template and no other language template?
         #if (tmpdesc.find("{{") > 0 and len(lang) < 1):
         if (tmpdesc.find("{{") > 0 and "lang" not in parsedlist):
             # only if at end
@@ -1030,8 +1075,16 @@ def fixreferencelinks(oldtext):
         #newtext = "{{Verkkoviite | osoite = " + tmpurl + " | nimeke = " + tmpdesc + " | viitattu = " + accessdate + "}}"
         
         newtext = []
-        newtext.append("{{Verkkoviite | osoite = ")
-        newtext.append(tmpurl)
+        newtext.append("{{Verkkoviite ")
+
+        # if url has archive.org address we can use arkisto-parameter instead
+        if (urldomain == "web.archive.org"):
+            newtext.append(" | arkisto = ")
+            newtext.append(tmpurl)
+        else:
+            newtext.append(" | osoite = ")
+            newtext.append(tmpurl)
+            
         newtext.append(" | nimeke = ")
         newtext.append(tmpdesc)
         
@@ -1178,10 +1231,10 @@ site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
 # musiikkialbumit
-#pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
+pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 # taksopalkki
-pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
+#pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 
 #pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
 
