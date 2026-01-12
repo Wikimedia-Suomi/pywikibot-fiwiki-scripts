@@ -149,12 +149,20 @@ def checkforurl(text, begin, end):
         print("DEBUG: could not find protocol")
         return -1
     
-    
     ispace = begin
     while (ispace < end):
         ch = text[ispace]
+
+        # something is wrong? unexpected charater in the link?
+        # some websites may use these on search parameters..
+        #if (ch == "|" or ch == "]" or ch == "<"):
+        #if (ch == "|"):
+            #return -1
         
-        if (ch == " "):
+        # search for newline or tabulator as well, whichever comes first:
+        # if there are other characters not allowed in an url could stop there
+        #if (ch == " "):
+        if (ch == " " or ch == "\n" or ch == "\t"):
             #print("DEBUG: found url", getsubtr(text, begin, ispace))
             return ispace
 
@@ -372,7 +380,8 @@ def issupportedlangtemplate(langtemp):
     if (langtemp == "{{en}}" 
         or langtemp == "{{sv}}" 
         or langtemp == "{{de}}" 
-        or langtemp == "{{fr}}"):
+        or langtemp == "{{fr}}"
+        or langtemp == "{{nl}}"):
         return True
     return False
 
@@ -398,7 +407,8 @@ def issupportedlangsymbol(langtemp):
     if (langtemp == "en" 
         or langtemp == "sv" 
         or langtemp == "de" 
-        or langtemp == "fr"):
+        or langtemp == "fr"
+        or langtemp == "nl"):
         return True
     return False
 
@@ -739,7 +749,10 @@ def parseafterlink(text, urldomain, begin, end):
 
         # if there is domain from url after the link,
         # we can skip duplicating it: reference template can parse it again anyway
-        if (tmp.lower() == urldomain.lower() and accessfound < 0 and openingtoken < 0):
+        tmpdomain = tmp.lower()
+        if (endswithcommaordot(tmpdomain) == True):
+            tmpdomain = removelastchar(tmpdomain)
+        if (tmpdomain == urldomain.lower() and accessfound < 0 and openingtoken < 0):
             print("DEBUG: url domain found after link:", tmp)
             indexsrc = ixnext
             parsingstoppedat = indexsrc
@@ -842,7 +855,10 @@ def fixreferencelinks(oldtext):
     while (index < textlen and index > 0):
         previndex = index
 
-        # TODO: also <ref name..>
+        # note that on each pass indices will shift if reference is changed to use a template:
+        # only change at last step and get new indices after parsing
+
+        # potential <ref> and <ref name..> are parsed below
         lentag = len("<ref")
 
         index = oldtext.find("<ref", previndex)
@@ -1072,10 +1088,12 @@ def fixreferencelinks(oldtext):
 
         #print("DEBUG: replacing old body:", getsubstr(oldtext, ibeginreplaceat, iendreplaceat))
 
+        # generate new reference with a template according to parsed information:
+        # have to write the whole template rather than fixing pieces
         #newtext = "{{Verkkoviite | osoite = " + tmpurl + " | nimeke = " + tmpdesc + " | viitattu = " + accessdate + "}}"
         
         newtext = []
-        newtext.append("{{Verkkoviite ")
+        newtext.append("{{Verkkoviite")
 
         # if url has archive.org address we can use arkisto-parameter instead
         if (urldomain == "web.archive.org"):
@@ -1087,16 +1105,16 @@ def fixreferencelinks(oldtext):
             
         newtext.append(" | nimeke = ")
         newtext.append(tmpdesc)
-        
-        if ("accessdate" in parsedlist):
-            print("DEBUG: found accessdate ", parsedlist["accessdate"])
-            newtext.append(" | viitattu = ")
-            newtext.append(parsedlist["accessdate"])
 
         if ("date" in parsedlist):
             print("DEBUG: appending date", parsedlist["date"])
             newtext.append(" | ajankohta = ")
             newtext.append(parsedlist["date"])
+        
+        if ("accessdate" in parsedlist):
+            print("DEBUG: found accessdate ", parsedlist["accessdate"])
+            newtext.append(" | viitattu = ")
+            newtext.append(parsedlist["accessdate"])
 
         if ("pages" in parsedlist):
             print("DEBUG: appending pages", parsedlist["pages"])
@@ -1133,7 +1151,6 @@ def fixreferencelinks(oldtext):
             newtext.append(" | selite = ")
             newtext.append(parsedlist["selite"])
 
-
         newtext.append("}}")
         
         snewtext = joinliststr(newtext)
@@ -1144,8 +1161,12 @@ def fixreferencelinks(oldtext):
         # replace with template upto end tag
         oldtext = replacebetween(oldtext, snewtext, ibeginreplaceat, iendreplaceat)
 
+        # this might be more accurate, but it does not count what was left (unparsed)
+        # if there was something like a wayback-template after
+        #index = ibeginreplaceat + len(snewtext)
 
-        # continue search after this one
+        # continue search after this one:
+        # we must search for an opening ref-tag again
         index = indexclosingtag
             
     return oldtext
@@ -1231,7 +1252,7 @@ site = pywikibot.Site("fi", "wikipedia")
 site.login()
 
 # musiikkialbumit
-pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
+#pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 # taksopalkki
 #pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
@@ -1244,8 +1265,7 @@ pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 #pages = getpagesrecurse(pywikibot, site, "Lempäälä", 0)
 
-#pages = getpagesrecurse(pywikibot, site, "Tartuntataudit", 1)
-#pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
+pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
 
 
 #pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
