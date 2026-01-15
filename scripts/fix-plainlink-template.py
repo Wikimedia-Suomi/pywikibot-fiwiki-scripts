@@ -48,7 +48,7 @@ def joinliststr(l):
 #
 def hastemplatewithin(text, reftagopen, reftagclose):
 
-    print("DEBUG: searching for template in ref, begin", reftagopen, "end", reftagclose)
+    #print("DEBUG: searching for template in ref, begin", reftagopen, "end", reftagclose)
 
     # note: there could be multiple templates
     hasunkowntemplate = False
@@ -62,10 +62,10 @@ def hastemplatewithin(text, reftagopen, reftagclose):
         iopenbrace = findch(text, "{", inextindex, reftagclose)
         if (iopenbrace < 0):
             # no more templates? skip to end
-            print("DEBUG: no more template(s) in ref")
+            #print("DEBUG: no more template(s) in ref")
             return hasunkowntemplate
         if (getsubstr(text, iopenbrace, iopenbrace+1) != "{{"):
-            print("DEBUG: not double open brace, not template")
+            #print("DEBUG: not double open brace, not template")
             return hasunkowntemplate
         
         #indexend = text.find("}}", index)
@@ -92,7 +92,8 @@ def hastemplatewithin(text, reftagopen, reftagclose):
         if (ispace < 1 and ipipe < 1):
             tmpname = getsubstr(text, iopenbrace+2, iclosebrace)
             # note: could be short like {{lähde}} -> check
-            if (tmpname == "en" or tmpname == "sv" or tmpname == "de" or tmpname == "fr"):
+            #if (tmpname == "en" or tmpname == "sv" or tmpname == "de" or tmpname == "fr"):
+            if (issupportedlangsymbol(tmpname) == True):
                 hasunkowntemplate = False
             print("DEBUG: short template in ref?", tmpname)
 
@@ -114,8 +115,8 @@ def hastemplatewithin(text, reftagopen, reftagclose):
     # maybe found a template, or maybe it was a supported one
     if (hasunkowntemplate == True):
         print("DEBUG: still unparsed template in reference")
-    else:
-        print("DEBUG: all templates parsed in reference")
+    #else:
+        #print("DEBUG: all templates parsed in reference")
     return hasunkowntemplate
 
 
@@ -379,9 +380,16 @@ def issupportedlangtemplate(langtemp):
     langtemp = langtemp.lower()
     if (langtemp == "{{en}}" 
         or langtemp == "{{sv}}" 
+        or langtemp == "{{fi}}" 
         or langtemp == "{{de}}" 
         or langtemp == "{{fr}}"
-        or langtemp == "{{nl}}"):
+        or langtemp == "{{es}}" 
+        or langtemp == "{{no}}" 
+        or langtemp == "{{da}}" 
+        or langtemp == "{{nl}}"
+        or langtemp == "{{pl}}"
+        or langtemp == "{{ko}}"
+        or langtemp == "{{ja}}"):
         return True
     return False
 
@@ -406,9 +414,16 @@ def issupportedlangsymbol(langtemp):
     lsymbol = cleanuplangtemplate()
     if (langtemp == "en" 
         or langtemp == "sv" 
+        or langtemp == "fi" 
         or langtemp == "de" 
         or langtemp == "fr"
-        or langtemp == "nl"):
+        or langtemp == "es" 
+        or langtemp == "no"
+        or langtemp == "da"
+        or langtemp == "nl"
+        or langtemp == "pl"
+        or langtemp == "ko"
+        or langtemp == "ja"):
         return True
     return False
 
@@ -457,6 +472,10 @@ def scanpagelistend(text, begin, end):
         
         #print("DEBUG: page ch", ch)
 
+        # note: we can't rely on dot as ending,
+        # sometimes comma is used as separator and ending both,
+        # so we can't detect end by that itself..
+        
         # ok, this might be end of list?
         if (ch == "."):
             return i
@@ -472,8 +491,9 @@ def scanpagelistend(text, begin, end):
         # stop before this:
         # textual character?
         # but some parts of books may have roman numerals as page numbers..
-        #if (ch.isalpha() == True):
-        #    return i-1
+        # - less common case perhaps?
+        if (ch.isalpha() == True):
+            return i-1
         
         i += 1
     return -1
@@ -733,6 +753,15 @@ def parseafterlink(text, urldomain, begin, end):
                 parselist["publication"] = tmp
             else:
                 print("DEBUG: full token:", tmp)
+
+                # maybe a case where template name has space..
+                if (isdeadlinktemplate(tmp) == True ):
+                    parselist["vanhentunut"] = "kyllä"
+                    indexsrc = ixnext
+                    parsingstoppedat = indexsrc
+                    openingtoken = -1
+                    continue
+                
                 if (len(tmp) > 0):
                     tmplist.append(tmp)
             openingtoken = -1
@@ -912,6 +941,12 @@ def fixreferencelinks(oldtext):
             print("DEBUG: unfinished reference? skipping")
             index = textlen
             continue
+        if (indexclosingtag < inexttag or indexclosingtag < ireftagend):
+            print("WARN: something is broken, closing tag should not be before starting tag or within starting tag")
+            #index = indexclosingtag
+            exit()
+            return ""
+            #continue
 
         #print("DEBUG: reference has body", getsubstr(oldtext, index+lentag+1, indexclosingtag))
 
@@ -956,7 +991,7 @@ def fixreferencelinks(oldtext):
             index = indexclosingtag
             continue
 
-        print("DEBUG: no templates in reference or supported templates")
+        #print("DEBUG: no templates in reference or supported templates")
 
         # don't touch if it does not end with a bracket:
         # might add later handling if there are other templates within reference (like [link] {{en}})
@@ -966,13 +1001,17 @@ def fixreferencelinks(oldtext):
         #    index = indexend
         #    continue
 
-
+        # only convert where plain link is still used
         ilinkstart = findch(oldtext, "[", ireftagend+1, indexclosingtag)
         ilinkend = findch(oldtext, "]", ireftagend+1, indexclosingtag)
         if (ilinkstart < 0 or ilinkend < 0):
-            print("DEBUG: no link in reference, skipping")
+            #print("DEBUG: no link in reference, skipping")
             index = indexclosingtag
             continue
+        if (ilinkend < ilinkstart ):
+            print("WARN: something is broken, link should not end before start")
+            exit()
+            return ""
 
         print("DEBUG: reference has link", getsubstr(oldtext, ilinkstart, ilinkend))
 
@@ -1147,9 +1186,15 @@ def fixreferencelinks(oldtext):
             newtext.append(parsedlist["publisher"])
 
         if ("selite" in parsedlist):
-            print("DEBUG: appending freeform explanation", parsedlist["selite"])
+            
+            # final step of checking ending character here since it might have been appended
+            selite = parsedlist["selite"]
+            if (endswithcommaordot(selite) == True):
+                selite = removelastchar(selite)
+            
+            print("DEBUG: appending freeform explanation", selite)
             newtext.append(" | selite = ")
-            newtext.append(parsedlist["selite"])
+            newtext.append(selite)
 
         newtext.append("}}")
         
@@ -1160,6 +1205,24 @@ def fixreferencelinks(oldtext):
 
         # replace with template upto end tag
         oldtext = replacebetween(oldtext, snewtext, ibeginreplaceat, iendreplaceat)
+        
+        # calculate where ending tag is: our replacement may be shorter 
+        # and leaves unkown stuff untouched so check where we are
+        oldlen = iendreplaceat-ibeginreplaceat
+        oldremain = indexclosingtag-iendreplaceat
+        newend = len(snewtext) + ibeginreplaceat + oldremain
+        
+        # just check if our calculations were correct
+        endtagnew = getsubstr(oldtext, newend, newend+6)
+        if (endtagnew == "</ref>"):
+            print("DEBUG: ok, new end found correctly")
+            index = newend+6 # yes, we can skip after this tag
+        else:
+            # next tag should be searched by other position?
+            print("DEBUG: ending tag is not correct, falling back", endtagnew)
+            # continue search after this referece:
+            # we must search for an opening ref-tag again
+            index = indexclosingtag
 
         # this might be more accurate, but it does not count what was left (unparsed)
         # if there was something like a wayback-template after
@@ -1167,7 +1230,7 @@ def fixreferencelinks(oldtext):
 
         # continue search after this one:
         # we must search for an opening ref-tag again
-        index = indexclosingtag
+        #index = indexclosingtag
             
     return oldtext
 
@@ -1255,17 +1318,16 @@ site.login()
 #pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 # taksopalkki
-#pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
+pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 
 #pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
 
+#pages = getpagesrecurse(pywikibot, site, "Kemia", 0)
+
 #pages = getpagesrecurse(pywikibot, site, "Jalkapalloilijat", 2)
 
-#pages = getpagesrecurse(pywikibot, site, "Suomalaiset jalkapalloilijat", 0)
 
-#pages = getpagesrecurse(pywikibot, site, "Lempäälä", 0)
-
-pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
+#pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
 
 
 #pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
