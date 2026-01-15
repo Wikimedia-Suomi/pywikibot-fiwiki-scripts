@@ -387,6 +387,7 @@ def issupportedlangtemplate(langtemp):
         or langtemp == "{{no}}" 
         or langtemp == "{{da}}" 
         or langtemp == "{{nl}}"
+        or langtemp == "{{pt}}"
         or langtemp == "{{pl}}"
         or langtemp == "{{ko}}"
         or langtemp == "{{ja}}"):
@@ -421,12 +422,61 @@ def issupportedlangsymbol(langtemp):
         or langtemp == "no"
         or langtemp == "da"
         or langtemp == "nl"
+        or langtemp == "pt"
         or langtemp == "pl"
         or langtemp == "ko"
         or langtemp == "ja"):
         return True
     return False
 
+# cleanup these and convert to symbols
+def getsymbolfromplaintextlanguage(langtemp):
+
+    #print("DEBUG: parsing lang symbol from text", langtemp)
+    
+    if (endswithcommaordot(langtemp) == True):
+        langtemp = removelastchar(langtemp)
+
+    if (langtemp[0] == "(" and langtemp[len(langtemp)-1] == ")"):
+        #print("DEBUG: removing parentheses from", langtemp)
+        langtemp = getsubstr(langtemp, 1, len(langtemp)-1)
+    
+    if (langtemp == "englanniksi"):
+        return "en"
+    if (langtemp == "ruotsiksi"):
+        return "sv"
+    if (langtemp == "hollanniksi"):
+        return "nl"
+    if (langtemp == "saksaksi"):
+        return "de"
+    if (langtemp == "espanjaksi"):
+        return "es"
+    if (langtemp == "ranskaksi"):
+        return "fr"
+    if (langtemp == "norjaksi"):
+        return "no"
+    if (langtemp == "tanskaksi"):
+        return "da"
+    if (langtemp == "portugaliksi"):
+        return "pt"
+    if (langtemp == "puolaksi"):
+        return "pl"
+    if (langtemp == "koreaksi"):
+        return "ko"
+    if (langtemp == "japaniksi"):
+        return "ja"
+    return ""
+
+
+def isplaintextlanguagetext(langtemp):
+    #print("DEBUG: testing lang symbol from text", langtemp)
+
+    symbol = getsymbolfromplaintextlanguage(langtemp)
+    if (symbol != ""):
+        print("DEBUG: found lang symbol ", symbol ," from text", langtemp)
+        return True
+    return False
+    
 
 def isdeadlinktemplate(temp):
     
@@ -450,6 +500,21 @@ def isdeadlinktemplate(temp):
 
 def iswaybacktemplate(temp):
     if (temp.find("{{Wayback") == 0):
+        return True
+    return False
+
+# template requesting for a fix to reference? leave it as-is
+def isfixrequesttemplate(temp):
+    
+    if (endswithcommaordot(temp) == True):
+        temp = removelastchar(temp)
+
+    temp = temp.lower()
+
+    #if tmp == "{{Lähde tarkemmin}}" or tmp == "{{Parempi lähde}}"
+    
+    if (temp == "{{lähde tarkemmin}}"
+        or temp == "{{parempi lähde}}" ):
         return True
     return False
 
@@ -645,10 +710,12 @@ def parseafterlink(text, urldomain, begin, end):
         if (text[previndex] == " "):
             previndex = previndex+1
 
+        # find next space
         indexsrc = text.find(" ", previndex)
-        ixnext = end # stop at last by default
+        ixnext = end # stop at end of reference by default
         ixtmpend = end
         if (indexsrc > 0 and indexsrc < end):
+            # found another separator (space) before the end of this reference
             ixtmpend = indexsrc
             ixnext = indexsrc +1 # skip space and continue
 
@@ -660,23 +727,34 @@ def parseafterlink(text, urldomain, begin, end):
             parsingstoppedat = previndex
             break
 
+        # see case with opening/closing tokens
+        #if tmp == "{{Lähde tarkemmin}}" or tmp == "{{Parempi lähde}}"
+
         # skip rest if this is known
         if (issupportedlangtemplate(tmp) == True):
             if (endswithcommaordot(tmp) == True):
                 tmp = removelastchar(tmp)
             parselist["lang"] = tmp
             indexsrc = ixnext
-            parsingstoppedat = indexsrc
+            parsingstoppedat = ixtmpend
+            continue
+        # see also case with parentheses
+        if (isplaintextlanguagetext(tmp) == True):
+            print("found plain text language", tmp, "converting to template")
+            tmp = getsymbolfromplaintextlanguage(tmp)
+            parselist["lang"] = "{{" + tmp + "}}"
+            indexsrc = ixnext
+            parsingstoppedat = ixtmpend
             continue
         if (isdeadlinktemplate(tmp) == True ):
             parselist["vanhentunut"] = "kyllä"
             indexsrc = ixnext
-            parsingstoppedat = indexsrc
+            parsingstoppedat = ixtmpend
             continue
         if (issupportedfileformat(tmp) == True):
             parselist["fileformat"] = cleanupfileformat(tmp)
             indexsrc = ixnext
-            parsingstoppedat = indexsrc
+            parsingstoppedat = ixtmpend
             continue
         
         # might be a list of pages, maybe comma-separated, maybe dashed
@@ -745,6 +823,11 @@ def parseafterlink(text, urldomain, begin, end):
             if (len(accessdate) > 0):
                 print("DEBUG: using access date", accessdate)
                 parselist["accessdate"] = cleanupdatestr(accessdate)
+                
+            elif (isplaintextlanguagetext(tmp) == True):
+                tmp = getsymbolfromplaintextlanguage(tmp)
+                parselist["lang"] = tmp
+                
             # begins with cursive markup? might have journal, website or such?
             elif (len(tmp) > 2 and tmp[:2] == "''" and "publication" not in parselist):
                 print("DEBUG: using publication", tmp)
@@ -761,7 +844,13 @@ def parseafterlink(text, urldomain, begin, end):
                     parsingstoppedat = indexsrc
                     openingtoken = -1
                     continue
-                
+
+                # break, don't change these, don't append to conversion list
+                #if tmp == "{{Lähde tarkemmin}}" or tmp == "{{Parempi lähde}}"
+                if (isfixrequesttemplate(tmp) == True):
+                    print("DEBUG: found template for requesting fix, stopping parsing", tmp)
+                    break
+
                 if (len(tmp) > 0):
                     tmplist.append(tmp)
             openingtoken = -1
@@ -876,6 +965,42 @@ def replacebetween(oldtext, newstring, begin, end):
     newtext = oldtext[:begin] + newstring + oldtext[end:]
     return newtext
 
+# get name of tag for checking
+def parsenameoftag(text, index, end):
+    if (end-index < 4):
+        # at least "<ref" if there is a space?
+        # something is wrong, unfinished page or tag?
+        print("ERROR: tag too short?")
+        return ""
+    if (text[index] != "<"):
+        print("ERROR: tag start missing?")
+        return ""
+    if (text[end] != ">"):
+        print("ERROR: tag ending missing?")
+        return ""
+    
+    start = index+1
+    stop = end
+
+    # closing tag?
+    if (text[start+1] == "/"):
+        #print("DEBUG: closing tag")
+        start = start +1
+
+    # self-closing tag?
+    if (text[stop-1] == "/"):
+        #print("DEBUG: self-closing tag")
+        stop = stop -1
+
+    ispace = findch(text, " ", start, stop)
+    if (ispace > 0 and ispace < stop):
+        # ref name="" ?
+        tag = getsubstr(text, start, ispace)
+        return tag.lower()
+
+    tag = getsubstr(text, start, stop)
+    return tag.lower()
+    
 
 def fixreferencelinks(oldtext):
     textlen = len(oldtext)
@@ -887,6 +1012,7 @@ def fixreferencelinks(oldtext):
         # note that on each pass indices will shift if reference is changed to use a template:
         # only change at last step and get new indices after parsing
 
+        # TODO: handle upper-case as well
         # potential <ref> and <ref name..> are parsed below
         lentag = len("<ref")
 
@@ -917,9 +1043,17 @@ def fixreferencelinks(oldtext):
             continue
 
         # count new length of tag (with attributes) for body location:
-        # tag attributes change where body begins
+        # tag attributes change where body begins, this for the tag with attributes
         lentag = ireftagend-index
+        
+        # check that we have correct tag here
+        tagname = parsenameoftag(oldtext, index, ireftagend)
+        if (tagname != "ref"):
+            print("DEBUG: not a ref tag", tagname)
+            index += lentag
+            continue
 
+        # TODO: handle upper-case as well
         # don't stop on <references>, just <ref> or <ref name
         reftag = getsubstr(oldtext, index, index+5)
         if (reftag != "<ref>" and reftag != "<ref "): 
@@ -934,6 +1068,12 @@ def fixreferencelinks(oldtext):
             index += lentag
             continue
 
+        # TODO: handle upper-case as well
+        #indexclosingtag = oldtext.find("</", ireftagend)
+        #iendclosingtag = findch(oldtext, ">", indexclosingtag, end
+        #endtag = getsubstr(oldtext, indexclosingtag+2, iendclosingtag)
+        #if (endtag.lower()) == "ref"):
+        
         # find next reference closing after end of opening tag
         indexclosingtag = oldtext.find("</ref>", ireftagend)
         if (indexclosingtag < 0):
@@ -1212,8 +1352,10 @@ def fixreferencelinks(oldtext):
         oldremain = indexclosingtag-iendreplaceat
         newend = len(snewtext) + ibeginreplaceat + oldremain
         
+        # TODO: handle upper case as well
         # just check if our calculations were correct
         endtagnew = getsubstr(oldtext, newend, newend+6)
+        #endtagnew = endtagnew.lower() # may be upper case?
         if (endtagnew == "</ref>"):
             print("DEBUG: ok, new end found correctly")
             index = newend+6 # yes, we can skip after this tag
@@ -1263,7 +1405,8 @@ def getnamedpages(pywikibot, site):
     #fp = getpagebyname(pywikibot, site, "Fundamental")
 
     #fp = getpagebyname(pywikibot, site, "Systematic Chaos")
-    
+
+    fp = getpagebyname(pywikibot, site, "Arvonimi")
 
     pages.append(fp)
     return pages
@@ -1318,7 +1461,7 @@ site.login()
 #pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 # taksopalkki
-pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
+#pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 
 #pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
 
@@ -1330,7 +1473,7 @@ pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 #pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
 
 
-#pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
+pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
 
 
 # for testing
