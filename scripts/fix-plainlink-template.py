@@ -431,6 +431,8 @@ def issupportedlangsymbol(langtemp):
 
 # cleanup these and convert to symbols
 def getsymbolfromplaintextlanguage(langtemp):
+    if (len(langtemp) < 1):
+        return ""
 
     #print("DEBUG: parsing lang symbol from text", langtemp)
     
@@ -440,6 +442,10 @@ def getsymbolfromplaintextlanguage(langtemp):
     if (langtemp[0] == "(" and langtemp[len(langtemp)-1] == ")"):
         #print("DEBUG: removing parentheses from", langtemp)
         langtemp = getsubstr(langtemp, 1, len(langtemp)-1)
+    else:
+        # something else there? part of some explanation?
+        # if so, skip this, it might not be meant as language indication
+        return ""
     
     if (langtemp == "englanniksi"):
         return "en"
@@ -1406,7 +1412,10 @@ def getnamedpages(pywikibot, site):
 
     #fp = getpagebyname(pywikibot, site, "Systematic Chaos")
 
-    fp = getpagebyname(pywikibot, site, "Arvonimi")
+    #fp = getpagebyname(pywikibot, site, "Arvonimi")
+
+    fp = getpagebyname(pywikibot, site, "Venetsialaiset")
+
 
     pages.append(fp)
     return pages
@@ -1470,10 +1479,10 @@ site.login()
 #pages = getpagesrecurse(pywikibot, site, "Jalkapalloilijat", 2)
 
 
-#pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
+pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
 
 
-pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
+#pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
 
 
 # for testing
