@@ -26,7 +26,7 @@ def findch(text, char, begin, end):
 
 def getsubstr(text, begin, end):
     if (end < begin):
-        return -1
+        return -1 # terminate with forced error on bug
     return text[begin:end]
 
 
@@ -527,7 +527,7 @@ def isfixrequesttemplate(temp):
 
 def ispagelist(temp):
     # only if it starts with this and has space after?
-    if (temp == "s." or temp == "S."):
+    if (temp == "s." or temp == "S." or temp == "sivut"):
         return True
     return False
 
@@ -567,7 +567,8 @@ def scanpagelistend(text, begin, end):
             return i-1
         
         i += 1
-    return -1
+    # no ending character? just ends at end of reference?
+    return i
 
 
 def issupportedfileformat(temp):
@@ -748,6 +749,10 @@ def parseafterlink(text, urldomain, begin, end):
         if (isplaintextlanguagetext(tmp) == True):
             print("found plain text language", tmp, "converting to template")
             tmp = getsymbolfromplaintextlanguage(tmp)
+            
+            # skip this if there is already another one found?
+            #if "lang" not in parselist:
+            
             parselist["lang"] = "{{" + tmp + "}}"
             indexsrc = ixnext
             parsingstoppedat = ixtmpend
@@ -773,8 +778,11 @@ def parseafterlink(text, urldomain, begin, end):
             # scan past the "token"
             # must detect other characters not part of this
             # in case it does not end with dot: dot may have been stripped long before
+            # note: there might not be no numbers after s.
             dotpos = scanpagelistend(text, ixtmpend+1, end)
-            if (dotpos > 0):
+            if (dotpos > 0 and dotpos > ixtmpend and dotpos <= end):
+                # TODO: position before start?
+                #if ((dotpos-ixtmpend) > 0)
                 tmp = getsubstr(text, ixtmpend+1, dotpos)
                 tmp = tmp.strip()
                 parselist["pages"] = tmp
@@ -785,6 +793,7 @@ def parseafterlink(text, urldomain, begin, end):
                 indexsrc = dotpos
                 parsingstoppedat = dotpos
             else:
+                # otherwise, use up until end?
                 print("DEBUG: no end for page list?")
             continue
 
@@ -1280,8 +1289,10 @@ def fixreferencelinks(oldtext):
         newtext = []
         newtext.append("{{Verkkoviite")
 
-        # if url has archive.org address we can use arkisto-parameter instead
-        if (urldomain == "web.archive.org"):
+        # if url has archive.org address we can use arkisto-parameter instead:
+        # don't do this for other cases in archive.org
+        # others: archive.is, archive.today
+        if (urldomain == "web.archive.org" or urldomain == "archive.today"):
             newtext.append(" | arkisto = ")
             newtext.append(tmpurl)
         else:
@@ -1414,8 +1425,9 @@ def getnamedpages(pywikibot, site):
 
     #fp = getpagebyname(pywikibot, site, "Arvonimi")
 
-    fp = getpagebyname(pywikibot, site, "Venetsialaiset")
+    #fp = getpagebyname(pywikibot, site, "Venetsialaiset")
 
+    fp = getpagebyname(pywikibot, site, "Leijona")
 
     pages.append(fp)
     return pages
@@ -1470,7 +1482,7 @@ site.login()
 #pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 # taksopalkki
-#pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
+pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 
 #pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
 
@@ -1479,7 +1491,7 @@ site.login()
 #pages = getpagesrecurse(pywikibot, site, "Jalkapalloilijat", 2)
 
 
-pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
+#pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
 
 
 #pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
