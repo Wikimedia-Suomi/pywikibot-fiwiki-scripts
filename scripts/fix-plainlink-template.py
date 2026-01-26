@@ -240,6 +240,20 @@ def removelastchar(text):
         return text[:len(text)-1]
     return text
 
+def removeprepostslash(text):
+    if (len(text) < 1):
+        return text
+
+    ch = text[len(text)-1]
+    if (ch == "/"):
+        text = removelastchar(text)
+        
+    ch = text[0]
+    if (ch == "/"):
+        text = removefirstchar(text)
+    return text
+
+
 # note: only to be used for changing "1. tammikuuta 2025" into "1.1.2025"
 def numerizemonth(timestring):
     # only modify if known plain text
@@ -464,6 +478,8 @@ def getsymbolfromplaintextlanguage(langtemp):
         return "en"
     if (langtemp == "ruotsiksi"):
         return "sv"
+    if (langtemp == "ruots."):
+        return "sv"
     if (langtemp == "hollanniksi"):
         return "nl"
     if (langtemp == "saksaksi"):
@@ -518,9 +534,98 @@ def isdeadlinktemplate(temp):
     return False
 
 def iswaybacktemplate(temp):
+    #if (temp.find("{{Wayback") == 0 or temp.find("{{wayback") == 0):
     if (temp.find("{{Wayback") == 0):
         return True
     return False
+
+def getarclinkfromwaybacktemplate(temp, begin, end):
+    if (len(temp) < 4):
+        return ""
+
+    print("DEBUG: parsing wayback template", getsubstr(temp, begin, end))
+
+    #begin = 0
+    #end = len(temp)
+    #if (temp[len(temp)-2:] != "}}"):
+        # seek backwards to where template ends?
+    if (temp[:2] == "{{"):
+        begin = begin+2
+    if (temp[len(temp)-2:] == "}}"):
+        end = end-2
+
+    # TODO: check if there are more braces between
+    # since having other templates would mess up the parsing below
+        
+    parsedpars = dict()
+    i = begin
+    while (i < end):
+        #prevpos = i
+        
+        # start of one par
+        ipipe = findch(temp, "|", i, end)
+        if (ipipe < 0):
+            # no more pars
+            #print("DEBUG: no more pipes")
+            break
+
+        # start of next par or end
+        inextpipe = findch(temp, "|", ipipe+1, end)
+        if (inextpipe < ipipe or inextpipe > end):
+            inextpipe = end
+        
+        # equal between
+        iequal = findch(temp, "=", ipipe, end)
+        if (iequal > 0):
+            keyword = getsubstr(temp, ipipe+1, iequal)
+            value = getsubstr(temp, iequal+1, inextpipe)
+            print("DEBUG: found key:", keyword, ";value:", value)
+            
+            # there may be spaces in between parameters/separators so remove them
+            keyword = keyword.strip()
+            value = value.strip()
+            parsedpars[keyword] = value
+        #else:
+        #    print("DEBUG: no equal sign")
+            
+        i = ipipe +1
+
+    print("DEBUG: parsed template to pars", parsedpars)
+
+    oldlink = ""
+    datum = ""
+    if "1" in parsedpars and oldlink == "":
+        oldlink = parsedpars["1"]
+    if "osoite" in parsedpars and oldlink == "":
+        oldlink = parsedpars["osoite"]
+    if "URL" in parsedpars and oldlink == "":
+        oldlink = parsedpars["URL"]
+
+    if "päiväys" in parsedpars and datum == "":
+        datum = parsedpars["päiväys"]
+
+    #if "2" in parsedpars and datum == "":
+    #    title = parsedpars["2"]
+    #if "nimeke" in parsedpars and datum == "":
+    #    title = parsedpars["nimeke"]
+    #if "Arkistoitu" in parsedpars and datum == "":
+    #    title = parsedpars["Arkistoitu"]
+
+    if (oldlink != "" and datum != ""):
+        
+        #if (datum[len(datum)-1]) == "/"):
+        #    arclink = "https://web.archive.org/web/" + datum + oldlink
+        #else
+        datum = removeprepostslash(datum)
+
+        arclink = "https://web.archive.org/web/" + datum + "/" + oldlink
+
+        print("DEBUG: generated arc link", arclink)
+        return arclink
+
+    print("DEBUG: could not parse wayback template")
+    return ""
+    
 
 # template requesting for a fix to reference? leave it as-is
 def isfixrequesttemplate(temp):
@@ -745,10 +850,9 @@ def parseafterlink(text, urldomain, begin, end):
             ixtmpend = indexsrc
             ixnext = indexsrc +1 # skip space and continue
          
+        # TODO:
         # only one character remains?
         #if (indexsrc > 0 and (end-indexsrc) < 2):
-
-        # TODO:
         # if there are nothing but spaces remaining, check ending pos (all consumed)
         # 
 
@@ -757,6 +861,18 @@ def parseafterlink(text, urldomain, begin, end):
         
         if (iswaybacktemplate(tmp) == True):
             # not expecting useful stuff now (although there may be after)
+            # note: there might be spaces between template parameters..
+            waybackend = text.find("}}", previndex)
+            if (waybackend > previndex and waybackend < end):
+                arclink = getarclinkfromwaybacktemplate(text, previndex, waybackend)
+                if (arclink != ""):
+                    parselist["arkisto"] = arclink
+
+                    indexsrc = waybackend+2
+                    parsingstoppedat = waybackend+2
+                    continue
+
+            # something went wrong with parsing, stop here
             parsingstoppedat = previndex
             break
 
@@ -1309,6 +1425,7 @@ def fixreferencelinks(oldtext):
                 parsedlist["fileformat"] = cleanupfileformat(formtemp)
                 tmpdesc = tmpdesc[:len(tmpdesc)-len(formtemp)]
 
+        parsedlist["nimeke"] = tmpdesc
             
         # something unknown after link that should stay there
         iendreplaceat = ilinkend+1 # plus end bracked
@@ -1324,6 +1441,15 @@ def fixreferencelinks(oldtext):
         # at beginning of reference body
         if (refauthor != ""):
             ibeginreplaceat = ireftagend+1
+            parsedlist["author"] = refauthor
+
+        # if url has archive.org address we can use arkisto-parameter instead:
+        # don't do this for other cases in archive.org
+        # others: archive.is, archive.today
+        if ((urldomain == "web.archive.org" or urldomain == "archive.today") and "arkisto" not in parsedlist):
+            parsedlist["arkisto"] = tmpurl
+        else:
+            parsedlist["osoite"] = tmpurl
 
         #print("DEBUG: replacing old body:", getsubstr(oldtext, ibeginreplaceat, iendreplaceat))
 
@@ -1334,23 +1460,25 @@ def fixreferencelinks(oldtext):
         newtext = []
         newtext.append("{{Verkkoviite")
 
-        # if there was a usable author before the link
-        if (refauthor != ""):
-            newtext.append(" | tekijä = ")
-            newtext.append(refauthor)
+        if ("nimeke" in parsedlist):
+            newtext.append(" | nimeke = ")
+            newtext.append(parsedlist["nimeke"])
 
-        # if url has archive.org address we can use arkisto-parameter instead:
-        # don't do this for other cases in archive.org
-        # others: archive.is, archive.today
-        if (urldomain == "web.archive.org" or urldomain == "archive.today"):
-            newtext.append(" | arkisto = ")
-            newtext.append(tmpurl)
-        else:
+        # if there was a usable author before the link
+        if ("author" in parsedlist):
+            newtext.append(" | tekijä = ")
+            newtext.append(parsedlist["author"])
+
+        if ("osoite" in parsedlist):
+            print("DEBUG: appending osoite", parsedlist["osoite"])
             newtext.append(" | osoite = ")
-            newtext.append(tmpurl)
-            
-        newtext.append(" | nimeke = ")
-        newtext.append(tmpdesc)
+            newtext.append(parsedlist["osoite"])
+
+        # if we parsed archive link from wayback-template after reference body
+        if ("arkisto" in parsedlist):
+            print("DEBUG: appending arkisto", parsedlist["arkisto"])
+            newtext.append(" | arkisto = ")
+            newtext.append(parsedlist["arkisto"])
 
         if ("date" in parsedlist):
             print("DEBUG: appending date", parsedlist["date"])
@@ -1482,6 +1610,9 @@ def getnamedpages(pywikibot, site):
     #fp = getpagebyname(pywikibot, site, "Makrilli")
 
 
+    fp = getpagebyname(pywikibot, site, "Kuunliljat")
+
+
     pages.append(fp)
     return pages
     
@@ -1535,9 +1666,9 @@ site.login()
 #pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 # taksopalkki
-#pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
+pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 
-pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
+#pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
 
 #pages = getpagesrecurse(pywikibot, site, "Kemia", 0)
 
