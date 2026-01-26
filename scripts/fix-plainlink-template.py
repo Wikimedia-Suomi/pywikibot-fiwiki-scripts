@@ -24,6 +24,19 @@ def findch(text, char, begin, end):
         i += 1
     return -1
 
+def rfindch(text, char, begin, end):
+    if (end < begin):
+        return -1
+
+    i = end-1
+    while (i >= begin):
+        ch = text[i]
+        
+        if (ch == char):
+            return i
+        i -= 1
+    return -1
+
 def getsubstr(text, begin, end):
     if (end < begin):
         return -1 # terminate with forced error on bug
@@ -431,7 +444,7 @@ def issupportedlangsymbol(langtemp):
 
 # cleanup these and convert to symbols
 def getsymbolfromplaintextlanguage(langtemp):
-    if (len(langtemp) < 1):
+    if (len(langtemp) < 2):
         return ""
 
     #print("DEBUG: parsing lang symbol from text", langtemp)
@@ -715,16 +728,29 @@ def parseafterlink(text, urldomain, begin, end):
         
         # if we are pointing at space just increment so python doesn't stall on it
         if (text[previndex] == " "):
-            previndex = previndex+1
+            #previndex = previndex+1
+            indexsrc = indexsrc+1
+            continue
+        if (previndex == end):
+            # end here
+            parsingstoppedat = previndex
+            break
 
         # find next space
         indexsrc = text.find(" ", previndex)
-        ixnext = end # stop at end of reference by default
+        ixnext = end # stop at end of reference by default (if there wasn't a space)
         ixtmpend = end
         if (indexsrc > 0 and indexsrc < end):
             # found another separator (space) before the end of this reference
             ixtmpend = indexsrc
             ixnext = indexsrc +1 # skip space and continue
+         
+        # only one character remains?
+        #if (indexsrc > 0 and (end-indexsrc) < 2):
+
+        # TODO:
+        # if there are nothing but spaces remaining, check ending pos (all consumed)
+        # 
 
         tmp = getsubstr(text, previndex, ixtmpend)
         tmp = tmp.strip()
@@ -856,7 +882,7 @@ def parseafterlink(text, urldomain, begin, end):
                 if (isdeadlinktemplate(tmp) == True ):
                     parselist["vanhentunut"] = "kyllä"
                     indexsrc = ixnext
-                    parsingstoppedat = indexsrc
+                    parsingstoppedat = ixnext
                     openingtoken = -1
                     continue
 
@@ -870,14 +896,14 @@ def parseafterlink(text, urldomain, begin, end):
                     tmplist.append(tmp)
             openingtoken = -1
             indexsrc = ixnext
-            parsingstoppedat = indexsrc
+            parsingstoppedat = ixnext
             continue
 
         # a plain date that isn't within any other scope?
         if (isvaliddate(tmp) == True and accessfound < 0 and openingtoken < 0):
             parselist["date"] = cleanupdatestr(tmp)
             indexsrc = ixnext
-            parsingstoppedat = indexsrc
+            parsingstoppedat = ixnext
             continue
 
         # if there is domain from url after the link,
@@ -888,7 +914,7 @@ def parseafterlink(text, urldomain, begin, end):
         if (tmpdomain == urldomain.lower() and accessfound < 0 and openingtoken < 0):
             print("DEBUG: url domain found after link:", tmp)
             indexsrc = ixnext
-            parsingstoppedat = indexsrc
+            parsingstoppedat = ixnext
             continue
             
 
@@ -1164,6 +1190,7 @@ def fixreferencelinks(oldtext):
             index = indexclosingtag
             continue
         if (ilinkend < ilinkstart ):
+            # a bracket missing in a reference?
             print("WARN: something is broken, link should not end before start")
             exit()
             return ""
@@ -1185,14 +1212,27 @@ def fixreferencelinks(oldtext):
         if (urldomain == ""):
             print("DEBUG: could not parse domain from url")
 
+        refauthor = ""
         if ((ilinkstart - ireftagend) > 1): # at least one character before link?
-            print("DEBUG: something before the link in reference", getsubstr(oldtext, ireftagend, ilinkstart))
+
             # try to parse what might be before the link? 
             # if it looks like magazine/book reference information -> skip
             # for now, just skip if there's plenty of other stuff
             if ((ilinkstart - ireftagend) > 20): # 
+                print("DEBUG: too much text before link, skipping", getsubstr(oldtext, ireftagend+1, ilinkstart))
                 index = indexclosingtag
                 continue
+            
+            # if it ends with a colon (colon+space) maybe it is author?
+            colonpos = rfindch(oldtext, ":", ireftagend+1, ilinkstart)
+            if (colonpos > ireftagend and colonpos < ilinkstart):
+                refauthor = getsubstr(oldtext, ireftagend+1, colonpos)
+
+            #print("DEBUG: something before the link in reference", getsubstr(oldtext, ireftagend+1, ilinkstart))
+            
+            
+        if (refauthor != ""):
+            print("DEBUG: found potential author before link", refauthor)
 
         # is there known pattern after the link?
         # is it completely consumed with parsing (can be overwritten?)
@@ -1279,6 +1319,11 @@ def fixreferencelinks(oldtext):
         
         # replace from start of link, if there is something before leave it there
         ibeginreplaceat = ilinkstart
+        
+        # if there was a usable author before the link, start replacement
+        # at beginning of reference body
+        if (refauthor != ""):
+            ibeginreplaceat = ireftagend+1
 
         #print("DEBUG: replacing old body:", getsubstr(oldtext, ibeginreplaceat, iendreplaceat))
 
@@ -1288,6 +1333,11 @@ def fixreferencelinks(oldtext):
         
         newtext = []
         newtext.append("{{Verkkoviite")
+
+        # if there was a usable author before the link
+        if (refauthor != ""):
+            newtext.append(" | tekijä = ")
+            newtext.append(refauthor)
 
         # if url has archive.org address we can use arkisto-parameter instead:
         # don't do this for other cases in archive.org
@@ -1427,7 +1477,10 @@ def getnamedpages(pywikibot, site):
 
     #fp = getpagebyname(pywikibot, site, "Venetsialaiset")
 
-    fp = getpagebyname(pywikibot, site, "Leijona")
+    #fp = getpagebyname(pywikibot, site, "Leijona")
+
+    #fp = getpagebyname(pywikibot, site, "Makrilli")
+
 
     pages.append(fp)
     return pages
@@ -1482,9 +1535,9 @@ site.login()
 #pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 # taksopalkki
-pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
+#pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 
-#pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
+pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
 
 #pages = getpagesrecurse(pywikibot, site, "Kemia", 0)
 
