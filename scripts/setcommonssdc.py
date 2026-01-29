@@ -2455,6 +2455,53 @@ def parsesourcefromeuropeana(commonssource):
     print("europeana page source: " + eusource)
     return eusource
 
+# this is for workaround when there is garbage in institution name
+def findspc(text, begin, end):
+    i = begin
+    while (i < end):
+        ch = text[i]
+        
+        if (ch == " " or ch == "\n" or ch == "\t"):
+            return i
+        i += 1
+    return -1
+
+# this is for workaround when there is garbage in institution name
+def findnonspc(text, begin, end):
+    i = begin
+    while (i < end):
+        ch = text[i]
+        
+        if (ch != " " and ch != "\n" and ch != "\t"):
+            return i
+        i += 1
+    return -1
+
+# this is for workaround when there is garbage in institution name
+def striprepeatespaces(text):
+    text = text.strip()
+
+    i = 0
+    end = len(text)
+    while (i < end):
+        ispc = findspc(text, i, end)
+        if (ispc > 0):
+            ins = findnonspc(text, ispc, end)
+            # only strip multiple continuous spaces
+            if (ins > 0 and (ins-ispc) > 1):
+                text = text[:ispc] + " " + text[ins:]
+                # continue searching from where we started truncation
+                # since string was shortened
+                i = ispc
+                end = len(text)
+                #return text
+            else:
+                i = ins
+        else:
+            # if we begin with whitespace, run different case first..
+            i = end
+    return text.strip()
+
 # remove pointless characters if any:
 #  sometimes there are newlines and tabs in the string -> strip them out
 def fixwhitespaces(s):
@@ -2715,7 +2762,8 @@ def parseinceptionfromfinna(finnarecord):
 
         # TODO: if there are multiple potential dates sort them by precision
         for edstr in eventdates:
-            fdt = parsesubjecteventdateFromFinna(edstr)
+            tmpstr = striprepeatespaces(edstr)
+            fdt = parsesubjecteventdateFromFinna(tmpstr)
             if (fdt != None):
                 # found something usable?
                 print("DEBUG: found date from events ")
@@ -2730,7 +2778,8 @@ def parseinceptionfromfinna(finnarecord):
 
         # TODO: if there are multiple potential dates sort them by precision
         for sbstr in subjects:
-            fdt = parsesubjecteventdateFromFinna(sbstr)
+            tmpstr = striprepeatespaces(sbstr)
+            fdt = parsesubjecteventdateFromFinna(tmpstr)
             if (fdt != None):
                 # found something usable?
                 print("DEBUG: found date from subjects ")
@@ -2756,48 +2805,6 @@ def parseinceptionfromfinna(finnarecord):
 
 def getnewsourceforfinna(finnarecord):
     return "<br>Image record page in Finna: [https://finna.fi/Record/" + finnarecord + " " + finnarecord + "]\n"
-
-
-# this is for workaround when there is garbage in institution name
-def findspc(text, begin, end):
-    i = begin
-    while (i < end):
-        ch = text[i]
-        
-        if (ch == " " or ch == "\n" or ch == "\t"):
-            return i
-        i += 1
-    return -1
-
-# this is for workaround when there is garbage in institution name
-def findnonspc(text, begin, end):
-    i = begin
-    while (i < end):
-        ch = text[i]
-        
-        if (ch != " " and ch != "\n" and ch != "\t"):
-            return i
-        i += 1
-    return -1
-
-# this is for workaround when there is garbage in institution name
-def striprepeatespaces(text):
-    i = 0
-    end = len(text)
-    while (i < end):
-        ispc = findspc(text, i, end)
-        if (ispc > 0):
-            ins = findnonspc(text, ispc, end)
-            # only strip multiple continuous spaces
-            if (ins > 0 and (ins-ispc) > 1):
-                text = text[:ispc] + " " + text[ins:]
-                return text
-            else:
-                i = ins
-        else:
-            i = end
-    return text
-
 
 def getqcodeforfinnapublisher(finnarecord, institutionqcode):
     if "records" not in finnarecord:
@@ -2979,8 +2986,13 @@ def getSummariesFromFinna(finnarecord, lang='fi'):
     # note: there may be multiple entries..
     f_summary = records['summary']
 
+    # TODO: cleanup data when adding to templates:
+    # equal-signs will confuse templates so those should be replaced.. (&equals; ?)
+
     summaries = ""
     for summ in f_summary:
+        #summ = summ.replace("=", "&equals;")
+        summ = striprepeatespaces(summ)
         summaries += "{{" + lang + "|" + summ + "}}"
 
     print("DBEUG: found summaries in finna record: ", summaries)
@@ -3024,6 +3036,9 @@ def getImagerightsFromFinnaRecord(finnarecord, lang='fi'):
 
     descriptions = f_link + "; "
     for desc in f_description:
+        # remove repeated spaces and tabulators?
+        desc = striprepeatespaces(desc)
+        desc = desc.replace("\n                ", "\n")
         descriptions += "{{" + lang + "|" + desc + "}}"
 
     # note: also needed in inscriptions, where else?
@@ -3307,13 +3322,22 @@ def needReupload(file_info, finnarecord):
     # note! 'original' might point to different image than used above! different server in some cases
     hires = imagesExtended['highResolution']
 
+    # TODO:
+    # in some cases there is "master" instead of "original", check that
+    # otherwise "large" might be used
+
     # there is at least one case where this is not available?
-    if "original" not in hires:
-        print("WARN: 'original' not found in hires image: " + finnaid)
+    if "original" not in hires and "master" not in hires:
+        print("WARN: 'original' or 'master' not found in hires image: " + finnaid)
         return False
 
     # TODO: check if there are multiple images with different sizes?
-    hires = imagesExtended['highResolution']['original'][0]
+
+    if "original" in hires:
+        hires = imagesExtended['highResolution']['original'][0]
+    if "master" in hires and "original" not in hires:
+        hires = imagesExtended['highResolution']['master'][0]
+        
     if "data" not in hires:
         print("WARN: 'data' not found in hires image: " + finnaid)
         return False
@@ -3352,8 +3376,16 @@ def reuploadImage(finnaid, file_info, finnarecord, need_index, file_page, source
     if (imagesExtended == None):
         return False
 
+    hires = imagesExtended['highResolution']
+
     # note: mostly validated in above (called earlier)
-    hires = imagesExtended['highResolution']['original'][0]
+    if "original" in hires:
+        hires = imagesExtended['highResolution']['original'][0]
+    if "master" in hires and "original" not in hires:
+        hires = imagesExtended['highResolution']['master'][0]
+
+    # note: mostly validated in above (called earlier)
+    #hires = imagesExtended['highResolution']['original'][0]
 
     # check earlier but might as well recheck here
     if "format" not in hires:
@@ -4541,7 +4573,9 @@ def parseFullRecord_get_inscriptions(finnarecord, root):
             print("DBEUG: inscription note found: ", kuvaus)
 
             # note: also needed in permissions, where else?
-            #kuvaus = kuvaus.replace("\n                ", "\n").strip()
+            kuvaus = striprepeatespaces(kuvaus)
+
+            print("DBEUG: stripped inscription : ", kuvaus)
 
             if (len(lang) > 0):
                 print("DEBUG: using lang", lang, " for inscription ", kuvaus )
@@ -5303,14 +5337,23 @@ def getpagesfixedlist(pywikibot, commonssite):
     
     #fixedname = 'Bergan huvila-alue, Villa Jonasberg - N744 (hkm.HKMS000005-000000pq).jpg'
     
-    fixedname = '75th Anniversary Jubilee and Jubilee regatta of Nyländska Jaktklubben NJK 1936 (9171A; JOKAHBL3B G09-4).tif'
+    #fixedname = '75th Anniversary Jubilee and Jubilee regatta of Nyländska Jaktklubben NJK 1936 (9171A; JOKAHBL3B G09-4).tif'
     #fixedname = 'Alexandra Dock Hull 1954-08 Maritime Museum of Finland SMK200627-3056.jpg'
+    #fixedname = 'Hamina Ii 1924 02.jpg'
+    
+    #fixedname = 'Pengerpolku ja Vaasanhalli; Harju, Helsinki (1982).jpg'
+    
+    #fixedname = 'Mannerheimintie 3 - Helsinki 1972 - G38560 - hkm.HKMS000005-km0000o4h0.jpg'
+    
+    #fixedname = 'Mannerheimintie 3 - Helsinki 1972 - G38561 - hkm.HKMS000005-km0000o4h2.jpg'
     
     #fixedname = 'AJärnefelt sig.jpg'
     #fixedname = 'Irma Nissinen 1950 (SmF1625).jpg'
     #fixedname = 'Arvo Airaksinen 1930 (SmF71).jpg'
     
     #fixedname = 'Eero Rautiola 1942 in Kiestinki, Eatern Karelia.jpg'
+    
+    fixedname = 'Varkauden Työväen Näyttämö Aina vaan yllätyksiä Esityskuva (TeaMK0000-125-542).jpg'
     
     pages = list()
     #fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
@@ -5641,6 +5684,12 @@ d_labeltoqcode["Kulttuuriympäristön kuvakokoelma"] = "Q126163175"
 d_labeltoqcode["Digikuvakokoelma"] = "Q126173053"
 d_labeltoqcode["Valokuvat/KUV/KV"] = "Q126177397"
 d_labeltoqcode["Diat/KUV/KD"] = "Q126193435"
+d_labeltoqcode["Kuvakokoelma"] = "Q137675731" # satakunnan museon kuvakokoelma
+d_labeltoqcode["SNL"] = "Q137676000" # satakunnan museon kuvakokoelma
+d_labeltoqcode["SATO"] = "Q137684879" # satakunnan museon kuvakokoelma
+d_labeltoqcode["Satakunnan Museon diakokoelma"] = "Q137682713" # satakunnan museon kuvakokoelma
+d_labeltoqcode["Rosenlew-museon kuvakokoelma"] = "Q137726362" # satakunnan museon kuvakokoelma
+d_labeltoqcode["Tikkurilan silkki"] = "Q137727174" # vantaa kaupunginmuseon kuvakokoelma
 d_labeltoqcode["Yleiskokoelma, KyM"] = "Q137017666"
 d_labeltoqcode["Heikki Havaksen negatiivikokoelma"] = "Q126201599"
 d_labeltoqcode["Emil Suhosen kokoelma"] = "Q137016656"
@@ -5705,6 +5754,11 @@ d_collectionqtocategory["Q123508795"] = "Archeological Picture Collection" # Ark
 
 d_collectionqtocategory["Q123313922"] = "Files from the Antellin kokoelma" # Antellin kokoelma
 
+# jotain näin?
+d_collectionqtocategory["Q137726362"] = "Collections of the Rosenlew Museum" # satakunnan museo & rosenlew-museo
+
+#d_collectionqtocategory["Q124288898"] = "Yleinen merivartiokokoelma" # Kymenlaakso Museum
+
 
 # note! only add this if not already in one of the subcategories below this one
 # -> TODO: check the hierarchy of categories
@@ -5716,6 +5770,8 @@ d_institutionqtocategory["Q1418116"] = "Files from Museum of Finnish Architectur
 
 # Suomen kansallismuseo
 d_institutionqtocategory["Q1418136"] = "Collections of the National Museum of Finland" # 
+
+# files from photographic museum?
 
 # sibelius-museon arkisto, ei lisätä suoraan luokkaan?
 #d_institutionqtocategory["Q4306382"] = "Files from the Sibelius Museum" # 
@@ -5836,6 +5892,8 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Historical Picture Collection of The Finnish Heritage Agency", 0)
 #pages = getcatpages(pywikibot, commonssite, "Historical Picture Collection of The Finnish Heritage Agency")
 
+#
+#pages = getcatpages(pywikibot, commonssite, "Archeological Picture Collection")
 #pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Picture Collection of The Finnish Heritage Agency", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Ethnographic Collection of The Finnish Heritage Agency", 0)
 #pages = getpagesrecurse(pywikibot, commonssite, "Media by The Maritime Museum of Finland", 0)
@@ -5871,7 +5929,6 @@ commonssite.login()
 #pages = getpagesrecurse(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 0)
 #pages = getcatpages(pywikibot, commonssite, "Category:Files uploaded by FinnaUploadBot", False)
 
-pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 20)
 
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot")
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without tracking categories")
@@ -5880,15 +5937,51 @@ pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by Fi
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without coordinates")
 
 
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 10)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 1)
+
 #pages = getcatpages(pywikibot, commonssite, "PD Finland (simple photos)")
 
 
-#pages = getcatpages(pywikibot, commonssite, "Theatre Museum (Helsinki)")
+pages = getcatpages(pywikibot, commonssite, "Theatre Museum (Helsinki)")
 
 #pages = getcatpages(pywikibot, commonssite, "Karl Olof Lindeqvist")
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Kalevalatalo", 0)
-#pages = getpagesrecurse(pywikibot, commonssite, "Lauri Kivekäs", 0)
+#pages = getcatpages(pywikibot, commonssite, "Cabinet cards published by Daniel Nyblin")
+
+
+#pages = getcatpages(pywikibot, commonssite, "Atelier Aino")
+
+
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Henrik Seppänen")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by K. E. Klint")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Annette Helander")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Vilho Setälä")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by V. S. Salokangas")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Väinö Kaukonen")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Antti Hämäläinen")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by I. M. Wartiainen")
+
+
+#pages = getcatpages(pywikibot, commonssite, "Veterinarian Bernhard Åström's glass plate collection")
+
+#pages = getcatpages(pywikibot, commonssite, "Porin Konepaja")
+
+#pages = getcatpages(pywikibot, commonssite, "Collections of the Satakunta Museum")
+
+
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Harri Ahola")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Tuula Sipilä")
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Jarno Peltonen")
+
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Photographs by Tuula Sipilä", 50)
+
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Photographs by Eero Happonen", 10)
+
+
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Emmi Jurkka by year", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Emmi Jurkka", 0)
 
 
 
@@ -5902,6 +5995,8 @@ fngcache.opencachedb()
 micache = CachedMediainfo() 
 micache.opencachedb()
 
+enablerechecking = True # recheck previously parsed files, regardless of when last processed
+enablereuploading = True # TESTING set false to turn it off for now, true to upload higher resolution versions
 
 rowcount = 0
 #rowlimit = 10
@@ -5947,7 +6042,11 @@ for page in pages:
         if (filepage.latest_revision.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)
             and filepage.latest_file_info.timestamp.replace(tzinfo=timezone.utc) <= cached_info['recent'].replace(tzinfo=timezone.utc)):
             print("skipping, page with media id ", filepage.pageid, " was processed recently ", cached_info['recent'].isoformat() ," page ", page.title())
-            continue
+            if (enablerechecking == False):
+                # usually we don't want to re-check previously processed files
+                # unless there has been change in metadata:
+                # if script has changed notable this might be necessary
+                continue
 
     #item = pywikibot.ItemPage.fromPage(page) # can't use in commons, no related wikidata item
     # note: data_item() causes exception if wikibase page isn't made yet, see for an alternative
@@ -6554,7 +6653,7 @@ for page in pages:
         continue
 
     # compare file information if there is larger size available
-    enablereuploading = False # TESTING set false to turn it off for now
+    #enablereuploading = False # TESTING set false to turn it off for now
     if (needReupload(file_info, finna_record) == True and enablereuploading == True):
         print("Trying to re-upload image in higher resolution for: " + finnaid)
         if (reuploadImage(finnaid, file_info, finna_record, need_index, filepage, sourceurl, finna_image_url) == True):
@@ -6769,7 +6868,9 @@ for page in pages:
     actorslist = getFinnaActors(finna_record)
     finnasummaries = getSummariesFromFinna(finna_record)
     finnapermissions = getImagerightsFromFinnaRecord(finna_record)
-    finnameasurements = getFinnaMeasurements(finna_record)
+
+    # TODO: check if dimensions are usable measurements instead of pixel sizes
+    #finnameasurements = getFinnaMeasurements(finna_record)
     #finnamaterials = getFinnaMaterials(finna_record)
 
     # parse more stuff from the embedded xml
@@ -6880,10 +6981,11 @@ for page in pages:
 
                 if (ct.addOrSetInscriptions(template, inscriptions_from_finna) == True):
                     print("Added inscriptions for: " + page.title())
-                    
-                if (ct.addOrSetDimensions(template, finnameasurements) == True):
-                    print("Added dimensions for: " + page.title())
-                    
+
+                # TODO: check if dimensions are usable measurements instead of pixel sizes
+                #if (ct.addOrSetDimensions(template, finnameasurements) == True):
+                #    print("Added dimensions for: " + page.title())
+
 
         if (ct.isChanged() == True):
             tmptext = str(ct.wikicode)
@@ -6943,14 +7045,14 @@ for page in pages:
         else:
             print("No subject categories added for: " + finnaid)
 
-    commonseditsummary = ''
+    commonseditsummary = list()
     if (ct.isChanged() == True):
         print("Changed wikitext for: " + page.title())
-        commonseditsummary = 'Fixing template fields'
+        commonseditsummary.append('Fixing template fields')
     if (categoriesadded == True):
-        commonseditsummary += 'Adding categories'
+        commonseditsummary.append('Adding categories')
     #if (categoriescleaned == True):
-        #commonseditsummary += 'Cleaning categories'
+        #commonseditsummary.append('Cleaning categories')
 
     if (oldtext != tmptext and len(commonseditsummary) > 0):
         print("Saving with summary: ", commonseditsummary)
