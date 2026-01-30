@@ -1122,31 +1122,35 @@ def replacebetween(oldtext, newstring, begin, end):
     newtext = oldtext[:begin] + newstring + oldtext[end:]
     return newtext
 
-# get name of tag for checking
+# get name of tag for checking:
+# help compare tag name 
 def parsenameoftag(text, index, end):
-    if (end-index < 4):
+    if ((end-index) < 4):
         # at least "<ref" if there is a space?
         # something is wrong, unfinished page or tag?
         print("ERROR: tag too short?")
         return ""
+
+    #print("DEBUG: tag ", getsubstr(text, index+1, end))
+
     if (text[index] != "<"):
-        print("ERROR: tag start missing?")
+        print("ERROR: tag start missing?", text[index], "index", index)
         return ""
     if (text[end] != ">"):
-        print("ERROR: tag ending missing?")
+        print("ERROR: tag ending missing?", text[end], "index", end)
         return ""
     
     start = index+1
     stop = end
 
     # closing tag?
-    if (text[start+1] == "/"):
-        #print("DEBUG: closing tag")
+    if (text[start] == "/"):
+        print("DEBUG: closing tag")
         start = start +1
 
     # self-closing tag?
     if (text[stop-1] == "/"):
-        #print("DEBUG: self-closing tag")
+        print("DEBUG: self-closing tag")
         stop = stop -1
 
     ispace = findch(text, " ", start, stop)
@@ -1159,86 +1163,121 @@ def parsenameoftag(text, index, end):
     return tag.lower()
     
 
+def findnextbeginningref(oldtext, begin, end):
+    
+    prevendingtag = begin
+    while (prevendingtag < end):
+        itmpbegin = findch(oldtext, "<", prevendingtag, end)
+        if (itmpbegin < 1 or itmpbegin > end):
+            # no more tags?
+            break
+
+        itmpend = findch(oldtext, ">", itmpbegin+1, end)
+        if (itmpend < 1 or itmpend > end):
+            print("DEBUG: missing tag end ?")
+            break
+
+        if (oldtext[itmpbegin+1] == "/" or oldtext[itmpend-1] == "/"):
+            # closing tag or self-closing tag -> skip
+            prevendingtag = itmpbegin+1
+            continue
+
+        tagname = parsenameoftag(oldtext, itmpbegin, itmpend)
+        if (tagname == "ref"):
+            print("DEBUG: found opening ref tag:", tagname)
+            return itmpbegin
+        else:
+            print("DEBUG: not opening ref tag:", tagname)
+            
+        prevendingtag = itmpend+1
+
+    return -1
+
+def findnextendingref(oldtext, begin, end):
+
+    # find next reference closing after end of opening tag
+    #indexclosingtag = text.find("</ref>", begin)
+    
+    # note: there may be other tags in between as well?
+    prevendingtag = begin
+    while (prevendingtag < end):
+        # note: handle upper-case as well
+        #indexclosingtag = oldtext.find("</", prevendingtag)
+        itmpbegin = findch(oldtext, "<", prevendingtag, end)
+        if (itmpbegin < 1 or itmpbegin > end):
+            # no more tags?
+            break
+
+        # end of tag
+        itmpend = findch(oldtext, ">", itmpbegin+1, end)
+        if (itmpend < 1 or itmpend > end):
+            print("DEBUG: missing tag end ?")
+            break
+
+        if (oldtext[itmpbegin+1] != "/"):
+            # not a closing tag -> skip
+            prevendingtag = itmpbegin+1
+            continue
+
+        #print("DEBUG: maybe tag:", getsubstr(oldtext, indexclosingtag, iendclosingtag+1))
+        
+        # get plain name, should be lower-case for easy comparison
+        tagname = parsenameoftag(oldtext, itmpbegin, itmpend)
+        if (tagname == "ref"):
+            print("DEBUG: found ending ref tag:", tagname)
+            return itmpbegin
+        else:
+            print("DEBUG: not ending ref tag:", tagname)
+            
+        prevendingtag = itmpend+1
+
+    return -1
+
 def fixreferencelinks(oldtext):
     textlen = len(oldtext)
 
     index = 1
-    while (index < textlen and index > 0):
+    while (index < len(oldtext) and index > 0):
         previndex = index
+        textlen = len(oldtext) # update in case changed
 
         # note that on each pass indices will shift if reference is changed to use a template:
         # only change at last step and get new indices after parsing
 
-        # TODO: handle upper-case as well
-        # potential <ref> and <ref name..> are parsed below
-        lentag = len("<ref")
-
-        index = oldtext.find("<ref", previndex)
+        
+        # handle upper- and mixed-cases as well,
+        # check tag in case of name-attribute,
+        # handle self-closing tags as well
+        index = findnextbeginningref(oldtext, previndex, textlen)
         if (index < 0):
             # no more references, skip to end
             #print("DEBUG: no more references found")
             index = textlen 
             continue
-
-        # verify tags are correctly formed in sequence
-        # note that text might have angle brackets too..
-        inexttag = oldtext.find("<", index+1)
-        #inexttag = finch(oldtext, "<", index+1)
-        if (inexttag < 0):
-            # we have a beginning tag but no potential ending tag?
-            # malformed page -> skip over to end
-            print("DEBUG: no start of next tag, no start of ending?")
-            index += lentag
-            continue
-        
-        ireftagend = findch(oldtext, ">", index+1, inexttag)
+       
+        # find end of tag in case there are attributes like name in it
+        ireftagend = findch(oldtext, ">", index+1, textlen)
         if (ireftagend < 0):
             # found beginning of tag but not end before next one?
-            # malformed -> skip over
+            # malformed -> skip to end
             print("DEBUG: malformed tags, no end bracket?")
-            index += lentag
+            index = textlen 
             continue
 
         # count new length of tag (with attributes) for body location:
         # tag attributes change where body begins, this for the tag with attributes
         lentag = ireftagend-index
         
-        # check that we have correct tag here
-        tagname = parsenameoftag(oldtext, index, ireftagend)
-        if (tagname != "ref"):
-            print("DEBUG: not a ref tag", tagname)
-            index += lentag
-            continue
-
-        # TODO: handle upper-case as well
-        # don't stop on <references>, just <ref> or <ref name
-        reftag = getsubstr(oldtext, index, index+5)
-        if (reftag != "<ref>" and reftag != "<ref "): 
-            # skip over
-            print("DEBUG: not a ref-tag", reftag)
-            index += lentag
-            continue
-
-        # ref tag might be self closing <ref name/>, don't stop if name has the char..
-        if (oldtext[ireftagend-1] == "/"):
-            #print("DEBUG: self-closing ref-tag, skipping")
-            index += lentag
-            continue
-
-        # TODO: handle upper-case as well
-        #indexclosingtag = oldtext.find("</", ireftagend)
-        #iendclosingtag = findch(oldtext, ">", indexclosingtag, end
-        #endtag = getsubstr(oldtext, indexclosingtag+2, iendclosingtag)
-        #if (endtag.lower()) == "ref"):
-        
-        # find next reference closing after end of opening tag
-        indexclosingtag = oldtext.find("</ref>", ireftagend)
-        if (indexclosingtag < 0):
+        # there may be other tags in between as well,
+        # also handle upper/mixed cases
+        indexclosingtag = findnextendingref(oldtext, ireftagend+1, textlen)
+        if (indexclosingtag < 0 or indexclosingtag > textlen):
             # unfinished reference tag? -> end here
             print("DEBUG: unfinished reference? skipping")
             index = textlen
             continue
-        if (indexclosingtag < inexttag or indexclosingtag < ireftagend):
+        # if closing tag is before next tag or before starting tag?
+        if (indexclosingtag < index or indexclosingtag < ireftagend):
             print("WARN: something is broken, closing tag should not be before starting tag or within starting tag")
             #index = indexclosingtag
             exit()
@@ -1247,22 +1286,6 @@ def fixreferencelinks(oldtext):
 
         #print("DEBUG: reference has body", getsubstr(oldtext, index+lentag+1, indexclosingtag))
 
-        #chfirst = oldtext[index-len("<ref>")]
-        #chfirst = oldtext[index+lentag]
-        #if (chfirst == "{"):
-            # starts with curly brace -> template -> skip
-            #print("DEBUG: curly brace in reference, has template? skipping")
-        #    index += lentag
-        #    continue
-
-        
-        # don't touch if it does not start with bracket:
-        # could add more cases later
-        #if (chfirst != "["):
-            #print("DEBUG: no starting bracket in reference, skipping", chfirst)
-        #    print("DEBUG: no starting bracket in reference, skipping")
-        #    index += lentag
-        #    continue
 
         # there is a double bracket for wikilink? -> skip
         if (getsubstr(oldtext, index+lentag, index+lentag+1) == "[["):
@@ -1271,32 +1294,12 @@ def fixreferencelinks(oldtext):
             index += lentag
             continue
 
-
-        # within a template already? -> skip
-        # might be a parameter to something (in url) -> skip
-        #if (oldtext[index-1] == "{" or oldtext[index-1] == "|" or oldtext[index-1] == "=" or oldtext[index-1] == "/"):
-        #    index += 4
-        #    continue
-
-
-        # TODO: only if there is a language tag we should continue here
-
         # if there is a template within the reference, don't touch it for now:
         # in a best case it might like [link] {{en}}, worst case there is something else
         if (hastemplatewithin(oldtext, index+lentag+1, indexclosingtag) == True):
             print("DEBUG: unsupported template in reference, skipping")
             index = indexclosingtag
             continue
-
-        #print("DEBUG: no templates in reference or supported templates")
-
-        # don't touch if it does not end with a bracket:
-        # might add later handling if there are other templates within reference (like [link] {{en}})
-        #chend = oldtext[indexend+1]
-        #if (chend != "]"):
-        #    print("DEBUG: no ending bracket in reference, skipping")
-        #    index = indexend
-        #    continue
 
         # only convert where plain link is still used
         ilinkstart = findch(oldtext, "[", ireftagend+1, indexclosingtag)
@@ -1313,11 +1316,10 @@ def fixreferencelinks(oldtext):
 
         print("DEBUG: reference has link", getsubstr(oldtext, ilinkstart, ilinkend))
 
-
         # check that link really has http:// or https://
         # find where to split the link
         # next, find first space where link ends (links should have %20 in any case)
-        
+        #
         isplit = checkforurl(oldtext, ilinkstart+1, ilinkend)
         if (isplit < 0):
             print("DEBUG: no url in reference, skipping")
@@ -1367,8 +1369,6 @@ def fixreferencelinks(oldtext):
             ch = oldtext[indexclosingtag-(shiftb+1)]
             if (ch == "," or ch == "."):
                 shiftb = shiftb+1 # shift ending
-
-            # todo: get domain from link url, use that to check some other cases after link
 
             # semi-tokenize:
             #tparsed = parseafterlink(oldtext, ilinkend+shifta, indexclosingtag-shiftb)
@@ -1446,7 +1446,7 @@ def fixreferencelinks(oldtext):
         # if url has archive.org address we can use arkisto-parameter instead:
         # don't do this for other cases in archive.org
         # others: archive.is, archive.today
-        if ((urldomain == "web.archive.org" or urldomain == "archive.today") and "arkisto" not in parsedlist):
+        if ((urldomain == "web.archive.org" or urldomain == "archive.today" or urldomain == "archive.is") and "arkisto" not in parsedlist):
             parsedlist["arkisto"] = tmpurl
         else:
             parsedlist["osoite"] = tmpurl
@@ -1550,7 +1550,7 @@ def fixreferencelinks(oldtext):
         # TODO: handle upper case as well
         # just check if our calculations were correct
         endtagnew = getsubstr(oldtext, newend, newend+6)
-        #endtagnew = endtagnew.lower() # may be upper case?
+        endtagnew = endtagnew.lower() # may be upper case?
         if (endtagnew == "</ref>"):
             print("DEBUG: ok, new end found correctly")
             index = newend+6 # yes, we can skip after this tag
@@ -1561,6 +1561,9 @@ def fixreferencelinks(oldtext):
             # we must search for an opening ref-tag again
             index = indexclosingtag
 
+        # check current total length
+        #textlen = len(oldtext)
+
         # this might be more accurate, but it does not count what was left (unparsed)
         # if there was something like a wayback-template after
         #index = ibeginreplaceat + len(snewtext)
@@ -1568,7 +1571,7 @@ def fixreferencelinks(oldtext):
         # continue search after this one:
         # we must search for an opening ref-tag again
         #index = indexclosingtag
-            
+
     return oldtext
 
 
@@ -1610,7 +1613,10 @@ def getnamedpages(pywikibot, site):
     #fp = getpagebyname(pywikibot, site, "Makrilli")
 
 
-    fp = getpagebyname(pywikibot, site, "Kuunliljat")
+    #fp = getpagebyname(pywikibot, site, "Kuunliljat")
+    
+    fp = getpagebyname(pywikibot, site, "Phillip Cocu")
+    
 
 
     pages.append(fp)
@@ -1657,7 +1663,34 @@ def checklastedit(pywikibot, page):
         print("Page " + page.title() + " has " + str(secondssinceedit) + " since last edit")
 
 
+def testparse():
+    test = "<ref></ref><ref/>"
+    
+    end = len(test)
+    i = 0
+    while (i < end and i >= 0):
+        ix = findch(test, "<", i, end)
+        #ix = test.find("<", i, end)
+        if (ix < 0):
+            print("no starting brackets")
+            break
+        print("ix:", ix)
+        ixend = findch(test, ">", ix, end)
+        #ixend = test.find("<", ix, end)
+        if (ixend < 0):
+            print("no ending brackets")
+            break
+        print("ixend:", ixend)
+        
+        name = parsenameoftag(test, ix, ixend)
+        print("name:", name)
+        i = ixend
+
 ## main()
+#if __name__ == "__main__":
+    #testparse()
+    #exit()
+
 
 site = pywikibot.Site("fi", "wikipedia")
 site.login()
@@ -1666,19 +1699,20 @@ site.login()
 #pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 # taksopalkki
-pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
+#pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 
 #pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
 
 #pages = getpagesrecurse(pywikibot, site, "Kemia", 0)
 
 #pages = getpagesrecurse(pywikibot, site, "Jalkapalloilijat", 2)
+#pages = getpagesrecurse(pywikibot, site, "Alankomaalaiset jalkapalloilijat", 1)
 
 
 #pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
 
 
-#pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
+pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
 
 
 # for testing
@@ -1725,6 +1759,14 @@ for page in pages:
         print("Skipping. ", page.title() ," - old and new are equal.")
         continue
 
+    # when there are other changes,
+    # also fix cases where mixed-case has been used?
+    temptext = temptext.replace("</Ref>", "</ref>")
+    temptext = temptext.replace("<Ref>", "<ref>")
+    #temptext = temptext.replace("</REF>", "</ref>")
+    #temptext = temptext.replace("<REF>", "<ref>")
+    
+
     pywikibot.info('----')
     pywikibot.showDiff(oldtext, temptext,2)
     
@@ -1748,6 +1790,6 @@ for page in pages:
         exit()
 
     if choice == 'y':
-        page.text=temptext
+        page.text = temptext
         page.save(summary)
 
