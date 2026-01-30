@@ -559,6 +559,7 @@ def getarclinkfromwaybacktemplate(temp, begin, end):
         
     parsedpars = dict()
     i = begin
+    iparpos = 0
     while (i < end):
         #prevpos = i
         
@@ -574,9 +575,10 @@ def getarclinkfromwaybacktemplate(temp, begin, end):
         if (inextpipe < ipipe or inextpipe > end):
             inextpipe = end
         
-        # equal between
-        iequal = findch(temp, "=", ipipe, end)
-        if (iequal > 0):
+        # equal between:
+        # make sure there is no pipe in between (keyed, not positional)
+        iequal = findch(temp, "=", ipipe, inextpipe)
+        if (iequal > 0 and iequal < inextpipe):
             keyword = getsubstr(temp, ipipe+1, iequal)
             value = getsubstr(temp, iequal+1, inextpipe)
             print("DEBUG: found key:", keyword, ";value:", value)
@@ -585,9 +587,14 @@ def getarclinkfromwaybacktemplate(temp, begin, end):
             keyword = keyword.strip()
             value = value.strip()
             parsedpars[keyword] = value
-        #else:
-        #    print("DEBUG: no equal sign")
-            
+
+            iparpos = iparpos+1
+        else:
+            print("DEBUG: no equal sign, positional parameter?", iparpos)
+            # use position as key in this case?
+            # template uses always first as url (1=)
+            iparpos = iparpos+1
+
         i = ipipe +1
 
     print("DEBUG: parsed template to pars", parsedpars)
