@@ -573,6 +573,7 @@ def getarclinkfromwaybacktemplate(temp, begin, end):
         # start of next par or end
         inextpipe = findch(temp, "|", ipipe+1, end)
         if (inextpipe < ipipe or inextpipe > end):
+            # no more pars, end at end of template
             inextpipe = end
         
         # equal between:
@@ -1152,14 +1153,21 @@ def parsenameoftag(text, index, end):
 
     # closing tag?
     if (text[start] == "/"):
-        print("DEBUG: closing tag")
+        #print("DEBUG: closing tag")
         start = start +1
+    if (text[start] == "!"):
+        # comment, not tag
+        return ""
 
     # self-closing tag?
     if (text[stop-1] == "/"):
-        print("DEBUG: self-closing tag")
+        #print("DEBUG: self-closing tag")
         stop = stop -1
+    if (text[stop-1] == "-"):
+        # comment, not tag
+        return ""
 
+    # attributes after name of tag?
     ispace = findch(text, " ", start, stop)
     if (ispace > 0 and ispace < stop):
         # ref name="" ?
@@ -1179,6 +1187,9 @@ def findnextbeginningref(oldtext, begin, end):
             # no more tags?
             break
 
+        # note: in case of smaller than markings it might not be a tag at all..
+        # 
+
         itmpend = findch(oldtext, ">", itmpbegin+1, end)
         if (itmpend < 1 or itmpend > end):
             print("DEBUG: missing tag end ?")
@@ -1188,10 +1199,10 @@ def findnextbeginningref(oldtext, begin, end):
             # closing tag or self-closing tag -> skip
             prevendingtag = itmpbegin+1
             continue
-
+        
         tagname = parsenameoftag(oldtext, itmpbegin, itmpend)
         if (tagname == "ref"):
-            print("DEBUG: found opening ref tag:", tagname)
+            #print("DEBUG: found opening ref tag:", tagname)
             return itmpbegin
         else:
             print("DEBUG: not opening ref tag:", tagname)
@@ -1231,7 +1242,7 @@ def findnextendingref(oldtext, begin, end):
         # get plain name, should be lower-case for easy comparison
         tagname = parsenameoftag(oldtext, itmpbegin, itmpend)
         if (tagname == "ref"):
-            print("DEBUG: found ending ref tag:", tagname)
+            #print("DEBUG: found ending ref tag:", tagname)
             return itmpbegin
         else:
             print("DEBUG: not ending ref tag:", tagname)
@@ -1262,7 +1273,8 @@ def fixreferencelinks(oldtext):
             index = textlen 
             continue
        
-        # find end of tag in case there are attributes like name in it
+        # find end of tag in case there are attributes like name in it:
+        # use this to verify where body of reference starts
         ireftagend = findch(oldtext, ">", index+1, textlen)
         if (ireftagend < 0):
             # found beginning of tag but not end before next one?
@@ -1287,8 +1299,8 @@ def fixreferencelinks(oldtext):
         if (indexclosingtag < index or indexclosingtag < ireftagend):
             print("WARN: something is broken, closing tag should not be before starting tag or within starting tag")
             #index = indexclosingtag
-            exit()
-            return ""
+            #exit()
+            return "" # don't save changes now
             #continue
 
         #print("DEBUG: reference has body", getsubstr(oldtext, index+lentag+1, indexclosingtag))
@@ -1318,8 +1330,8 @@ def fixreferencelinks(oldtext):
         if (ilinkend < ilinkstart ):
             # a bracket missing in a reference?
             print("WARN: something is broken, link should not end before start")
-            exit()
-            return ""
+            #exit()
+            return "" # don't save changes now
 
         print("DEBUG: reference has link", getsubstr(oldtext, ilinkstart, ilinkend))
 
@@ -1544,6 +1556,7 @@ def fixreferencelinks(oldtext):
         if (len(snewtext) < 1):
             print("ERROR: joined new text is too short")
             exit(1)
+            return "" # don't save changes now
 
         # replace with template upto end tag
         oldtext = replacebetween(oldtext, snewtext, ibeginreplaceat, iendreplaceat)
@@ -1757,11 +1770,14 @@ for page in pages:
     checklastedit(pywikibot, page)
 
     temptext = oldtext
-   
-    temptext = fixreferencelinks(temptext)
-    summary='Muutetaan viitelinkki viitemallineelle'
 
-    
+    temptext = fixreferencelinks(temptext)
+    summary = 'Muutetaan viitelinkki viitemallineelle'
+
+    if (temptext == ""):
+        print("Skipping. ", page.title() ," - something went wrong.")
+        continue
+
     if oldtext == temptext:
         print("Skipping. ", page.title() ," - old and new are equal.")
         continue

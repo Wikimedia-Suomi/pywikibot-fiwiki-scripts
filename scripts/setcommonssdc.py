@@ -2146,6 +2146,30 @@ def addCreatortoStatements(pywikibot, wikidata_site, creatorqcode):
     cr_claim = pywikibot.Claim(wikidata_site, 'P170')
     qualifier_targetcr = pywikibot.ItemPage(wikidata_site, creatorqcode)
     cr_claim.setTarget(qualifier_targetcr)
+    
+    return cr_claim
+
+def addCreatortoStatementsWithRole(pywikibot, wikidata_site, creatorqcode, roleqcode):
+    if (creatorqcode == None):
+        return None
+    if (len(creatorqcode) == 0):
+        return None
+    
+    # property ID for "creator" (artwork)
+    cr_claim = pywikibot.Claim(wikidata_site, 'P170')
+    qualifier_targetcr = pywikibot.ItemPage(wikidata_site, creatorqcode)
+    cr_claim.setTarget(qualifier_targetcr)
+    
+    # add qualifier for "photographer":
+    # - kohteella on rooli (P3831)
+    # - valokuvaaja (Q33231)
+    if (roleqcode != None):
+        if "Q33231" == roleqcode:
+            qualifier_coll = pywikibot.Claim(wikidata_site, 'P3831')  # property ID for "role"
+            qualifier_target = pywikibot.ItemPage(wikidata_site, "Q33231")  # photographer (Q2983474)
+            qualifier_coll.setTarget(qualifier_target)
+            cr_claim.addQualifier(qualifier_coll, summary='Adding role qualifier')
+    
     return cr_claim
 
 # check if location qcode is already in SDC
@@ -2850,6 +2874,7 @@ def getqcodeforfinnaoperator(finnarecord):
     #if National Library of Finland (Kansalliskirjasto)
     return "Q420747"
 
+# not used now
 def getqcodeforbydomain(url):
     if (url.find("finna.fi") > 0):
         # National Library of Finland (Kansalliskirjasto)
@@ -3304,6 +3329,17 @@ def getFinnaCreatorsByRole(finnarecord):
 
         if role in creator_roles:
             datalist.append(name)
+    return datalist
+
+
+def getQcodesForPhotographers(photographers, authortoqcode):
+    
+    datalist = list()
+    for phtname in photographers:
+        if phtname in authortoqcode:
+            qcode = authortoqcode[phtname]
+            if qcode not in datalist:
+                datalist.append(qcode)
     return datalist
 
 
@@ -5068,7 +5104,7 @@ def getcategoriesforplaceandtime(pywikibot, finna_record, inceptiondt, placeslis
     return extracatstoadd
 
 # categories for well-known non-presenter authors
-def getcategoriesforauthors(pywikibot, photographers, existingcategories):
+def getcategoriesforauthors(photographers, existingcategories):
     author_categories = {
         'Atelier Rembrandt, Helsingfors' : 'Photographs by Atelier Rembrandt (Helsinki)',
         'Atelier Apollo' : 'Photographs by Atelier Apollo',
@@ -5077,6 +5113,10 @@ def getcategoriesforauthors(pywikibot, photographers, existingcategories):
         'Atelier Paris' : 'Photographs by Atelier Paris',
         'Charles Riis' : 'Photographs by Charles Riis',
         'Valokuvaamo Tenhovaara' : 'Photographs by Valokuvaamo Tenhovaara'
+        #'Eeva Rista' : 'Photographs by Eeva Rista',
+        #'Rista, Eeva' : 'Photographs by Eeva Rista',
+        #'Simo Rista' : 'Photographs by Simo Rista',
+        #'Rista, Simo' : 'Photographs by Simo Rista'
     }
 
     extracatstoadd = list()
@@ -5092,6 +5132,28 @@ def getcategoriesforauthors(pywikibot, photographers, existingcategories):
         else:
             print("no category for author ", author)
     return extracatstoadd
+
+def getcategoriesforauthorsbyqcode(photographers, existingcategories):
+
+    author_categories = {
+        'Q11856896' : 'Photographs by Eeva Rista',
+        'Q11893546' : 'Photographs by Simo Rista'
+    }
+
+    extracatstoadd = list()
+
+    for author in photographers:
+        if author in author_categories:
+            cattext = author_categories[author]
+            if cattext not in existingcategories: # avoid duplicates
+                print("adding category ", cattext, " for author ", author)
+                extracatstoadd.append(cattext)
+            else:
+                print("already has category ", cattext, " for author ", author)
+        else:
+            print("no category for author ", author)
+    return extracatstoadd
+
 
 def should_skip_institution_category(instqcode, collectionqcodes):
     if (instqcode == "Q1418136" and "Q123313922" in collectionqcodes):
@@ -5353,7 +5415,9 @@ def getpagesfixedlist(pywikibot, commonssite):
     
     #fixedname = 'Eero Rautiola 1942 in Kiestinki, Eatern Karelia.jpg'
     
-    fixedname = 'Varkauden Työväen Näyttämö Aina vaan yllätyksiä Esityskuva (TeaMK0000-125-542).jpg'
+    #fixedname = 'Varkauden Työväen Näyttämö Aina vaan yllätyksiä Esityskuva (TeaMK0000-125-542).jpg'
+    
+    fixedname = 'Ellen Ahlqvist.jpg'
     
     pages = list()
     #fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
@@ -5687,6 +5751,7 @@ d_labeltoqcode["Diat/KUV/KD"] = "Q126193435"
 d_labeltoqcode["Kuvakokoelma"] = "Q137675731" # satakunnan museon kuvakokoelma
 d_labeltoqcode["SNL"] = "Q137676000" # satakunnan museon kuvakokoelma
 d_labeltoqcode["SATO"] = "Q137684879" # satakunnan museon kuvakokoelma
+d_labeltoqcode["Pori-Seura"] = "Q138034324"
 d_labeltoqcode["Satakunnan Museon diakokoelma"] = "Q137682713" # satakunnan museon kuvakokoelma
 d_labeltoqcode["Rosenlew-museon kuvakokoelma"] = "Q137726362" # satakunnan museon kuvakokoelma
 d_labeltoqcode["Tikkurilan silkki"] = "Q137727174" # vantaa kaupunginmuseon kuvakokoelma
@@ -5721,6 +5786,33 @@ d_labeltoqcode["Mika Launiksen lehtikuvituskokoelma"] = "Q136546136"
 d_labeltoqcode["Virpi Talvitien lehtikuvituskokoelma"] = "Q136546151"
 
 d_labeltoqcode["Helvi Ahonen"] = "Q137465449"
+d_labeltoqcode["Candolin"] = "Q137946452"
+
+d_labeltoqcode["Kalle Kuuselan kokoelma"] = "Q137924751"
+
+d_labeltoqcode["Suomen Metsäyhdistyksen kokoelma"] = "Q137972423"
+d_labeltoqcode["Suomen Metsäyhdistyksen kokoelma / Metsätaloudellinen Valistustoimisto"] = "Q137946168"
+d_labeltoqcode["Metsähallituksen metsätalouden kulttuuriperintöinventointikokoelma"] = "Q137971587"
+d_labeltoqcode["Metsähallituksen Kehittämisjaoston kokoelma"] = "Q137946205"
+d_labeltoqcode["Metsäteollisuus ry:n kokoelma"] = "Q137946183"
+d_labeltoqcode["Uittoteho ry:n kokoelma"] = "Q137946277"
+d_labeltoqcode["Tapion kokoelma"] = "Q137946286"
+d_labeltoqcode["Matti Korhosen kokoelma"] = "Q137946803"
+d_labeltoqcode["Evon kokoelma / Metsäkirjasto"] = "Q137972431"
+d_labeltoqcode["Eläköön metsäammattilaisperintö -tallennushankkeen kokoelma"] = "Q137993430"
+
+d_labeltoqcode["toiminnan ja tapahtuminen dokumentointiDIGDT"] = "Q137969606" # lahden museot
+d_labeltoqcode["paikkojen dokumentointiDIGDP"] = "Q137969556" # lahden museot
+d_labeltoqcode["originaalikuvat - oma tuotanto"] = "Q137969558" # lahden museot
+d_labeltoqcode["Kuvakokoelmat"] = "Q137969593" # lahden museot
+d_labeltoqcode["Kuvakokoelmat oma kuvatuotanto"] = "Q137969595" # lahden museot
+d_labeltoqcode["Kuvakokoelmat kuva-arkisto"] = "Q138019112" # lahden museot
+
+d_labeltoqcode["Hiihtomuseo valokuvat"] = "Q138034314" # lahden museot
+d_labeltoqcode["Hiihtomuseo"] = "Q138034317" # lahden museot
+
+d_labeltoqcode["A Fingridin kokoelma"] = "Q137970756"
+d_labeltoqcode["B Tietojenkäsittely ja tietotekniikka"] = "Q137970694"
 
 
 # collection qcode (after parsing) to commons-category
@@ -5768,6 +5860,10 @@ d_collectionqtocategory["Q137726362"] = "Collections of the Rosenlew Museum" # s
 d_institutionqtocategory = dict()
 d_institutionqtocategory["Q1418116"] = "Files from Museum of Finnish Architecture" # 
 
+d_institutionqtocategory["Q11879901"] = "Files from the Finnish Forest Museum Lusto" # 
+
+d_institutionqtocategory["Q5549583"] = "Files from Museum of Technology, Helsinki" # 
+
 # Suomen kansallismuseo
 d_institutionqtocategory["Q1418136"] = "Collections of the National Museum of Finland" # 
 
@@ -5794,6 +5890,21 @@ d_institutionqtotemplate["Q11879901"] = "Lusto" # metsämuseo
 d_institutionqtotemplate["Q4306382"] = "Sibelius Museum" 
 d_institutionqtotemplate["Q18346788"] = "Theatre Museum (Helsinki)" 
 
+
+d_authortoqcode = dict()
+d_authortoqcode["Rista, Eeva"] = "Q11856896"
+d_authortoqcode["Rista, Simo"] = "Q11893546"
+d_authortoqcode["Nyblin, Daniel"] = "Q6019293"
+d_authortoqcode["Nyblin Daniel"] = "Q6019293"
+d_authortoqcode["Paulaharju, Samuli"] = "Q6037597"
+d_authortoqcode["Väisänen, A. O."] = "Q4792887"
+d_authortoqcode["Setälä, Vilho"] = "Q3893579"
+d_authortoqcode["Hämäläinen, Antti"] = "Q23040501"
+
+#d_authortoqcode["Simberg, Hugo"] = "Q263080"
+
+
+# 
 
 # Accessing wikidata properties and items
 wikidata_site = pywikibot.Site("wikidata", "wikidata")  # Connect to Wikidata
@@ -5937,13 +6048,8 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Files uploaded by FinnaUploadBot without coordinates")
 
 
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 10)
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 1)
 
-#pages = getcatpages(pywikibot, commonssite, "PD Finland (simple photos)")
-
-
-pages = getcatpages(pywikibot, commonssite, "Theatre Museum (Helsinki)")
+#pages = getcatpages(pywikibot, commonssite, "Theatre Museum (Helsinki)")
 
 #pages = getcatpages(pywikibot, commonssite, "Karl Olof Lindeqvist")
 
@@ -5979,9 +6085,27 @@ pages = getcatpages(pywikibot, commonssite, "Theatre Museum (Helsinki)")
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Photographs by Eero Happonen", 10)
 
 
+#
+#pages = getpagesrecurse(pywikibot, commonssite, "Livonians", 0)
+#pages = getcatpages(pywikibot, commonssite, "Livonians")
+#pages = getcatpages(pywikibot, commonssite, "Setos")
+#pages = getcatpages(pywikibot, commonssite, "Votians")
+#pages = getpagesrecurse(pywikibot, commonssite, "Ingria", 0)
 
-#pages = getpagesrecurse(pywikibot, commonssite, "Emmi Jurkka by year", 1)
-#pages = getpagesrecurse(pywikibot, commonssite, "Emmi Jurkka", 0)
+
+pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 20)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 1)
+
+#pages = getcatpages(pywikibot, commonssite, "PD Finland (simple photos)")
+
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Tyyni Vahter", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Daniel Nyblin", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Samuli Paulaharju", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Armas Otto Väisänen", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Vilho Setälä", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Antti Hämäläinen", 1)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Ilmari Manninen", 1)
 
 
 
@@ -5995,8 +6119,8 @@ fngcache.opencachedb()
 micache = CachedMediainfo() 
 micache.opencachedb()
 
-enablerechecking = True # recheck previously parsed files, regardless of when last processed
-enablereuploading = True # TESTING set false to turn it off for now, true to upload higher resolution versions
+enablerechecking = False # recheck previously parsed files, regardless of when last processed
+enablereuploading = False # TESTING set false to turn it off for now, true to upload higher resolution versions
 
 rowcount = 0
 #rowlimit = 10
@@ -6846,16 +6970,20 @@ for page in pages:
     # stuff for template and/or categories below
 
     # TODO: also other creator types?
+    # names are used in template if nothing exists, qcodes are needed for structured data
     photographers = getFinnaPhotographers(finna_record)
     if (len(photographers) > 0):
         print("DEBUG: photographers in finna: ", str(photographers))
+
+        # names are used elsewhere, try to get qcodes for them
+        phtqcodes = getQcodesForPhotographers(photographers, d_authortoqcode)
+        for pqc in phtqcodes:
+            # only if role is "photographer" 
+            if (isCreatorinstatements(claims, pqc) == False):
+                creatorclaim = addCreatortoStatementsWithRole(pywikibot, wikidata_site, pqc, "Q33231")
+                if (creatorclaim != None):
+                    commonssite.addClaim(wditem, creatorclaim)
         
-        # TODO: get qcode by name in list
-        #for photographer in photographers:
-        
-            #creatorclaim = addCreatortoStatements(pywikibot, wikidata_site, creatorqcode)
-            #if (creatorclaim != None):
-                #wditem.addClaim(creatorclaim)
 
     # should have either artists or authors
     #finnaartists = getFinnaArtistsByRole(finna_record)
@@ -7020,7 +7148,9 @@ for page in pages:
     #extracatstoadd += getcategoriesforplaceandtime(pywikibot, finna_record, inceptiondt, placeslist, oldcategories)
 
     # categories for well-known non-presenter authors
-    extracatstoadd += getcategoriesforauthors(pywikibot, photographers, oldcategories)
+    extracatstoadd += getcategoriesforauthors(photographers, oldcategories)
+
+    #extracatstoadd += getcategoriesforauthors(photographers, oldcategories)
 
     # note: if "antellin kokoelmat" (Q123313922) don't add to "collection from national museum of finland"
     # since that is a subcategory
