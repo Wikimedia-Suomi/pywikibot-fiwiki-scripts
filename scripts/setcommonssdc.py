@@ -1287,6 +1287,43 @@ def convertkuvakokoelmatid(kkid):
     musketti = "musketti.M012:" + kkid
     return musketti
 
+# parse hkm-id from old record (old domain) which should be still usable:
+# url should have /record/ format.
+# other possibility is search url, which is not direct url
+def getidfomhelsinkikuviaurl(hkkurl):
+    if (len(hkkurl) == 0):
+        print("empty helsinkikuvia url ")
+        return ""
+    idom = hkkurl.find("helsinkikuvia.fi")
+    if (idom < 1):
+        print("not helsinkikuvia url")
+        return ""
+    idomend = idom + len("helsinkikuvia.fi")
+    
+    # check url parameter format:
+    # there might be something else in some cases, if so ignore them for now,
+    # only check for id after /record/ for now
+    
+    irec = hkkurl.find("/", idomend+1)
+    if (irec < 1):
+        print("not record-format helsinkikuvia url? slash missing?")
+        return ""
+    sub = getsubstr(hkkurl, idomend, irec+1)
+    if (sub.lower() != "/record/"):
+        print("not record-format helsinkikuvia url?", sub)
+        return ""
+    
+    hkkpars = hkkurl[irec+1:]
+    hkkpars = hkkpars.replace("/", "") # remove preceding/trailing slash if any
+    
+    print("found potential id from helsinkikuvia url", hkkpars)
+    return hkkpars
+
+def getsubstr(text, begin, end):
+    if (end < begin):
+        return -1 # terminate with forced error on bug
+    return text[begin:end]
+
 # if there's garbage in id, strip to where it ends
 def leftfrom(string, char):
     index = string.find(char)
@@ -3255,6 +3292,14 @@ def getFinnaMaterials(finnarecord):
         datalist.append(dstr)
     return datalist
 
+def getIsniNumberFromAuthorId(authorid):
+    if (authorid.find("isni.org") > 0):
+        isniid = authorid.replace("https://isni.org/isni/", "")
+        isniid = isniid.replace("/", "") # remove trailing slash (if any)
+        return isniid
+    return ""
+    
+
 # "nonpresenterauthor" is "creators" in commons-speak:
 # in this case we want photographers
 # 
@@ -3284,6 +3329,13 @@ def getFinnaPhotographers(finnarecord):
             continue
 
         print("DEBUG: found Finna nonPresenterAuthors, name: ", name ," role: ", role)
+
+        #if "id" in entry:
+        #    authorid = entry["id"]
+        #    print("DEBUG: found id for author: ", authorid )
+        #    isniid = getIsniNumberFromAuthorId(authorid)
+        #    if (len(isniid) > 1):
+        #        print("DEBUG: found isni id for author: ", isniid )
 
         if role in photographer_roles:
             datalist.append(name)
@@ -3327,10 +3379,71 @@ def getFinnaCreatorsByRole(finnarecord):
 
         print("DEBUG: found Finna nonPresenterAuthors, name: ", name ," role: ", role)
 
+        #if "id" in entry:
+        #    authorid = entry["id"]
+        #    isniid = getIsniNumberFromAuthorId(authorid)
+        #    if (len(isniid) > 1):
+        #        print("DEBUG: found isni id for author: ", isniid )
+
         if role in creator_roles:
             datalist.append(name)
     return datalist
 
+def getFinnaPhotographersIsniByRole(finnarecord):
+    # also: pht for swedish language archive
+    # also: valokuvaamo
+    photographer_roles = ['kuvaaja', 'Kuvaaja', 'valokuvaaja', 'Valokuvaaja', 'pht']
+
+    datalist = list()
+    finnadata = getFinnaDatalist(finnarecord, "nonPresenterAuthors")
+    if (finnadata == None):
+        return datalist
+    if (len(finnadata) == 0):
+        print("DEBUG: empty list in nonPresenterAuthors: ", finnaid)
+        return datalist
+
+    for entry in finnadata:
+        if ("name" not in entry or "role" not in entry):
+            continue
+
+        name = entry["name"]
+        role = entry["role"]
+
+        # sometimes data has bugs
+        if (name.find("Cannot get property") >= 0 or role.find("Cannot get property") >= 0):
+            print("DEBUG: bugged data in nonpresenterauthors: ", finnaid)
+            continue
+
+        print("DEBUG: found Finna nonPresenterAuthors, name: ", name ," role: ", role)
+
+        # not a creator role?
+        if role not in photographer_roles:
+            continue
+
+        if "id" in entry:
+            authorid = entry["id"]
+            print("DEBUG: found id for author: ", authorid )
+            isniid = getIsniNumberFromAuthorId(authorid)
+            if (len(isniid) > 1):
+                print("DEBUG: found isni id for author: ", isniid )
+                if (isniid not in datalist):
+                    datalist.append(isniid)
+
+    return datalist
+
+# TODO: if author has "id" with isni-url parse id from that and lookup from wikidata
+def getQcodesForPhotographersbyIsni(finnarecord, authortoqcode):
+    datalist = list()
+    #isnilist = getFinnaPhotographersIsniByRole(finnarecord)
+    #for isni in isnilist:
+        # find qcode by isni number from wikidata
+        
+        #qcode = getPersonqcodebyIsni(isni)
+    #    qcode = ""
+    #    if (len(qcode) > 1 and qcode not in datalist):
+    #        datalist.append(qcode)
+
+    return datalist
 
 def getQcodesForPhotographers(photographers, authortoqcode):
     
@@ -3358,21 +3471,26 @@ def needReupload(file_info, finnarecord):
     # note! 'original' might point to different image than used above! different server in some cases
     hires = imagesExtended['highResolution']
 
-    # TODO:
-    # in some cases there is "master" instead of "original", check that
-    # otherwise "large" might be used
 
+    # in some cases there is "master" instead of "original", check that
     # there is at least one case where this is not available?
     if "original" not in hires and "master" not in hires:
         print("WARN: 'original' or 'master' not found in hires image: " + finnaid)
         return False
 
     # TODO: check if there are multiple images with different sizes?
+    # compare and verify images: there may be different images in same item
+    # such as different angle of the object.
 
     if "original" in hires:
         hires = imagesExtended['highResolution']['original'][0]
+        print("found 'original' for image: " + finnaid)
     if "master" in hires and "original" not in hires:
         hires = imagesExtended['highResolution']['master'][0]
+        print("found 'master' for image: " + finnaid)
+
+    # TODO: if original or master is not available,
+    # check if "large" might be used: is there metadata for it in that case?
         
     if "data" not in hires:
         print("WARN: 'data' not found in hires image: " + finnaid)
@@ -4491,6 +4609,22 @@ def getUrlsFromCommonsReferences(ct):
     #print("DEBUG: no urls found in template")
     return None
 
+# note, use source field instead normally, accession number may have weird urls
+def getaccessionurlfrompagetemplate(ct):
+    for template in ct.templatelist:
+        # at least three different templates have been used..
+        if (ct.isSupportedCommonsTemplate(template) == True):
+            
+            paracc = ct.getAccessionFromCommonsTemplate(template)
+            if (paracc != None):
+                accvalue = str(paracc.value)
+                accurls = geturlsfromsource(accvalue)
+                # if accession has finna-url but source doesn't -> try it instead
+                if (len(accurls) > 0):
+                    return accurls
+
+    #print("DEBUG: no urls found accession field in template")
+    return None
 
 # find source urls from template(s) in commons-page
 def getsourceurlfrompagetemplate(ct):
@@ -4498,10 +4632,6 @@ def getsourceurlfrompagetemplate(ct):
     for template in ct.templatelist:
         # at least three different templates have been used..
         if (ct.isSupportedCommonsTemplate(template) == True):
-            #paracc = getAccessionFromCommonsTemplate(template)
-            #if (paracc != None):
-                #accurls = geturlsfromsource(str(paracc.value))
-                # if accession has finna-url but source doesn't -> try it instead
             
             par = ct.getSourceFromCommonsTemplate(template)
             if (par != None):
@@ -5416,8 +5546,17 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fixedname = 'Eero Rautiola 1942 in Kiestinki, Eatern Karelia.jpg'
     
     #fixedname = 'Varkauden Työväen Näyttämö Aina vaan yllätyksiä Esityskuva (TeaMK0000-125-542).jpg'
+    #fixedname = 'Ellen Ahlqvist.jpg'
+    #fixedname = 'White Seto woollen shawl SU4994 2.jpg'
+
+    fixedname = 'Ester Toivonen (1934).jpg'
     
-    fixedname = 'Ellen Ahlqvist.jpg'
+    # note: should not change
+    #fixedname = 'Katajanokan kanava alkuillasta - Marit Henriksson.jpg'
+    #fixedname = 'Standertskjöldin talo Helsinki.jpg'
+    
+    #fixedname = 'HKMS000005 km0000o4ex.jpg'
+    #fixedname = 'Greg Bell (1956).jpg'
     
     pages = list()
     #fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
@@ -5513,7 +5652,9 @@ def verifyTeosIdInSdc(claims, page, fngcache):
             return False
     return True
 
-# try some sanitizing of the id in case of weird descriptions/bugs
+# try some sanitizing of the id in case of weird descriptions/bugs:
+# sometimes users make odd stuff when copying links..
+# this should be used only for a finna id
 def checkcleanupfinnaid(finnaid, page):
     if (len(finnaid) >= 50):
         print("WARN: finna id in " + page.title() + " is unusually long? bug or garbage in url? ")
@@ -5529,6 +5670,23 @@ def checkcleanupfinnaid(finnaid, page):
         finnaid = stripid(finnaid)
         print("note: finna id in " + page.title() + " is " + finnaid)
 
+    # If url has /Record/ and id starts with "museovirasto." or "hkm."
+    # check that we end at / : there may be garbage after id in some cases,
+    # don't remove that otherwise in case there is ?id= or &index following
+    # Might be better to just remove /UserComments/ if any?
+    #
+    iuc = finnaid.find("/UserComments")
+    if (iuc > 0):
+        print("WARN: stripping unsupported stuff from id: ", finnaid)
+        finnaid = finnaid[:iuc]
+
+    # session id should not be there
+    #isid = finnaid.find("?sid=")
+    #if (isid > 0):
+    #    print("WARN: stripping session id from id: ", finnaid)
+    #    finnaid = finnaid[:isid]
+
+
     if (finnaid.find("\n") > 0):
         print("WARN: removing newline from: " + page.title())
         finnaid = leftfrom(finnaid, "\n")
@@ -5536,6 +5694,8 @@ def checkcleanupfinnaid(finnaid, page):
     if (finnaid.endswith("\n")):
         print("WARN: finna id in " + page.title() + " ends with newline ")
         finnaid = finnaid[:len(finnaid)-1]
+
+    print("NOTE: stripped id is now: ", finnaid)
     return finnaid
 
 # ------ main()
@@ -5892,14 +6052,42 @@ d_institutionqtotemplate["Q18346788"] = "Theatre Museum (Helsinki)"
 
 
 d_authortoqcode = dict()
+d_authortoqcode["Kuvasiskot"] = "Q25451037"
 d_authortoqcode["Rista, Eeva"] = "Q11856896"
 d_authortoqcode["Rista, Simo"] = "Q11893546"
+d_authortoqcode["Hakli, Kari"] = "Q5402288"
+d_authortoqcode["Brander, Signe"] = "Q16166792"
+d_authortoqcode["Grünberg, Constantin"] = "Q58231483"
+d_authortoqcode["Kannisto, Väinö Aleksi"] = "Q61103499"
+d_authortoqcode["Heinonen, Eino"] = "Q61103507"
+d_authortoqcode["Sundström, Olof"] = "Q97149240"
+d_authortoqcode["Pälsi, Sakari"] = "Q3430128"
+d_authortoqcode["Rosenbröijer, A.E."] = "Q20252784"
+d_authortoqcode["von Bonin, Volker"] = "Q42303830"
+d_authortoqcode["U. A. Saarinen"] = "Q93289382"
+d_authortoqcode["Saarinen, UA"] = "Q93289382"
+d_authortoqcode["Voutilainen, Erkki"] = "Q123584377"
 d_authortoqcode["Nyblin, Daniel"] = "Q6019293"
 d_authortoqcode["Nyblin Daniel"] = "Q6019293"
 d_authortoqcode["Paulaharju, Samuli"] = "Q6037597"
 d_authortoqcode["Väisänen, A. O."] = "Q4792887"
 d_authortoqcode["Setälä, Vilho"] = "Q3893579"
 d_authortoqcode["Hämäläinen, Antti"] = "Q23040501"
+d_authortoqcode["Sundström, Hugo"] = "Q63370083"
+d_authortoqcode["Nousiainen, Tuovi"] = "Q20914402"
+d_authortoqcode["Hietanen, V. K."] = "Q30174310"
+d_authortoqcode["Sauri, Eero"] = "Q61104571"
+d_authortoqcode["Lepola, Markku"] = "Q123378323"
+d_authortoqcode["Carpelan, Bert"] = "Q50321993"
+d_authortoqcode["Uomala, Vilho"] = "Q123751435"
+d_authortoqcode["Roos, Rafael"] = "Q97693969"
+d_authortoqcode["Eric Sundström"] = "Q97145934"
+d_authortoqcode["Sundström, Eric"] = "Q97145934"
+d_authortoqcode["Heinrich Iffland"] = "Q17381060"
+d_authortoqcode["Iffland, Heinrich"] = "Q17381060"
+
+#d_authortoqcode[""] = ""
+
 
 #d_authortoqcode["Simberg, Hugo"] = "Q263080"
 
@@ -6092,8 +6280,12 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Votians")
 #pages = getpagesrecurse(pywikibot, commonssite, "Ingria", 0)
 
+#pages = getcatpages(pywikibot, commonssite, "Vepsians")
+#pages = getcatpages(pywikibot, commonssite, "Karelians")
 
-pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 20)
+
+
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 20)
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 1)
 
 #pages = getcatpages(pywikibot, commonssite, "PD Finland (simple photos)")
@@ -6108,6 +6300,28 @@ pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by Fi
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Ilmari Manninen", 1)
 
 
+#pages = getcatpages(pywikibot, commonssite, "Photographs by Alfred Edvard Rosenbröijer")
+
+#pages = getcatpages(pywikibot, commonssite, "Traditional clothing of Setomaa")
+#pages = getcatpages(pywikibot, commonssite, "Traditional clothing of Livonians")
+
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kuvasiskot", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by V. K. Hietanen", 1)
+
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Rock paintings in Finland", 1)
+#pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Siuntio")
+#pages = getpagesrecurse(pywikibot, commonssite, "Perniö", 2)
+#pages = getpagesrecurse(pywikibot, commonssite, "Female violinists from Finland", 1)
+pages = getpagesrecurse(pywikibot, commonssite, "Elanto", 0)
+
+
+
+if (len(pages) < 1 ):
+    print("No pages found")
+    exit()
+    
 
 cachedb = CachedImageData() 
 cachedb.opencachedb()
@@ -6119,7 +6333,7 @@ fngcache.opencachedb()
 micache = CachedMediainfo() 
 micache.opencachedb()
 
-enablerechecking = False # recheck previously parsed files, regardless of when last processed
+enablerechecking = True # recheck previously parsed files, regardless of when last processed
 enablereuploading = False # TESTING set false to turn it off for now, true to upload higher resolution versions
 
 rowcount = 0
@@ -6247,16 +6461,20 @@ for page in pages:
     if (refurls != None):
         print("DEBUG: found urls in references for " + page.title())
 
-    kkid = ""
+    kkid = "" # kuvakokoelmar.fi
     finnaid = ""
     finnarecordid = ""
     fngacc = ""
-    kgtid = ""
+    kgtid = "" # kansallisgalleria.fi
+    hkkid = "" # helsinkikuvia.fi
 
     for srcvalue in srcurls:
         if (srcvalue.find("elonet.finna.fi") > 0):
             # elonet-service differs
             continue
+
+        if (srcvalue.find("helsinkikuvia.fi") > 0):
+            hkkid = getidfomhelsinkikuviaurl(srcvalue)
         
         if (srcvalue.find("fng.fi") > 0):
             # parse inventory number from old-style link
@@ -6297,8 +6515,7 @@ for page in pages:
             print("DEBUG: found inventory number: ", fngacc, " for object id: ", kgtid)
         else:
             print("DEBUG: no inventory number by object id", kgtid)
-
-
+            
     if (len(fngacc) == 0 and kg_data.isValidInventaarionumero() == True):
         print("DEBUG: using inventory number", kg_data.invnum ," from wikidata")
         fngacc = kg_data.invnum
@@ -6463,6 +6680,13 @@ for page in pages:
     # use newer record id if there was, ignore old style id
     if (len(finnarecordid) > 0):
         finnaid = finnarecordid
+
+    # old helsinkikuvia url record: try to use it in finna 
+    # (might need update but still acceptable)
+    if (len(hkkid) > 0 and len(finnaid) == 0):
+        print("DEBUG: found id from helsinkikuvia url: ", hkkid, " and no finna id")
+        if (hkkid.find("hkm.") >= 0):
+            finnaid = hkkid
 
     # old kuvakokoelmat id -> try conversion
     if (len(finnaid) == 0 and len(kkid) > 0):
@@ -6974,6 +7198,11 @@ for page in pages:
     photographers = getFinnaPhotographers(finna_record)
     if (len(photographers) > 0):
         print("DEBUG: photographers in finna: ", str(photographers))
+
+        # TODO: if there are isni-id for photographers, 
+        # try to fetch qcode by that from wikidata,
+        # otherwise use pre-made list of mapping?
+        #getQcodesForPhotographersbyIsni
 
         # names are used elsewhere, try to get qcodes for them
         phtqcodes = getQcodesForPhotographers(photographers, d_authortoqcode)
