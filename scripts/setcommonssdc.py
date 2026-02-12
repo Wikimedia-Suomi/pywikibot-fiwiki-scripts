@@ -1309,15 +1309,30 @@ def getidfomhelsinkikuviaurl(hkkurl):
         print("not record-format helsinkikuvia url? slash missing?")
         return ""
     sub = getsubstr(hkkurl, idomend, irec+1)
-    if (sub.lower() != "/record/"):
-        print("not record-format helsinkikuvia url?", sub)
-        return ""
     
-    hkkpars = hkkurl[irec+1:]
-    hkkpars = hkkpars.replace("/", "") # remove preceding/trailing slash if any
+    # /search/details/?image_id=
+    if (sub.lower() == "/search/"):
+        iq = hkkurl.find("?image_id=")
+        if (iq < 1):
+            print("not usable search-format helsinkikuvia url?")
+            return ""
+        iq = iq + len("?image_id=")
+        hkkpars = hkkurl[iq:]
+        hkkpars = hkkpars.replace("/", "") # remove preceding/trailing slash if any
+
+        print("found potential id from helsinkikuvia url", hkkpars)
+        return hkkpars
     
-    print("found potential id from helsinkikuvia url", hkkpars)
-    return hkkpars
+    if (sub.lower() == "/record/"):
+        hkkpars = hkkurl[irec+1:]
+        hkkpars = hkkpars.replace("/", "") # remove preceding/trailing slash if any
+        
+        print("found potential id from helsinkikuvia url", hkkpars)
+        return hkkpars
+
+    print("not record-format helsinkikuvia url?", sub)
+    return ""
+
 
 def getsubstr(text, begin, end):
     if (end < begin):
@@ -5549,7 +5564,8 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fixedname = 'Ellen Ahlqvist.jpg'
     #fixedname = 'White Seto woollen shawl SU4994 2.jpg'
 
-    fixedname = 'Ester Toivonen (1934).jpg'
+    #fixedname = 'Ester Toivonen (1934).jpg'
+    fixedname ='HKMS000005 0000164r.jpg'
     
     # note: should not change
     #fixedname = 'Katajanokan kanava alkuillasta - Marit Henriksson.jpg'
@@ -6104,7 +6120,7 @@ commonssite.login()
 
 
 # for testing only
-#pages = getpagesfixedlist(pywikibot, commonssite)
+pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 # get list of pages upto depth of 1 
@@ -6314,7 +6330,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Siuntio")
 #pages = getpagesrecurse(pywikibot, commonssite, "Perniö", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Female violinists from Finland", 1)
-pages = getpagesrecurse(pywikibot, commonssite, "Elanto", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Ruisreikäleipä", 0)
 
 
 
