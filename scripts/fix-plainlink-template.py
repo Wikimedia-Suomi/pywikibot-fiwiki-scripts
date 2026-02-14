@@ -1033,8 +1033,16 @@ def parseafterlink(text, urldomain, begin, end):
         # if there is domain from url after the link,
         # we can skip duplicating it: reference template can parse it again anyway
         tmpdomain = tmp.lower()
+        if (len(tmpdomain) > 2):
+            tmpdomain = tmpdomain.strip()
+            # check if it starts and ends with cursive markup around the domain
+            # for some reason, strip it for comparison first
+            if (tmpdomain[:2] == "''" and tmpdomain[len(tmpdomain)-2:] == "''"):
+                tmpdomain = getsubstr(tmpdomain, 2, len(tmpdomain)-2)
+        # might have commar after domain
         if (endswithcommaordot(tmpdomain) == True):
             tmpdomain = removelastchar(tmpdomain)
+        # domain may use uppercase in first character for some reason
         if (tmpdomain == urldomain.lower() and accessfound < 0 and openingtoken < 0):
             print("DEBUG: url domain found after link:", tmp)
             indexsrc = ixnext
@@ -1470,6 +1478,15 @@ def fixreferencelinks(oldtext):
         else:
             parsedlist["osoite"] = tmpurl
 
+        if ("publication" in parsedlist):
+            pub = parsedlist["publication"]
+            pub = pub.strip()
+            if (len(pub) > 2):
+                if (pub[:2] == "''" and pub[len(pub)-2:] == "''"):
+                    pub = getsubstr(pub, 2, len(pub)-2)
+                    parsedlist["publication"] = pub
+
+
         #print("DEBUG: replacing old body:", getsubstr(oldtext, ibeginreplaceat, iendreplaceat))
 
         # generate new reference with a template according to parsed information:
@@ -1725,14 +1742,14 @@ site.login()
 
 #pages = getpagesrecurse(pywikibot, site, "Kemia", 0)
 
-#pages = getpagesrecurse(pywikibot, site, "Jalkapalloilijat", 2)
+pages = getpagesrecurse(pywikibot, site, "Jalkapalloilijat", 2)
 #pages = getpagesrecurse(pywikibot, site, "Alankomaalaiset jalkapalloilijat", 1)
 
 
 #pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
 
 
-pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
+#pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
 
 
 # for testing
