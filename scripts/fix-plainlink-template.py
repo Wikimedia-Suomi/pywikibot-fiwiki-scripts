@@ -198,7 +198,8 @@ def getdomainfromurl(text, begin, end):
     domain = getsubstr(text, ixsep, idomend)
     print("DEBUG: domain from url", domain)
     if (domain[:4] == "www."):
-        domain = domain[:4]
+        domain = domain[4:]
+    #print("DEBUG: domain is:", domain)
     return domain
     
 
@@ -917,7 +918,7 @@ def parseafterlink(text, urldomain, begin, end):
             indexsrc = ixnext
             parsingstoppedat = ixtmpend
             continue
-        
+
         # might be a list of pages, maybe comma-separated, maybe dashed
         # detect somehow where it ends, expected a dot?
         # starts with S. or s. and ends with a dot?
@@ -962,6 +963,14 @@ def parseafterlink(text, urldomain, begin, end):
                 parsingstoppedat = ixtmpend
             continue
 
+        # might have upper case for some reason in domain
+        if (tmp.lower() == urldomain.lower() and openingtoken < 0):
+            # if domain in plaintext is same as in url -> skip
+            print("DEBUG: found matching domain:", tmp)
+            indexsrc = ixnext
+            parsingstoppedat = ixtmpend
+            continue
+
         # has both opening and closing in same (no spaces?)
         # website/publication name?
         if (isopeningtoken(tmp) == True and isclosingtoken(tmp) == True and openingtoken < 0):
@@ -983,15 +992,6 @@ def parseafterlink(text, urldomain, begin, end):
             print("DEBUG: closing token:", tmp)
             tmp = getsubstr(text, openingtoken, ixtmpend)
             tmp = tmp.strip()
-
-            # might have upper case for some reason in domain
-            if (tmp.lower() == urldomain.lower()):
-                # if domain in plaintext is same as in url -> skip
-                print("DEBUG: found domain", tmp)
-                openingtoken = -1
-                indexsrc = ixnext
-                parsingstoppedat = ixnext
-                continue
 
             accessdate = parseaccessdateafterlink(tmp)
             if (len(accessdate) > 0):
@@ -1095,11 +1095,12 @@ def parseafterlink(text, urldomain, begin, end):
         # check if there is language symbol joined in the last part 
         # with other text
         if (len(tmp) > 6 and i == (tlistc-1)):
-            if (tmp.find("{{") > 0 and "lang" not in parsedlist):
+            if (tmp.find("{{") > 0 and "lang" not in parselist):
                 # only if at end
                 langtemp = getsubstr(tmp, len(tmp)-6, len(tmp))
                 if (issupportedlangtemplate(langtemp) == True):
-                    parsedlist["lang"] = langtemp
+                    print("DEBUG: language template joined in with text? ", langtemp)
+                    parselist["lang"] = langtemp
                     tmp = tmp[:len(tmp)-len(langtemp)]
 
         # todo: if there is domain from url after the link,
@@ -1377,6 +1378,8 @@ def fixreferencelinks(oldtext):
         urldomain = getdomainfromurl(oldtext, ilinkstart+1, ilinkend)
         if (urldomain == ""):
             print("DEBUG: could not parse domain from url")
+        else:
+            print("DEBUG: found url domain:", urldomain)
 
         refauthor = ""
         if ((ilinkstart - ireftagend) > 1): # at least one character before link?
@@ -1646,39 +1649,23 @@ def getnamedpages(pywikibot, site):
     #fp = getpagebyname(pywikibot, site, "Single")
     #fp = getpagebyname(pywikibot, site, "Hämeenlinna")
     #fp = getpagebyname(pywikibot, site, "Britteinsaaret")
-    
     #fp = getpagebyname(pywikibot, site, "Another Hostile Takeover")
-    
     #fp = getpagebyname(pywikibot, site, "Hyönteiset")
     #fp = getpagebyname(pywikibot, site, "Ahvenanmaanruotsi")
     #fp = getpagebyname(pywikibot, site, "Arctia (hotelli- ja ravintolayhtiö)")
-
     #fp = getpagebyname(pywikibot, site, "Mystery Tracks – Archives Vol. 3")
-
     #fp = getpagebyname(pywikibot, site, "7-Eleven")
-
     #fp = getpagebyname(pywikibot, site, "M-16 (albumi)")
     
     #fp = getpagebyname(pywikibot, site, "Deep Shadows and Brilliant Highlights")
     #fp = getpagebyname(pywikibot, site, "At Sixes and Sevens")
     #fp = getpagebyname(pywikibot, site, "Fundamental")
-
     #fp = getpagebyname(pywikibot, site, "Systematic Chaos")
-
-    #fp = getpagebyname(pywikibot, site, "Arvonimi")
-
-    #fp = getpagebyname(pywikibot, site, "Venetsialaiset")
-
     #fp = getpagebyname(pywikibot, site, "Leijona")
-
     #fp = getpagebyname(pywikibot, site, "Makrilli")
-
-
     #fp = getpagebyname(pywikibot, site, "Kuunliljat")
+    #fp = getpagebyname(pywikibot, site, "Phillip Cocu")
     
-    fp = getpagebyname(pywikibot, site, "Phillip Cocu")
-    
-
 
     pages.append(fp)
     return pages
@@ -1760,7 +1747,7 @@ site.login()
 #pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 # taksopalkki
-pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
+#pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 
 #pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
 
@@ -1773,7 +1760,7 @@ pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 #pages = getpagesrecurse(pywikibot, site, "Sairaudet", 1)
 
 
-#pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
+pages = getpagesrecurse(pywikibot, site, "Puutteelliset lähdemerkinnät", 1)
 
 
 # for testing
