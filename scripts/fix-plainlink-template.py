@@ -984,6 +984,15 @@ def parseafterlink(text, urldomain, begin, end):
             tmp = getsubstr(text, openingtoken, ixtmpend)
             tmp = tmp.strip()
 
+            # might have upper case for some reason in domain
+            if (tmp.lower() == urldomain.lower()):
+                # if domain in plaintext is same as in url -> skip
+                print("DEBUG: found domain", tmp)
+                openingtoken = -1
+                indexsrc = ixnext
+                parsingstoppedat = ixnext
+                continue
+
             accessdate = parseaccessdateafterlink(tmp)
             if (len(accessdate) > 0):
                 print("DEBUG: using access date", accessdate)
@@ -995,19 +1004,20 @@ def parseafterlink(text, urldomain, begin, end):
                 
             # begins with cursive markup? might have journal, website or such?
             elif (len(tmp) > 2 and tmp[:2] == "''" and "publication" not in parselist):
+
                 print("DEBUG: using publication", tmp)
                 if (endswithcommaordot(tmp) == True):
                     tmp = removelastchar(tmp)
                 parselist["publication"] = tmp
             else:
                 print("DEBUG: full token:", tmp)
-
+                
                 # maybe a case where template name has space..
                 if (isdeadlinktemplate(tmp) == True ):
                     parselist["vanhentunut"] = "kyllä"
+                    openingtoken = -1
                     indexsrc = ixnext
                     parsingstoppedat = ixnext
-                    openingtoken = -1
                     continue
 
                 # break, don't change these, don't append to conversion list
@@ -1045,6 +1055,7 @@ def parseafterlink(text, urldomain, begin, end):
         # domain may use uppercase in first character for some reason
         if (tmpdomain == urldomain.lower() and accessfound < 0 and openingtoken < 0):
             print("DEBUG: url domain found after link:", tmp)
+            # if domain in plaintext is same as in url -> skip
             indexsrc = ixnext
             parsingstoppedat = ixnext
             continue
@@ -1080,6 +1091,16 @@ def parseafterlink(text, urldomain, begin, end):
     while (i < tlistc):
         tmp = tmplist[i]
         print("DEBUG: token ", tmp)
+        
+        # check if there is language symbol joined in the last part 
+        # with other text
+        if (len(tmp) > 6 and i == (tlistc-1)):
+            if (tmp.find("{{") > 0 and "lang" not in parsedlist):
+                # only if at end
+                langtemp = getsubstr(tmp, len(tmp)-6, len(tmp))
+                if (issupportedlangtemplate(langtemp) == True):
+                    parsedlist["lang"] = langtemp
+                    tmp = tmp[:len(tmp)-len(langtemp)]
 
         # todo: if there is domain from url after the link,
         # we can skip duplicating it
@@ -1378,6 +1399,9 @@ def fixreferencelinks(oldtext):
             
         if (refauthor != ""):
             print("DEBUG: found potential author before link", refauthor)
+            if (refauthor.find("Taksonomian lähde") >= 0):
+                # skip
+                refauthor = ""
 
         # is there known pattern after the link?
         # is it completely consumed with parsing (can be overwritten?)
@@ -1736,13 +1760,13 @@ site.login()
 #pages = getpagesfrompetscan(pywikibot, site,  40068787, 22000)
 
 # taksopalkki
-#pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
+pages = getpagesfrompetscan(pywikibot, site,  40079450, 28000)
 
 #pages = getpagesrecurse(pywikibot, site, "Lääkkeet", 1)
 
 #pages = getpagesrecurse(pywikibot, site, "Kemia", 0)
 
-pages = getpagesrecurse(pywikibot, site, "Jalkapalloilijat", 2)
+#pages = getpagesrecurse(pywikibot, site, "Jalkapalloilijat", 2)
 #pages = getpagesrecurse(pywikibot, site, "Alankomaalaiset jalkapalloilijat", 1)
 
 
