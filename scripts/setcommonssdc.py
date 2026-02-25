@@ -986,7 +986,7 @@ def getlinksourceid(oldsource):
     oldsource = oldsource[indexid+strlen:]
     return stripid(oldsource)
 
-# for: "Record/<id>" 
+# for: "/Record/<id>" 
 def getrecordid(oldsource):
     # not suitable here, use getlinksourceid()
     indexid = oldsource.find("/Record/DownloadFile")
@@ -999,6 +999,38 @@ def getrecordid(oldsource):
         return ""
     oldsource = oldsource[indexid+strlen:]
     return stripid(oldsource)
+
+# for: "/Record/<id>" 
+# for: "/Collection/<id>" 
+# used in some SLS links, might not work in all cases?
+# might not be enough to differentiate image if photo number is missing (only collection id)
+def getidfromcollectionurl(oldsource):
+    
+    # not suitable here, use getlinksourceid()
+    iid = oldsource.find("/Record/DownloadFile")
+    if iid > 0):
+        return ""
+    
+    iid = oldsource.find("finna.fi/")
+    if (iid < 1):
+        return ""
+    
+    iid += len("finna.fi/")
+    islash = oldsource.find("/", iid)
+    if (islash < 1):
+        return ""
+
+    keyword = oldsource[iid:islash]
+    if (keyword == "Collection"):
+        sourceid = oldsource[islash+1:]
+        print("DEBUG: found collection id: ", sourceid)
+        return stripid(sourceid)
+    if (keyword == "Record"):
+        sourceid = oldsource[islash+1:]
+        print("DEBUG: found record id: ", sourceid)
+        return stripid(sourceid)
+    return ""
+
 
 # Normal record has /Record/<id>
 # but downloads have Record/DownloadFile/?id=<id>
@@ -3095,6 +3127,7 @@ def getCopyrightTypeFromFinnaRecord(finnarecord):
     f_copyright = records['imageRights']['copyright']
 
     # might be short type like "PDM"
+    # note: if it is something like "InC" - do not touch
     return f_copyright
 
 
@@ -3311,8 +3344,10 @@ def getFinnaPlaces(finnarecord):
         datalist.append(dstr)
     return datalist
 
+# physical image sizes
 def getFinnaMeasurements(finnarecord):
     datalist = list()
+    
     finnadata = getFinnaDatalist(finnarecord, "measurements")
     if (finnadata == None):
         return datalist
@@ -3332,8 +3367,12 @@ def getFinnaMeasurements(finnarecord):
     #print("DEBUG: measurements from finna: ", str(datalist))
     return datalist
 
+# materials
 def getFinnaMaterials(finnarecord):
     datalist = list()
+
+    # TODO: also try "materialsExtended" ?
+
     finnadata = getFinnaDatalist(finnarecord, "materials")
     if (finnadata == None):
         return datalist
@@ -3349,6 +3388,33 @@ def getFinnaMaterials(finnarecord):
             continue
         
         datalist.append(dstr)
+
+    #print("DEBUG: materials from finna: ", str(datalist))
+    return datalist
+
+# creating methods
+def getFinnaMethods(finnarecord):
+    datalist = list()
+    
+    # TODO: also try "methodsExtended" ?
+
+    finnadata = getFinnaDatalist(finnarecord, "methods")
+    if (finnadata == None):
+        return datalist
+    for dstr in finnadata:
+        #  sometimes there is newlines and tabs in the string -> strip them out
+        dstr = fixwhitespaces(dstr)
+
+        if (len(dstr) == 0):
+            continue
+        # sometimes data has bugs
+        if (dstr.find("Cannot get property") >= 0):
+            print("DEBUG: bugged data in places: ", finnaid)
+            continue
+        
+        datalist.append(dstr)
+
+    #print("DEBUG: methods from finna: ", str(datalist))
     return datalist
 
 def getIsniNumberFromAuthorId(authorid):
@@ -5620,21 +5686,8 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fixedname = 'Pengerpolku ja Vaasanhalli; Harju, Helsinki (1982).jpg'
     
     #fixedname = 'Mannerheimintie 3 - Helsinki 1972 - G38560 - hkm.HKMS000005-km0000o4h0.jpg'
-    
     #fixedname = 'Mannerheimintie 3 - Helsinki 1972 - G38561 - hkm.HKMS000005-km0000o4h2.jpg'
     
-    #fixedname = 'AJärnefelt sig.jpg'
-    #fixedname = 'Irma Nissinen 1950 (SmF1625).jpg'
-    #fixedname = 'Arvo Airaksinen 1930 (SmF71).jpg'
-    
-    #fixedname = 'Eero Rautiola 1942 in Kiestinki, Eatern Karelia.jpg'
-    
-    #fixedname = 'Varkauden Työväen Näyttämö Aina vaan yllätyksiä Esityskuva (TeaMK0000-125-542).jpg'
-    #fixedname = 'Ellen Ahlqvist.jpg'
-    #fixedname = 'White Seto woollen shawl SU4994 2.jpg'
-
-    #fixedname = 'Ester Toivonen (1934).jpg'
-    #fixedname ='HKMS000005 0000164r.jpg'
     
     #Henrik Finne, 1548-1684 (colour).tif
     
@@ -6410,7 +6463,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Karelians")
 
 
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 30)
+pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 50)
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 1)
 
 #pages = getcatpages(pywikibot, commonssite, "PD Finland (simple photos)")
@@ -6455,14 +6508,13 @@ commonssite.login()
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Unto Laitila", 1)
 
-pages = getpagelistfromfile("quarry-102386-find-low-resolution-kuvakokoelmat-images-wikilinks-run1074583.wikitable")
+#pages = getpagelistfromfile("quarry-102386-find-low-resolution-kuvakokoelmat-images-wikilinks-run1074583.wikitable")
 
 #pages = getcatpages(pywikibot, commonssite, "Gustaf Mauritz Armfelt")
 
 #pages = getcatpages(pywikibot, commonssite, "Ernst Linder")
 
 
-#pages = getcatpages(pywikibot, commonssite, "Male portrait paintings by David Klöcker Ehrenstrahl")
 
 
 if (len(pages) < 1 ):
@@ -6488,10 +6540,10 @@ enablereuploading = False # TESTING set false to turn it off for now, true to up
 rowcount = 0
 #rowlimit = 10
 
-for pagename in pages:
-    page = getpagebyname(pywikibot, commonssite, pagename)
+#for pagename in pages:
+#    page = getpagebyname(pywikibot, commonssite, pagename)
 
-#for page in pages:
+for page in pages:
 
     rowcount += 1
     
@@ -6912,6 +6964,15 @@ for pagename in pages:
     # check what finna reports as identifier
     finna_accession_id = getFinnaAccessionIdentifier(finna_record)
     print("finna record ok: ", finnaid, " accession id: ", finna_accession_id)
+    
+    #if (getCopyrightTypeFromFinnaRecord(finna_record) == "InC"):
+    #    print("item in copyright: ", finnaid, " - skpping")
+    #    continue
+
+    if (isFinnaFormatArtwork(finna_record) == True 
+        and getCopyrightTypeFromFinnaRecord(finna_record) == "InC"):
+        print("item is artwork in copyright: ", finnaid, " - skpping")
+        continue
 
     
     # TODO! Python throws error if image is larger than 178956970 pixels
@@ -7381,6 +7442,7 @@ for pagename in pages:
     # TODO: check if dimensions are usable measurements instead of pixel sizes
     #finnameasurements = getFinnaMeasurements(finna_record)
     #finnamaterials = getFinnaMaterials(finna_record)
+    #finnamethods = getFinnaMethods(finna_record) # for artworks only?
 
     # parse more stuff from the embedded xml
     # note: most of the stuff is optional
@@ -7503,6 +7565,7 @@ for pagename in pages:
         if (ct.isChanged() == True):
             tmptext = str(ct.wikicode)
     elif (isFinnaFormatArtwork(finna_record) == True):
+        
         for template in ct.templatelist:
             # "photograph" or "artwork" have similar fields so either should be fine
             if (ct.isSupportedCommonsTemplate(template) == True):
