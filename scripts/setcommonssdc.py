@@ -832,6 +832,14 @@ class FinnaTimestamp:
     def setPrecision(self, precision):
         self.precision = precision
 
+    # just helper
+    def setdecade(self, decade, normalized = False):
+        self.year = decade
+        self.month = 0
+        self.day = 0
+        self.maybe_normalized = normalized
+        self.precision = 10
+
     def setYear(self, year, normalized = False):
         self.year = year
         self.month = 0
@@ -1900,6 +1908,8 @@ def addfinnaidtostatements(pywikibot, wikidata_site, finnaid):
 # pywikibot is bugged in handling conversions from standard formats
 # -> brute force it
 def getwbdatefromdt(dt):
+    # todo: support for decades like "1940s"
+    
     #return pywikibot.WbTime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
     return pywikibot.WbTime(dt.year, dt.month, dt.day)
 
@@ -2669,7 +2679,7 @@ def timestringtodatetime(timestring):
                 # we don't really know if it is decade or century..
                 #idecade = int(decade)
                 #fdt = FinnaTimestamp()
-                #fdt.setYear(idecade)
+                #fdt.setdecade(idecade)
                 #fdt.setPrecision(10)
             
     except:
@@ -3133,7 +3143,7 @@ def isFinnaFormatImage(finnarecord):
         
     if "formats" not in records:
         print("ERROR: no formats in finna record" + str(records))
-        return ""
+        return False
     
     finnaformats = records['formats'][0]['value']
     print("DBEUG: found formats in finna record: " + str(finnaformats))
@@ -3152,7 +3162,7 @@ def isFinnaFormatImage(finnarecord):
         #print("DBEUG: found physical object in finna record: " + str(finnaformats))
         #return True
     
-    # Note, don't modify when "0/WorkOfArt/"
+    # Note, don't modify when "0/WorkOfArt/": might change template type from generic "information" to "artwork"?
 
     # translated names
     if (finnaformats == "Image" or finnaformats == "Kuva" or finnaformats == "Bild"):
@@ -3160,6 +3170,40 @@ def isFinnaFormatImage(finnarecord):
         return True
 
     print("not an image format in finna record: " + str(finnaformats))
+    return False
+
+def isFinnaFormatArtwork(finnarecord):
+    records = finnarecord['records'][0]
+        
+    if "formats" not in records:
+        print("ERROR: no formats in finna record" + str(records))
+        return False
+    
+    finnaformats = records['formats'][0]['value']
+    print("DBEUG: found formats in finna record: " + str(finnaformats))
+
+    if (finnaformats == "0/WorkOfArt/"):
+        print("DBEUG: found artwork format in finna record: " + str(finnaformats))
+        return True
+
+    print("not an artwork format in finna record: " + str(finnaformats))
+    return False
+
+def isFinnaFormatPhysicalObject(finnarecord):
+    records = finnarecord['records'][0]
+        
+    if "formats" not in records:
+        print("ERROR: no formats in finna record" + str(records))
+        return False
+    
+    finnaformats = records['formats'][0]['value']
+    print("DBEUG: found formats in finna record: " + str(finnaformats))
+
+    if (finnaformats == "0/PhysicalObject/"):
+        print("DBEUG: found physical object format in finna record: " + str(finnaformats))
+        return True
+
+    print("not an physical object format in finna record: " + str(finnaformats))
     return False
 
 # helper to check in case of malformed json
@@ -4025,7 +4069,7 @@ class CommonsTemplate:
 
     # if template type is "information" it doesn't have all necessary fields
     # but don't change if it is "artwork" or something else already
-    def fixTemplateType(self, template):
+    def fixTemplateTypePhotograph(self, template):
         name = self.getTemplateName(template)
         if (name == "Information"):
             template.name.replace("Information", "Photograph")
@@ -4033,6 +4077,18 @@ class CommonsTemplate:
             return True
         if (name == "information"):
             template.name.replace("information", "Photograph")
+            self.changed = True
+            return True
+        return False
+
+    def fixTemplateTypeArtwork(self, template):
+        name = self.getTemplateName(template)
+        if (name == "Information"):
+            template.name.replace("Information", "Artwork")
+            self.changed = True
+            return True
+        if (name == "information"):
+            template.name.replace("information", "Artwork")
             self.changed = True
             return True
         return False
@@ -5257,11 +5313,18 @@ def getcategoriesforauthors(photographers, existingcategories):
         'Atelier Nyblin' : 'Photographs by Atelier Nyblin',
         'Atelier Paris' : 'Photographs by Atelier Paris',
         'Charles Riis' : 'Photographs by Charles Riis',
-        'Valokuvaamo Tenhovaara' : 'Photographs by Valokuvaamo Tenhovaara'
+        'Valokuvaamo Tenhovaara' : 'Photographs by Valokuvaamo Tenhovaara',
         #'Eeva Rista' : 'Photographs by Eeva Rista',
         #'Rista, Eeva' : 'Photographs by Eeva Rista',
         #'Simo Rista' : 'Photographs by Simo Rista',
         #'Rista, Simo' : 'Photographs by Simo Rista'
+        'Heinonen, Eino' : 'Photographs by Eino Heinonen',
+        'Sundström, Eric' : 'Photographs by Eric Sundström',
+        'Sundström, Olof' : 'Photographs by Olof Sundström',
+        'Faltin, Artur' : 'Photographs by Artur Faltin',
+        'Brander, Signe' : 'Photographs by Signe Brander',
+        'Rosenbröijer, A.E.' : 'Photographs by Alfred Edvard Rosenbröijer',
+        'Timiriasew, Ivan' : 'Photographs by Ivan Timiriasew'
     }
 
     extracatstoadd = list()
@@ -5518,7 +5581,13 @@ def getuseruploads(pywikibot,commonssite, username, limit=100):
         if (contrib not in pages):
             pages.append(contrib)
     return pages
+
+# external links -list
+# domain: 'example.com'
+#
+#def getpagesbyextlink(pywikibot, commonssite, domain):
     
+#    return commonssite.exturlusage(url=domain)
 
 # different method to parse links
 #
@@ -5565,7 +5634,9 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fixedname = 'White Seto woollen shawl SU4994 2.jpg'
 
     #fixedname = 'Ester Toivonen (1934).jpg'
-    fixedname ='HKMS000005 0000164r.jpg'
+    #fixedname ='HKMS000005 0000164r.jpg'
+    
+    #Henrik Finne, 1548-1684 (colour).tif
     
     # note: should not change
     #fixedname = 'Katajanokan kanava alkuillasta - Marit Henriksson.jpg'
@@ -5625,6 +5696,30 @@ def getpagesfixedlist(pywikibot, commonssite):
     pages.append(fp)
     return pages
 
+# list of files in a wikitable file
+def getpagelistfromfile(filename):
+    f = open(filename, "r")
+
+    iprevpos = 0
+    dlist = list()
+    line = f.readline()
+    while (line):
+        lenline = len(line)
+        
+        iwlstart = line.find("[[:", iprevpos)
+        if (iwlstart >= 0):
+            iwlend = line.find("]]", iwlstart)
+            if (iwlend >= 0):
+                if ((iwlend - iwlstart) > 0):
+                    wlink = line[iwlstart+3:iwlend]
+                    dlist.append(wlink)
+                    print("DEBUG: found file link:", wlink)
+
+        line = f.readline()
+
+    f.close()
+    return dlist
+    
 
 # brute force check if wikibase exists for structured data:
 # need to add it manually for now if it doesn't
@@ -5963,8 +6058,11 @@ d_labeltoqcode["Virpi Talvitien lehtikuvituskokoelma"] = "Q136546151"
 
 d_labeltoqcode["Helvi Ahonen"] = "Q137465449"
 d_labeltoqcode["Candolin"] = "Q137946452"
+d_labeltoqcode["Björn Cederhvarfin kokoelma"] = "Q138209125"
 
+d_labeltoqcode["Eeva Ristan kokoelma"] = "Q138349699"
 d_labeltoqcode["Kalle Kuuselan kokoelma"] = "Q137924751"
+d_labeltoqcode["Antellin kokoelmat/Pekka Kyytisen kokoelma"] = "Q138363156"
 
 d_labeltoqcode["Suomen Metsäyhdistyksen kokoelma"] = "Q137972423"
 d_labeltoqcode["Suomen Metsäyhdistyksen kokoelma / Metsätaloudellinen Valistustoimisto"] = "Q137946168"
@@ -5983,6 +6081,7 @@ d_labeltoqcode["originaalikuvat - oma tuotanto"] = "Q137969558" # lahden museot
 d_labeltoqcode["Kuvakokoelmat"] = "Q137969593" # lahden museot
 d_labeltoqcode["Kuvakokoelmat oma kuvatuotanto"] = "Q137969595" # lahden museot
 d_labeltoqcode["Kuvakokoelmat kuva-arkisto"] = "Q138019112" # lahden museot
+d_labeltoqcode["Kuvakokoelmat Lahti-Seura ry"] = "Q138259004" # lahden museot
 
 d_labeltoqcode["Hiihtomuseo valokuvat"] = "Q138034314" # lahden museot
 d_labeltoqcode["Hiihtomuseo"] = "Q138034317" # lahden museot
@@ -6083,8 +6182,6 @@ d_authortoqcode["von Bonin, Volker"] = "Q42303830"
 d_authortoqcode["U. A. Saarinen"] = "Q93289382"
 d_authortoqcode["Saarinen, UA"] = "Q93289382"
 d_authortoqcode["Voutilainen, Erkki"] = "Q123584377"
-d_authortoqcode["Nyblin, Daniel"] = "Q6019293"
-d_authortoqcode["Nyblin Daniel"] = "Q6019293"
 d_authortoqcode["Paulaharju, Samuli"] = "Q6037597"
 d_authortoqcode["Väisänen, A. O."] = "Q4792887"
 d_authortoqcode["Setälä, Vilho"] = "Q3893579"
@@ -6101,11 +6198,24 @@ d_authortoqcode["Eric Sundström"] = "Q97145934"
 d_authortoqcode["Sundström, Eric"] = "Q97145934"
 d_authortoqcode["Heinrich Iffland"] = "Q17381060"
 d_authortoqcode["Iffland, Heinrich"] = "Q17381060"
+d_authortoqcode["Faltin, Artur"] = "Q124124018"
+d_authortoqcode["Timiriasew, Ivan"] = "Q17384263"
+d_authortoqcode["Nyblin, Daniel"] = "Q6019293"
+d_authortoqcode["Nyblin Daniel"] = "Q6019293"
+d_authortoqcode["Klein, Carl"] = "Q115519122"
+d_authortoqcode["Riis, Charles"] = "Q60482912"
+d_authortoqcode["Ch. Riis"] = "Q60482912"
+d_authortoqcode["Th. Nyblin"] = "Q126002391"
+d_authortoqcode["Hårdh, Carl Adolph"] = "Q84562732"
+
+d_authortoqcode["Simberg, Hugo"] = "Q263080"
+
+#d_authortoqcode["Broström, Karl Oskar"] = "Q138199688"
+
 
 #d_authortoqcode[""] = ""
 
 
-#d_authortoqcode["Simberg, Hugo"] = "Q263080"
 
 
 # 
@@ -6120,7 +6230,7 @@ commonssite.login()
 
 
 # for testing only
-pages = getpagesfixedlist(pywikibot, commonssite)
+#pages = getpagesfixedlist(pywikibot, commonssite)
 
 
 # get list of pages upto depth of 1 
@@ -6300,8 +6410,7 @@ pages = getpagesfixedlist(pywikibot, commonssite)
 #pages = getcatpages(pywikibot, commonssite, "Karelians")
 
 
-
-#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 20)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 30)
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 1)
 
 #pages = getcatpages(pywikibot, commonssite, "PD Finland (simple photos)")
@@ -6315,29 +6424,53 @@ pages = getpagesfixedlist(pywikibot, commonssite)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Antti Hämäläinen", 1)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Ilmari Manninen", 1)
 
-
-#pages = getcatpages(pywikibot, commonssite, "Photographs by Alfred Edvard Rosenbröijer")
-
-#pages = getcatpages(pywikibot, commonssite, "Traditional clothing of Setomaa")
-#pages = getcatpages(pywikibot, commonssite, "Traditional clothing of Livonians")
-
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Artur Faltin", 1)
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Kuvasiskot", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by V. K. Hietanen", 1)
 
-
 #pages = getpagesrecurse(pywikibot, commonssite, "Rock paintings in Finland", 1)
 #pages = getcatpages(pywikibot, commonssite, "Black and white photographs of Siuntio")
-#pages = getpagesrecurse(pywikibot, commonssite, "Perniö", 2)
 #pages = getpagesrecurse(pywikibot, commonssite, "Female violinists from Finland", 1)
-#pages = getpagesrecurse(pywikibot, commonssite, "Ruisreikäleipä", 0)
+#pages = getpagesrecurse(pywikibot, commonssite, "Helsinki in the 1890s", 1)
 
+#pages = getpagesrecurse(pywikibot, commonssite, "Black and white photographs of buildings in Helsinki", 1)
+#pages = getcatpages(pywikibot, commonssite, "Black and white aerial photographs of Helsinki")
+#pages = getcatpages(pywikibot, commonssite, "Historical Picture Collection of The Finnish Heritage Agency")
+
+# a "page generator" has no deterministic list as results?
+# returns only two results..
+#pages = commonssite.exturlusage(url="helsinkikuvia.fi", namespaces = 6)
+#pages = commonssite.exturlusage(url="finna.fi")
+#pagestotal = 0
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Former railway lines in Finland", 1)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Helsinki in the 1970s", 1)
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by P. Lagus", 1)
+
+
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/helsinkikuviafi')
+
+#pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Unto Laitila", 1)
+
+pages = getpagelistfromfile("quarry-102386-find-low-resolution-kuvakokoelmat-images-wikilinks-run1074583.wikitable")
+
+#pages = getcatpages(pywikibot, commonssite, "Gustaf Mauritz Armfelt")
+
+#pages = getcatpages(pywikibot, commonssite, "Ernst Linder")
+
+
+#pages = getcatpages(pywikibot, commonssite, "Male portrait paintings by David Klöcker Ehrenstrahl")
 
 
 if (len(pages) < 1 ):
     print("No pages found")
     exit()
-    
+pagestotal =  len(pages)
+print("Pages found: ", pagestotal)
+
 
 cachedb = CachedImageData() 
 cachedb.opencachedb()
@@ -6349,15 +6482,17 @@ fngcache.opencachedb()
 micache = CachedMediainfo() 
 micache.opencachedb()
 
-enablerechecking = True # recheck previously parsed files, regardless of when last processed
+enablerechecking = False # recheck previously parsed files, regardless of when last processed
 enablereuploading = False # TESTING set false to turn it off for now, true to upload higher resolution versions
 
 rowcount = 0
 #rowlimit = 10
 
-print("Pages found: " + str(len(pages)))
+for pagename in pages:
+    page = getpagebyname(pywikibot, commonssite, pagename)
 
-for page in pages:
+#for page in pages:
+
     rowcount += 1
     
     # 14 is category -> recurse into subcategories
@@ -6375,7 +6510,7 @@ for page in pages:
     if filepage.isRedirectPage():
         continue
 
-    print(" ////////", rowcount, "/", len(pages), ": [ " + page.title() + " ] ////////")
+    print(" ////////", rowcount, "/", pagestotal, ": [ " + page.title() + " ] ////////")
 
     file_media_identifier='M' + str(filepage.pageid)
     file_info = filepage.latest_file_info
@@ -6504,7 +6639,8 @@ for page in pages:
             
         #if (srcvalue.find("europeana.eu") > 0):
             #kkid = getidfromeuropeana(srcvalue)
-            
+
+        # note: many sub-domains possible (such as vantaankaupunginmuseo.finna.fi)
         if (srcvalue.find("finna.fi") > 0):
             # try metapage-id first
             finnarecordid = getrecordid(srcvalue)
@@ -7282,6 +7418,9 @@ for page in pages:
 
     tmptext = oldtext
     oldcategories = listExistingCommonsCategories(oldtext)
+
+    # todo: if finna item type is "0/WorkOfArt/" and template is generic "information"
+    # change the template into "Artwork" in that case?
     
     #  try to check if item type in Finna is "photograph" (not "artwork")
     # how do we handle artworks? separate from this?
@@ -7292,8 +7431,9 @@ for page in pages:
             if (ct.isSupportedCommonsTemplate(template) == True):
                 # if there is "information" template change it to "photograph"
                 # since we want additional fields there
-                if (ct.fixTemplateType(template) == True):
+                if (ct.fixTemplateTypePhotograph(template) == True):
                     print("Fixed template type for: " + page.title())
+                    
                 if (ct.addOrSetAccNumber(template, finna_accession_id) == True):
                     print("Fixed accession number for: " + page.title())
                 
@@ -7359,6 +7499,33 @@ for page in pages:
                 #if (ct.addOrSetDimensions(template, finnameasurements) == True):
                 #    print("Added dimensions for: " + page.title())
 
+
+        if (ct.isChanged() == True):
+            tmptext = str(ct.wikicode)
+    elif (isFinnaFormatArtwork(finna_record) == True):
+        for template in ct.templatelist:
+            # "photograph" or "artwork" have similar fields so either should be fine
+            if (ct.isSupportedCommonsTemplate(template) == True):
+
+                # if there is "information" template change it to "artwork" in this case
+                # since we want additional fields there
+                if (ct.fixTemplateTypeArtwork(template) == True):
+                    print("Fixed template type for: " + page.title())
+                if (ct.addOrSetAccNumber(template, finna_accession_id) == True):
+                    print("Fixed accession number for: " + page.title())
+
+                # TODO: set materials, methods, measurements according to finna
+
+                if (ct.setDescriptionSummary(template, finnasummaries) == True):
+                    print("Added description summaries for: " + page.title())
+                if (ct.addOrSetDepictedPeople(template, actorslist) == True):
+                    print("Added depicted people for: " + page.title())
+                if (ct.addOrSetDepictedPlaces(template, placeslist) == True):
+                    print("Added depicted places for: " + page.title())
+                if (ct.addOrSetExhibitionHistory(template, display_from_finna) == True):
+                    print("Added exihibition publications for: " + page.title())
+                if (ct.addOrSetInscriptions(template, inscriptions_from_finna) == True):
+                    print("Added inscriptions for: " + page.title())
 
         if (ct.isChanged() == True):
             tmptext = str(ct.wikicode)
