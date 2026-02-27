@@ -1008,7 +1008,7 @@ def getidfromcollectionurl(oldsource):
     
     # not suitable here, use getlinksourceid()
     iid = oldsource.find("/Record/DownloadFile")
-    if iid > 0):
+    if (iid > 0):
         return ""
     
     iid = oldsource.find("finna.fi/")
@@ -1334,11 +1334,17 @@ def getidfomhelsinkikuviaurl(hkkurl):
     if (len(hkkurl) == 0):
         print("empty helsinkikuvia url ")
         return ""
+
+    urllen = len("helsinkikuvia.fi")
     idom = hkkurl.find("helsinkikuvia.fi")
+    if (idom < 1):
+        urllen = len("helsingforsbilder.fi")
+        idom = hkkurl.find("helsingforsbilder.fi")
+    
     if (idom < 1):
         print("not helsinkikuvia url")
         return ""
-    idomend = idom + len("helsinkikuvia.fi")
+    idomend = idom + urllen
     
     # check url parameter format:
     # there might be something else in some cases, if so ignore them for now,
@@ -3286,6 +3292,27 @@ def getFinnaDatalist(finnarecord, param):
     print("found ", param ," in finna record: " + str(finnadata))
     return finnadata
 
+# shared method for some sanity checks and to avoid duplication in some cases
+def getFinnaSanitizedDatalist(finnadata):
+    datalist = list()
+    for dstr in finnadata:
+        #  sometimes there is newlines and tabs in the string -> strip them out
+        dstr = fixwhitespaces(dstr)
+
+        if (len(dstr) == 0):
+            continue
+        # sometimes data has bugs
+        if (dstr.find("Cannot get property") >= 0):
+            print("DEBUG: bugged data in places: ", finnaid)
+            continue
+        
+        # avoid duplicates
+        # TODO: wrap in "fi" language template?
+        if (dstr not in datalist):
+            datalist.append(dstr)
+    
+    return datalist
+
 def getFinnaSubjects(finnarecord):
     datalist = list()
     finnadata = getFinnaDatalist(finnarecord, "subjects")
@@ -3351,71 +3378,68 @@ def getFinnaMeasurements(finnarecord):
     finnadata = getFinnaDatalist(finnarecord, "measurements")
     if (finnadata == None):
         return datalist
-    for dstr in finnadata:
-        #  sometimes there is newlines and tabs in the string -> strip them out
-        dstr = fixwhitespaces(dstr)
-
-        if (len(dstr) == 0):
-            continue
-        # sometimes data has bugs
-        if (dstr.find("Cannot get property") >= 0):
-            print("DEBUG: bugged data in places: ", finnaid)
-            continue
-        
-        datalist.append(dstr)
     
-    #print("DEBUG: measurements from finna: ", str(datalist))
-    return datalist
+    return getFinnaSanitizedDatalist(finnadata)
 
 # materials
 def getFinnaMaterials(finnarecord):
     datalist = list()
+    
+    # under events/valmistus
+        # "places" "actors" 
 
     # TODO: also try "materialsExtended" ?
 
-    finnadata = getFinnaDatalist(finnarecord, "materials")
-    if (finnadata == None):
+    events = getFinnaDatalist(finnarecord, "events")
+    if (events == None):
         return datalist
-    for dstr in finnadata:
-        #  sometimes there is newlines and tabs in the string -> strip them out
-        dstr = fixwhitespaces(dstr)
+    if "valmistus" not in events:
+        return datalist
+    for v in events["valmistus"]:
+        #print("DEBUG: found valmistus", str(v))
+        if ("type" in v):
+            vtype = v["type"]
+            if (vtype != "valmistus"):
+                continue
+        materials = v["materials"]
+        for m in materials:
+            print("DEBUG: found material", str(m))
+            mtmp = m.strip()
+            if (mtmp not in datalist):
+                datalist.append(mtmp)
 
-        if (len(dstr) == 0):
-            continue
-        # sometimes data has bugs
-        if (dstr.find("Cannot get property") >= 0):
-            print("DEBUG: bugged data in places: ", finnaid)
-            continue
-        
-        datalist.append(dstr)
-
-    #print("DEBUG: materials from finna: ", str(datalist))
     return datalist
 
-# creating methods
+
+# creation methods
 def getFinnaMethods(finnarecord):
     datalist = list()
+
+    # under events/valmistus
+        # "places" "actors" 
     
     # TODO: also try "methodsExtended" ?
 
-    finnadata = getFinnaDatalist(finnarecord, "methods")
-    if (finnadata == None):
+    events = getFinnaDatalist(finnarecord, "events")
+    if (events == None):
         return datalist
-    for dstr in finnadata:
-        #  sometimes there is newlines and tabs in the string -> strip them out
-        dstr = fixwhitespaces(dstr)
+    if "valmistus" not in events:
+        return datalist
+    for v in events["valmistus"]:
+        #print("DEBUG: found valmistus", str(v))
+        if ("type" in v):
+            vtype = v["type"]
+            if (vtype != "valmistus"):
+                continue
+        methods = v["methods"]
+        for m in methods:
+            print("DEBUG: found method", str(m))
+            mtmp = m.strip()
+            if (mtmp not in datalist):
+                datalist.append(mtmp)
 
-        if (len(dstr) == 0):
-            continue
-        # sometimes data has bugs
-        if (dstr.find("Cannot get property") >= 0):
-            print("DEBUG: bugged data in places: ", finnaid)
-            continue
-        
-        datalist.append(dstr)
-
-    #print("DEBUG: methods from finna: ", str(datalist))
     return datalist
+
 
 def getIsniNumberFromAuthorId(authorid):
     if (authorid.find("isni.org") > 0):
@@ -3816,7 +3840,8 @@ def reuploadImage(finnaid, file_info, finnarecord, need_index, file_page, source
             print("WARN: converted image is not larger than in Commons: " + finnaid)
             return False
 
-    comment = "Overwriting image with better resolution version of the image from " + sourceurl +" ; Licence in Finna " + imagesExtended['rights']['copyright']
+    copyrighttext = imagesExtended['rights']['copyright']
+    comment = "Overwriting image with better resolution version of the image from " + sourceurl +" ; Licence in Finna " + copyrighttext
     print(comment)
 
     try:
@@ -4689,7 +4714,14 @@ class CommonsTemplate:
         for t in dimensionlist:
             if (len(dimensions) > 0):
                 dimensions += ";"
-            dimensions += t
+            if (len(t) > 0):
+                dimensions += t
+
+        # nothing usable?
+        if (len(dimensions) == 0):
+            return False
+        
+        #dimensions = "{{fi|" + dimensions + "}}"
 
         par = self.getDimensionsCommonsTemplate(template)
         if (par == None):
@@ -4703,6 +4735,46 @@ class CommonsTemplate:
                 return True
         return False
 
+    def addOrSetMediumtechnique(self, template, materials, methods):
+        if (len(materials) == 0 and len(methods) == 0):
+            return False
+
+        # concatenate list: avoid duplicates
+        mediumlist = list()
+        for mat in materials:
+            mat = mat.strip()
+            if (len(mat) > 0 and mat not in mediumlist):
+                mediumlist.append(mat)
+        for met in methods:
+            met = met.strip()
+            if (len(met) > 0 and met not in mediumlist):
+                mediumlist.append(met)
+
+        mediums = ""
+        for t in mediumlist:
+            if (len(mediums) > 0):
+                mediums += ";"
+            #if (len(t) > 0):
+            mediums += t
+
+        # nothing usable?
+        if (len(mediums) == 0):
+            return False
+
+        #mediums = "{{fi|" + mediums + "}}"
+
+        # note: only set/add when empty as it may have something different already
+        par = self.getMediumCommonsTemplate(template)
+        if (par == None):
+            template.add("medium", mediums)
+            self.changed = True
+            return True
+        else:
+            if (self.isEmptyParamValue(par) == True):
+                par.value = mediums + "\n"
+                self.changed = True
+                return True
+        return False
 
     # call to initialize
     def parseTemplate(self, page_text):
@@ -5384,6 +5456,9 @@ def getcategoriesforauthors(photographers, existingcategories):
         #'Rista, Eeva' : 'Photographs by Eeva Rista',
         #'Simo Rista' : 'Photographs by Simo Rista',
         #'Rista, Simo' : 'Photographs by Simo Rista'
+        #'Kannisto, Väinö Aleksi' : 'Photographs by Väinö Kannisto',
+        'Hakli, Kari' : 'Photographs by Kari Hakli',
+        'von Bonin, Volker' : 'Photographs by Volker von Bonin',
         'Heinonen, Eino' : 'Photographs by Eino Heinonen',
         'Sundström, Eric' : 'Photographs by Eric Sundström',
         'Sundström, Olof' : 'Photographs by Olof Sundström',
@@ -5634,6 +5709,8 @@ def getnewestpagesfromcategory(pywikibot, commonssite, maincat, limit=100):
             pages.append(fp)
     return pages
 
+# this does not work for a different user?
+# might be useful to check new uploads otherwise
 def getuseruploads(pywikibot,commonssite, username, limit=100):
     user = pywikibot.User(commonssite, username)
     contribs = user.contributions(total=limit)  # Get the user's last 5000 edits
@@ -5688,6 +5765,12 @@ def getpagesfixedlist(pywikibot, commonssite):
     #fixedname = 'Mannerheimintie 3 - Helsinki 1972 - G38560 - hkm.HKMS000005-km0000o4h0.jpg'
     #fixedname = 'Mannerheimintie 3 - Helsinki 1972 - G38561 - hkm.HKMS000005-km0000o4h2.jpg'
     
+    #fixedname = 'Salmikatu 23, Palosaari Vaasa.jpg'
+    
+    #fixedname = 'FUDSS-Q7158.jpg'
+    #fixedname = 'Svenska samskolan i Helsingfors.jpg'
+    
+    #fixedname = 'Fiolspelaren Anders Österblad (1903) (SLS 95 22).jpg'
     
     #Henrik Finne, 1548-1684 (colour).tif
     
@@ -5697,6 +5780,9 @@ def getpagesfixedlist(pywikibot, commonssite):
     
     #fixedname = 'HKMS000005 km0000o4ex.jpg'
     #fixedname = 'Greg Bell (1956).jpg'
+    
+    #fixedname = 'FUDSS-Q7127.jpg'
+    
     
     pages = list()
     #fp = pywikibot.FilePage(commonssite, 'File:Seppo Lindblom 1984.jpg')
@@ -5748,6 +5834,22 @@ def getpagesfixedlist(pywikibot, commonssite):
     fp = getpagebyname(pywikibot, commonssite, fixedname)
     pages.append(fp)
     return pages
+
+# TODO: filter by what exists in database, only give those that are new/unknown?
+# TODO: change file (from query) to include media id as well and use that?
+#def reducetonewimages(pagelist):
+#    cachedb = CachedImageData() 
+#    cachedb.opencachedb()
+    
+#    newlist = list()
+#    for p in pagelist:
+        # generate url for page
+        #purl = 
+#        cached_info = cachedb.findfromcache(purl)
+#        if (cached_info == None):
+#            newlist.append(p)
+#    return newlist
+
 
 # list of files in a wikitable file
 def getpagelistfromfile(filename):
@@ -6268,9 +6370,6 @@ d_authortoqcode["Simberg, Hugo"] = "Q263080"
 
 #d_authortoqcode[""] = ""
 
-
-
-
 # 
 
 # Accessing wikidata properties and items
@@ -6463,7 +6562,7 @@ commonssite.login()
 #pages = getcatpages(pywikibot, commonssite, "Karelians")
 
 
-pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 50)
+#pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 50)
 #pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by FinnaUploadBot", 1)
 
 #pages = getcatpages(pywikibot, commonssite, "PD Finland (simple photos)")
@@ -6505,12 +6604,12 @@ pages = getnewestpagesfromcategory(pywikibot, commonssite, "Files uploaded by Fi
 
 
 #pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/helsinkikuviafi')
+#pages = getlinkedpages(pywikibot, commonssite, 'User:FinnaUploadBot/helsingforsbilderfi')
 
 #pages = getpagesrecurse(pywikibot, commonssite, "Photographs by Unto Laitila", 1)
 
 #pages = getpagelistfromfile("quarry-102386-find-low-resolution-kuvakokoelmat-images-wikilinks-run1074583.wikitable")
 
-#pages = getcatpages(pywikibot, commonssite, "Gustaf Mauritz Armfelt")
 
 #pages = getcatpages(pywikibot, commonssite, "Ernst Linder")
 
@@ -6534,11 +6633,18 @@ fngcache.opencachedb()
 micache = CachedMediainfo() 
 micache.opencachedb()
 
-enablerechecking = False # recheck previously parsed files, regardless of when last processed
-enablereuploading = False # TESTING set false to turn it off for now, true to upload higher resolution versions
+enablerechecking = False  # recheck previously parsed files, regardless of when last processed
+enablereuploading = False  # TESTING set false to turn it off for now, true to upload higher resolution versions
+# enablerehashing # force recalculating hashes where it already exists? (needs redownloading..)
 
 rowcount = 0
 #rowlimit = 10
+
+# TODO: reduce listed pages to only new images in most cases?
+# sometimes filtering is not good enough otherwise,
+# if we don't need to recheck only check those that were not known already
+# note: check the methods of listing pages in different cases..
+#newlist = reducetonewimages()
 
 #for pagename in pages:
 #    page = getpagebyname(pywikibot, commonssite, pagename)
@@ -6669,7 +6775,7 @@ for page in pages:
     finnarecordid = ""
     fngacc = ""
     kgtid = "" # kansallisgalleria.fi
-    hkkid = "" # helsinkikuvia.fi
+    hkkid = "" # helsinkikuvia.fi or helsingforsbilder.fi
 
     for srcvalue in srcurls:
         if (srcvalue.find("elonet.finna.fi") > 0):
@@ -6678,6 +6784,9 @@ for page in pages:
 
         if (srcvalue.find("helsinkikuvia.fi") > 0):
             hkkid = getidfomhelsinkikuviaurl(srcvalue)
+        if (srcvalue.find("helsingforsbilder.fi") > 0):
+            hkkid = getidfomhelsinkikuviaurl(srcvalue)
+            
         
         if (srcvalue.find("fng.fi") > 0):
             # parse inventory number from old-style link
@@ -6699,6 +6808,11 @@ for page in pages:
             # try old-style/download id
             if (finnarecordid == ""):
                 finnaid = getlinksourceid(srcvalue)
+
+            # try collection-format url:
+            # collection might be missing foto number so not a reliable method
+            #if (finnarecordid == ""):
+            #    finnarecordid = getidfromcollectionurl(srcvalue)
 
     if (len(kgtid) == 0 and len(fngacc) > 0):
         #print("DEBUG: searching objectid by inventory id", fngacc)
@@ -6849,6 +6963,7 @@ for page in pages:
             print("DEBUG: inception not found")
 
         commons_image_url = filepage.get_file_url()
+        print("DEBUG: using commons image url:", commons_image_url)
         tpcom = cachedb.findfromcache(commons_image_url)
         if (tpcom == None):
             # get image from commons for comparison:
@@ -6969,10 +7084,12 @@ for page in pages:
     #    print("item in copyright: ", finnaid, " - skpping")
     #    continue
 
+    # we don't want to touch where licensing is difficult to determine:
+    # artworks are often a problme
     if (isFinnaFormatArtwork(finna_record) == True 
         and getCopyrightTypeFromFinnaRecord(finna_record) == "InC"):
         print("item is artwork in copyright: ", finnaid, " - skpping")
-        continue
+        continue 
 
     
     # TODO! Python throws error if image is larger than 178956970 pixels
@@ -7063,6 +7180,13 @@ for page in pages:
                             'y', 
                             filepage.latest_file_info.timestamp)
         continue
+    if ('0100000000000000' == tpcom['dhashval']):
+        print("WARN: dhash is bogus for: ", page.title())
+        cachedb.setpillowbug(commons_image_url, 
+                            'y', 
+                            filepage.latest_file_info.timestamp)
+        continue
+    
     if ('0000000000000040' == tpcom['dhashval']):
         print("WARN: dhash is bogus for: ", page.title())
         cachedb.setpillowbug(commons_image_url, 
@@ -7214,7 +7338,6 @@ for page in pages:
         continue
 
     # compare file information if there is larger size available
-    #enablereuploading = False # TESTING set false to turn it off for now
     if (needReupload(file_info, finna_record) == True and enablereuploading == True):
         print("Trying to re-upload image in higher resolution for: " + finnaid)
         if (reuploadImage(finnaid, file_info, finna_record, need_index, filepage, sourceurl, finna_image_url) == True):
@@ -7439,10 +7562,11 @@ for page in pages:
     finnasummaries = getSummariesFromFinna(finna_record)
     finnapermissions = getImagerightsFromFinnaRecord(finna_record)
 
-    # TODO: check if dimensions are usable measurements instead of pixel sizes
-    #finnameasurements = getFinnaMeasurements(finna_record)
-    #finnamaterials = getFinnaMaterials(finna_record)
-    #finnamethods = getFinnaMethods(finna_record) # for artworks only?
+    # TODO: check if dimensions are usable measurements instead of pixel sizes for photographs
+    # might be different for artworks?
+    finnameasurements = getFinnaMeasurements(finna_record)
+    finnamaterials = getFinnaMaterials(finna_record)
+    finnamethods = getFinnaMethods(finna_record) # for artworks only?
 
     # parse more stuff from the embedded xml
     # note: most of the stuff is optional
@@ -7577,8 +7701,6 @@ for page in pages:
                 if (ct.addOrSetAccNumber(template, finna_accession_id) == True):
                     print("Fixed accession number for: " + page.title())
 
-                # TODO: set materials, methods, measurements according to finna
-
                 if (ct.setDescriptionSummary(template, finnasummaries) == True):
                     print("Added description summaries for: " + page.title())
                 if (ct.addOrSetDepictedPeople(template, actorslist) == True):
@@ -7589,6 +7711,14 @@ for page in pages:
                     print("Added exihibition publications for: " + page.title())
                 if (ct.addOrSetInscriptions(template, inscriptions_from_finna) == True):
                     print("Added inscriptions for: " + page.title())
+
+                # set materials, methods, measurements according to finna
+                    
+                if (ct.addOrSetDimensions(template, finnameasurements) == True):
+                    print("Added dimensions for: " + page.title())
+                if (ct.addOrSetMediumtechnique(template, finnamaterials, finnamethods) == True):
+                    print("Added medium for: " + page.title())
+                
 
         if (ct.isChanged() == True):
             tmptext = str(ct.wikicode)
